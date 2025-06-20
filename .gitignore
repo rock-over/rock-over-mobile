@@ -36,4 +36,7 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# Supabase credentials
+lib/supabase.ts
+
 app-example
