@@ -1,6 +1,7 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Modal, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
 import ClimbingSessionForm from './ClimbingSessionForm';
 import SessionDetails from './SessionDetails';
@@ -100,7 +101,8 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.welcomeText}>
