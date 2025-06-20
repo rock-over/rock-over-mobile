@@ -1,8 +1,9 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import ClimbingSessionForm from '../components/ClimbingSessionForm';
+import { Alert, FlatList, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
+import ClimbingSessionForm from './ClimbingSessionForm';
+import SessionDetails from './SessionDetails';
 
 interface HomeProps {
   onLogout?: () => void;
@@ -17,6 +18,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   const [sessions, setSessions] = useState<ClimbingSession[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedSession, setSelectedSession] = useState<ClimbingSession | null>(null);
 
   useEffect(() => {
     if (userInfo?.email) {
@@ -71,8 +73,12 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     }
   };
 
+  const handleCardPress = (session: ClimbingSession) => {
+    setSelectedSession(session);
+  };
+
   const renderSessionCard = ({ item }: { item: ClimbingSession }) => (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={() => handleCardPress(item)}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{item.activity}</Text>
         <Text style={styles.cardDate}>{item.when}</Text>
@@ -90,7 +96,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       {item.difficulty && (
         <Text style={styles.cardDetail}>Dificuldade: {item.difficulty}</Text>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -149,6 +155,20 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
         onClose={() => setShowForm(false)}
         onSave={handleSaveSession}
       />
+
+      {/* Modal de Detalhes da Sessão */}
+      <Modal
+        visible={selectedSession !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        {selectedSession && (
+          <SessionDetails
+            session={selectedSession}
+            onClose={() => setSelectedSession(null)}
+          />
+        )}
+      </Modal>
     </SafeAreaView>
   );
 }

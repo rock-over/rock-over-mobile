@@ -1,26 +1,26 @@
 import { supabase } from '../lib/supabase';
 
 export interface ClimbingSessionData {
-  place: string;
+  place: string | null;
   when: string;
-  timeOfDay: string;
-  activity: string;
-  climbingType?: string;
-  routeNumber?: string;
-  grade?: string;
-  difficulty: string;
-  effort: string;
-  falls: string;
-  ascentType: string;
-  colour?: string;
-  routeRating?: string;
-  settersRating?: string;
-  suggestedGrade?: string;
-  howItFelt?: string;
-  movement?: string;
-  grip?: string;
-  footwork?: string;
-  comments?: string;
+  timeOfDay: string | null;
+  activity: string | null;
+  climbingType?: string | null;
+  routeNumber?: string | null;
+  grade?: string | null;
+  difficulty: string | null;
+  effort: string | null;
+  falls: string | null;
+  ascentType: string | null;
+  colour?: string | null;
+  routeRating?: string | null;
+  settersRating?: string | null;
+  suggestedGrade?: string | null;
+  howItFelt?: string | null;
+  movement?: string | null;
+  grip?: string | null;
+  footwork?: string | null;
+  comments?: string | null;
   user_email?: string;
 }
 
