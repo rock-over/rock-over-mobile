@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -24,7 +25,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   const totalSteps = 6;
   const [contentHeight, setContentHeight] = useState(0);
   const [needsScroll, setNeedsScroll] = useState(false);
-  
   const [formData, setFormData] = useState({
     place: '',
     when: new Date().toISOString().split('T')[0], // Data de hoje (obrigatória)
@@ -45,7 +45,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     howItFelt: '',
     comments: '',
     // Campos condicionais
-    timeOfDay: '',
     climbingType: '',
   });
 
@@ -137,29 +136,166 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     </View>
   );
 
+  const renderPickerNoTitle = (field: string, options: string[]) => {
+    const handleOptionPress = (value: string) => {
+      // Se clicar na opção já selecionada, desseleciona
+      if (formData[field as keyof typeof formData] === value) {
+        updateField(field, '');
+      } else {
+        updateField(field, value);
+      }
+    };
+
+    return (
+      <View style={styles.fieldContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsContainer}>
+          {options.map((option) => (
+            <TouchableOpacity
+              key={option}
+              style={[
+                styles.optionButton,
+                formData[field as keyof typeof formData] === option && styles.optionButtonSelected
+              ]}
+              onPress={() => handleOptionPress(option)}
+            >
+              <Text style={[
+                styles.optionText,
+                formData[field as keyof typeof formData] === option && styles.optionTextSelected
+              ]}>
+                {option}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
   const renderTextInput = (title: string, field: string, placeholder?: string, required?: boolean) => (
     <View style={styles.fieldContainer}>
       <Text style={styles.label}>{title}{required && ' *'}</Text>
       <TextInput
         style={styles.textInput}
-        value={formData[field as keyof typeof formData]}
+        value={String(formData[field as keyof typeof formData] || '')}
         onChangeText={(value) => updateField(field, value)}
         placeholder={placeholder}
       />
     </View>
   );
 
+  const renderDateInput = (title: string, field: string, placeholder?: string) => {
+    const isEmpty = !formData[field as keyof typeof formData] || formData[field as keyof typeof formData] === '';
+    
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <TextInput
+          style={[
+            styles.textInput,
+            isEmpty && styles.textInputError
+          ]}
+          value={formData[field as keyof typeof formData]}
+          onChangeText={(value) => updateField(field, value)}
+          placeholder={placeholder}
+        />
+        {isEmpty && (
+          <Text style={styles.errorText}>This field is required</Text>
+        )}
+      </View>
+    );
+  };
+
+  const renderVisualSelector = (
+    title: string, 
+    field: string, 
+    options: Array<{value: string, label: string, imageUrl: string}>
+  ) => {
+    const handleOptionPress = (value: string) => {
+      // Se clicar na opção já selecionada, desseleciona
+      if (formData[field as keyof typeof formData] === value) {
+        updateField(field, '');
+      } else {
+        updateField(field, value);
+      }
+    };
+
+    return (
+      <View style={styles.fieldContainer}>
+        <View style={styles.locationContainer}>
+          {options.map((option) => (
+            <TouchableOpacity
+              key={option.value}
+              style={[
+                styles.locationButton,
+                formData[field as keyof typeof formData] === option.value && styles.locationButtonSelected
+              ]}
+              onPress={() => handleOptionPress(option.value)}
+            >
+              <Image
+                key={`${field}-${option.value}-image`}
+                source={{ uri: option.imageUrl }}
+                style={styles.locationImage}
+                resizeMode="cover"
+                onError={(error) => console.log(`Erro ${option.label}:`, error.nativeEvent.error)}
+                onLoad={() => console.log(`✅ ${option.label} carregou`)}
+              />
+              <Text style={[
+                styles.locationText,
+                formData[field as keyof typeof formData] === option.value && styles.locationTextSelected
+              ]}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  const renderLocationSelector = () => {
+    const locationOptions = [
+      {
+        value: 'Indoor',
+        label: 'Indoor',
+        imageUrl: 'https://weareclimbmax.com/wp-content/uploads/2024/08/sundevil-climbing.png'
+      },
+      {
+        value: 'Outdoor',
+        label: 'Outdoor',
+        imageUrl: 'https://images.squarespace-cdn.com/content/v1/59e802b9be42d61a159cbf16/1628946429794-AXAG9YP5WE05XM3GQKCK/Twyla.png'
+      }
+    ];
+
+    return renderVisualSelector('Local', 'place', locationOptions);
+  };
+
+  const renderActivitySelector = () => {
+    const activityOptions = [
+      {
+        value: 'Climbing',
+        label: 'Climbing',
+        imageUrl: 'https://weareclimbmax.com/wp-content/uploads/2024/08/sundevil-climbing.png' // Temporário - substitua pela imagem de climbing
+      },
+      {
+        value: 'Bouldering',
+        label: 'Bouldering',
+        imageUrl: 'https://images.squarespace-cdn.com/content/v1/59e802b9be42d61a159cbf16/1628946429794-AXAG9YP5WE05XM3GQKCK/Twyla.png' // Temporário - substitua pela imagem de bouldering
+      }
+    ];
+
+    return renderVisualSelector('Atividade', 'activity', activityOptions);
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
         return (
           <View>
-            {renderTextInput('Data', 'when', '', true)}
-            {renderTextInput('Local', 'place', 'Indoor gym, outdoor location')}
-            {renderPicker('Atividade', 'activity', ['Climbing', 'Bouldering'])}
-            {renderPicker('Período', 'timeOfDay', ['Morning', 'Afternoon', 'Evening'])}
+            {renderDateInput('Tell us about your climbing session', 'when', 'YYYY-MM-DD')}
+            {renderLocationSelector()}
+            {renderActivitySelector()}
             {formData.activity === 'Climbing' && 
-              renderPicker('Tipo de Escalada', 'climbingType', ['Top', 'Lead'])
+              renderPickerNoTitle('climbingType', ['Top', 'Lead'])
             }
           </View>
         );
@@ -275,8 +411,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                 </TouchableOpacity>
 
                 {currentStep < totalSteps ? (
-                  <TouchableOpacity style={styles.navButton} onPress={handleNext}>
-                    <Text style={styles.navButtonText}>Próximo</Text>
+                  <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+                    <Text style={styles.nextButtonText}>Próximo</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -313,8 +449,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                 </TouchableOpacity>
 
                 {currentStep < totalSteps ? (
-                  <TouchableOpacity style={styles.navButton} onPress={handleNext}>
-                    <Text style={styles.navButtonText}>Próximo</Text>
+                  <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+                    <Text style={styles.nextButtonText}>Próximo</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -410,6 +546,43 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  locationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  locationButton: {
+    width: 140,
+    height: 120,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+  },
+  locationButtonSelected: {
+    borderColor: '#4285F4',
+    backgroundColor: '#f0f7ff',
+  },
+  locationImage: {
+    width: 80,
+    height: 60,
+    borderRadius: 8,
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+  },
+  locationTextSelected: {
+    color: '#4285F4',
+  },
   navigationContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -421,14 +594,17 @@ const styles = StyleSheet.create({
   },
   navButton: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
     paddingVertical: 12,
     borderRadius: 8,
     marginHorizontal: 5,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   navButtonDisabled: {
     backgroundColor: '#e9ecef',
+    borderColor: '#d6d6d6',
   },
   navButtonText: {
     fontSize: 16,
@@ -437,6 +613,19 @@ const styles = StyleSheet.create({
   },
   navButtonTextDisabled: {
     color: '#999',
+  },
+  nextButton: {
+    flex: 1,
+    backgroundColor: '#4285F4',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  nextButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   saveButton: {
     flex: 1,
@@ -450,5 +639,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  textInputError: {
+    borderColor: '#ff0000',
+  },
+  errorText: {
+    color: '#ff0000',
+    fontSize: 12,
+    marginTop: 4,
   },
 }); 
