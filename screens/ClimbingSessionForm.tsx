@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { THEME_COLORS, THEME_SIZES } from '../constants/Theme';
 
-const { height: screenHeight } = Dimensions.get('window');
+const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
 interface ClimbingSessionFormProps {
   visible: boolean;
@@ -115,6 +115,13 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   // Altura estimada dos botões + padding
   const navigationHeight = 80;
   const maxContentHeight = screenHeight * 0.9 - navigationHeight;
+  
+  // Cálculo da largura dos campos Grade baseado na fórmula:
+  // padding_esquerda + largura_campo + 20px + largura_campo + padding_direita = largura_total
+  const horizontalPadding = 20; // padding padrão usado no formulário
+  const gradeSpacing = 20; // espaçamento entre os campos
+  const availableWidth = screenWidth - (2 * horizontalPadding) - gradeSpacing;
+  const gradeFieldWidth = availableWidth / 2;
 
   useEffect(() => {
     // Determinar se precisa de scroll baseado na altura do conteúdo
@@ -712,8 +719,16 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                 {renderColorSelector()}
               </View>
             </View>
-            {renderDropdownPicker('Grade', 'grade', gradeOptions, showGradePicker, setShowGradePicker)}
-            {renderDropdownPicker('Suggested Grade', 'suggestedGrade', gradeOptions, showSuggestedGradePicker, setShowSuggestedGradePicker)}
+            {/* Linha com Grade e Suggested Grade */}
+            <View style={styles.gradeRowContainer}>
+              <View style={[styles.gradeContainer, { width: gradeFieldWidth }]}>
+                {renderDropdownPicker('Grade', 'grade', gradeOptions, showGradePicker, setShowGradePicker)}
+              </View>
+              <View style={styles.gradeSpacer} />
+              <View style={[styles.gradeContainer, { width: gradeFieldWidth }]}>
+                {renderDropdownPicker('Suggested Grade', 'suggestedGrade', gradeOptions, showSuggestedGradePicker, setShowSuggestedGradePicker)}
+              </View>
+            </View>
           </View>
         );
 
@@ -1251,7 +1266,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   gradeList: {
-    maxHeight: 200,
+    maxHeight: 350,
   },
   gradeOption: {
     flexDirection: 'row',
@@ -1271,5 +1286,20 @@ const styles = StyleSheet.create({
   },
   gradeOptionTextSelected: {
     color: THEME_COLORS.bluePrimary,
+  },
+  // Estilos para linha de Grade e Suggested Grade
+  gradeRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+    paddingHorizontal: 0, // Remove padding pois a largura já considera os paddings laterais
+  },
+  gradeContainer: {
+    // A largura será definida dinamicamente via props de estilo
+  },
+  gradeSpacer: {
+    width: 20,
+    flexShrink: 0, // Impede que o espaçador seja comprimido
   },
 }); 
