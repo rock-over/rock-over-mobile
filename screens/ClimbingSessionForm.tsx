@@ -27,12 +27,63 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   const totalSteps = 6;
   const [contentHeight, setContentHeight] = useState(0);
   const [needsScroll, setNeedsScroll] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showGradePicker, setShowGradePicker] = useState(false);
+  const [showSuggestedGradePicker, setShowSuggestedGradePicker] = useState(false);
+  
+  // Opções de graduação de escalada
+  const gradeOptions = [
+    // Sistema Francês (Sport Climbing)
+    '3a', '3b', '3c', '4a', '4b', '4c', 
+    '5a', '5b', '5c', '6a', '6a+', '6b', '6b+', '6c', '6c+',
+    '7a', '7a+', '7b', '7b+', '7c', '7c+',
+    '8a', '8a+', '8b', '8b+', '8c', '8c+',
+    '9a', '9a+', '9b', '9b+', '9c',
+    
+    // Sistema Americano (YDS)
+    '5.0', '5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7', '5.8', '5.9',
+    '5.10a', '5.10b', '5.10c', '5.10d',
+    '5.11a', '5.11b', '5.11c', '5.11d',
+    '5.12a', '5.12b', '5.12c', '5.12d',
+    '5.13a', '5.13b', '5.13c', '5.13d',
+    '5.14a', '5.14b', '5.14c', '5.14d',
+    '5.15a', '5.15b', '5.15c', '5.15d',
+    
+    // Sistema UIAA
+    'I', 'I+', 'II', 'II+', 'III', 'III+', 'IV', 'IV+', 'V', 'V+', 'VI', 'VI+',
+    'VII-', 'VII', 'VII+', 'VIII-', 'VIII', 'VIII+', 'IX-', 'IX', 'IX+',
+    'X-', 'X', 'X+', 'XI-', 'XI', 'XI+', 'XII-', 'XII', 'XII+',
+    
+    // Sistema V-Scale (Boulder)
+    'VB', 'V0-', 'V0', 'V0+', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9',
+    'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17',
+    
+    // Sistema Font (Boulder)
+    '3', '4-', '4', '4+', '5', '5+', '6A', '6A+', '6B', '6B+', '6C', '6C+',
+    '7A', '7A+', '7B', '7B+', '7C', '7C+', '8A', '8A+', '8B', '8B+', '8C', '8C+', '9A',
+    
+    // Sistema Britânico (E-grade) - Exemplos principais
+    'M 1a', 'D 2a', 'VD 3a', 'S 4a', 'HS 4b', 'HVS 4c', 'HVS 5a',
+    'E1 5a', 'E1 5b', 'E2 5b', 'E2 5c', 'E3 5c', 'E3 6a', 'E4 6a', 'E4 6b',
+    'E5 6a', 'E5 6b', 'E6 6b', 'E6 6c', 'E7 6c', 'E7 7a', 'E8 7a', 'E9 7b',
+    
+    // Sistema Australiano (Ewbank) - Principais
+    '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
+    '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
+    '31', '32', '33', '34', '35', '36', '37', '38', '39',
+    
+    // Sistema WI (Ice Climbing)
+    'WI1', 'WI2', 'WI3', 'WI4', 'WI5', 'WI6', 'WI7', 'WI8', 'WI9', 'WI10', 'WI11', 'WI12', 'WI13',
+    
+    // Sistema M (Mixed Climbing)
+    'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15'
+  ];
   
   const [formData, setFormData] = useState({
     place: '',
     when: new Date().toISOString(), // Data e hora atual (obrigatória)
     activity: '',
-    colour: '',
+    colour: '#ffffff', // Cor inicial branca
     routeNumber: '',
     grade: '',
     suggestedGrade: '',
@@ -51,6 +102,16 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     climbingType: '',
   });
 
+  // Cores disponíveis para seleção (3 linhas de 5 cores cada)
+  const colorOptions = [
+    // Primeira linha
+    '#ffffff', '#ffeb3b', '#ff9800', '#f44336', '#e91e63',
+    // Segunda linha  
+    '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4',
+    // Terceira linha
+    '#00bcd4', '#009688', '#4caf50', '#bdbdbd', '#000000'
+  ];
+
   // Altura estimada dos botões + padding
   const navigationHeight = 80;
   const maxContentHeight = screenHeight * 0.9 - navigationHeight;
@@ -62,6 +123,12 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
 
   const updateField = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Função para determinar a cor do texto do checkmark baseada na cor de fundo
+  const getCheckmarkTextColor = (backgroundColor: string) => {
+    const lightColors = ['#ffffff', '#ffeb3b', '#bdbdbd'];
+    return lightColors.includes(backgroundColor) ? '#333' : '#fff';
   };
 
   const handleNext = () => {
@@ -100,6 +167,229 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     setCurrentStep(1); // Reset para o primeiro passo
   };
 
+  const renderColorSelector = () => {
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Color</Text>
+        <TouchableOpacity
+          style={styles.colorSelectorButton}
+          onPress={() => setShowColorPicker(true)}
+        >
+          <View style={[styles.colorPreview, { backgroundColor: formData.colour }]} />
+          <FontAwesome6 
+            name="chevron-down" 
+            size={14} 
+            color="#666"
+            style={styles.colorDropdownIcon}
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderColorPickerModal = () => {
+    return (
+      <Modal
+        visible={showColorPicker}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowColorPicker(false)}
+      >
+        <TouchableOpacity 
+          style={styles.colorModalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowColorPicker(false)}
+        >
+          <View style={styles.colorModalContainer}>
+            <View style={styles.colorGrid}>
+              {/* Primeira linha */}
+              <View style={styles.colorRow}>
+                {colorOptions.slice(0, 5).map((color) => (
+                  <TouchableOpacity
+                    key={color}
+                    style={[
+                      styles.colorOption,
+                      { backgroundColor: color },
+                      formData.colour === color && styles.colorOptionSelected,
+                      color === '#ffffff' && styles.colorOptionWhite
+                    ]}
+                    onPress={() => {
+                      updateField('colour', color);
+                      setShowColorPicker(false);
+                    }}
+                  >
+                    {formData.colour === color && (
+                      <View style={styles.colorCheckmark}>
+                        <Text style={[
+                          styles.colorCheckmarkText,
+                          { color: getCheckmarkTextColor(color) }
+                        ]}>
+                          ✓
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              
+              {/* Segunda linha */}
+              <View style={styles.colorRow}>
+                {colorOptions.slice(5, 10).map((color) => (
+                  <TouchableOpacity
+                    key={color}
+                    style={[
+                      styles.colorOption,
+                      { backgroundColor: color },
+                      formData.colour === color && styles.colorOptionSelected,
+                      color === '#ffffff' && styles.colorOptionWhite
+                    ]}
+                    onPress={() => {
+                      updateField('colour', color);
+                      setShowColorPicker(false);
+                    }}
+                  >
+                    {formData.colour === color && (
+                      <View style={styles.colorCheckmark}>
+                        <Text style={[
+                          styles.colorCheckmarkText,
+                          { color: getCheckmarkTextColor(color) }
+                        ]}>
+                          ✓
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Terceira linha */}
+              <View style={[styles.colorRow, styles.colorRowLast]}>
+                {colorOptions.slice(10, 15).map((color) => (
+                  <TouchableOpacity
+                    key={color}
+                    style={[
+                      styles.colorOption,
+                      { backgroundColor: color },
+                      formData.colour === color && styles.colorOptionSelected,
+                      color === '#ffffff' && styles.colorOptionWhite
+                    ]}
+                    onPress={() => {
+                      updateField('colour', color);
+                      setShowColorPicker(false);
+                    }}
+                  >
+                    {formData.colour === color && (
+                      <View style={styles.colorCheckmark}>
+                        <Text style={[
+                          styles.colorCheckmarkText,
+                          { color: getCheckmarkTextColor(color) }
+                        ]}>
+                          ✓
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
+  const renderDropdownPicker = (title: string, field: string, options: string[], showPicker: boolean, setShowPicker: (show: boolean) => void) => {
+    const selectedValue = formData[field as keyof typeof formData] || '';
+    
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <TouchableOpacity
+          style={styles.dropdownButton}
+          onPress={() => setShowPicker(true)}
+        >
+          <Text style={[styles.dropdownButtonText, !selectedValue && styles.dropdownPlaceholderText]}>
+            {selectedValue || 'Select grade'}
+          </Text>
+          <FontAwesome6 
+            name="chevron-down" 
+            size={14} 
+            color="#666"
+            style={styles.dropdownIcon}
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderGradePickerModal = (field: string, options: string[], visible: boolean, onClose: () => void) => {
+    return (
+      <Modal
+        visible={visible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={onClose}
+      >
+        <TouchableOpacity 
+          style={styles.gradeModalOverlay} 
+          activeOpacity={1} 
+          onPress={onClose}
+        >
+          <View style={styles.gradeModalContainer}>
+            <View style={styles.gradeModalHeader}>
+              <Text style={styles.gradeModalTitle}>Select Grade</Text>
+            </View>
+            <ScrollView style={styles.gradeList} showsVerticalScrollIndicator={true}>
+              <TouchableOpacity
+                style={[
+                  styles.gradeOption,
+                  formData[field as keyof typeof formData] === '' && styles.gradeOptionSelected
+                ]}
+                onPress={() => {
+                  updateField(field, '');
+                  onClose();
+                }}
+              >
+                <Text style={[
+                  styles.gradeOptionText,
+                  formData[field as keyof typeof formData] === '' && styles.gradeOptionTextSelected
+                ]}>
+                  None
+                </Text>
+                {formData[field as keyof typeof formData] === '' && (
+                  <FontAwesome6 name="check" size={16} color={THEME_COLORS.bluePrimary} />
+                )}
+              </TouchableOpacity>
+              {options.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.gradeOption,
+                    formData[field as keyof typeof formData] === option && styles.gradeOptionSelected
+                  ]}
+                  onPress={() => {
+                    updateField(field, option);
+                    onClose();
+                  }}
+                >
+                  <Text style={[
+                    styles.gradeOptionText,
+                    formData[field as keyof typeof formData] === option && styles.gradeOptionTextSelected
+                  ]}>
+                    {option}
+                  </Text>
+                  {formData[field as keyof typeof formData] === option && (
+                    <FontAwesome6 name="check" size={16} color={THEME_COLORS.bluePrimary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
   const renderPicker = (title: string, field: string, options: string[]) => (
     <View style={styles.fieldContainer}>
       <Text style={styles.label}>{title}</Text>
@@ -115,7 +405,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
             styles.optionText,
             formData[field as keyof typeof formData] === '' && styles.optionTextSelected
           ]}>
-            Nenhum
+            None
           </Text>
         </TouchableOpacity>
         {options.map((option) => (
@@ -403,51 +693,67 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       case 2:
         return (
           <View>
-            {renderTextInput('Cor', 'colour')}
-            {renderTextInput('Número/Nome da Rota', 'routeNumber')}
-            {renderTextInput('Grau', 'grade', '4, 5a, 5b, etc')}
-            {renderTextInput('Grau Sugerido', 'suggestedGrade')}
+            <Text style={styles.modalTitle}>Add route details 🧗‍♂️</Text>
+            <Text style={styles.modalSubtitle}>Enter the information about your climbing route</Text>
+            
+            {/* Linha compartilhada: Route name + Route Color */}
+            <View style={styles.sharedRowContainer}>
+              <View style={styles.routeNameContainer}>
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.label}>Name</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.routeNameInput]}
+                    value={formData.routeNumber}
+                    onChangeText={(value) => updateField('routeNumber', value)}
+                  />
+                </View>
+              </View>
+              <View style={styles.routeColorContainer}>
+                {renderColorSelector()}
+              </View>
+            </View>
+            {renderDropdownPicker('Grade', 'grade', gradeOptions, showGradePicker, setShowGradePicker)}
+            {renderDropdownPicker('Suggested Grade', 'suggestedGrade', gradeOptions, showSuggestedGradePicker, setShowSuggestedGradePicker)}
           </View>
         );
 
       case 3:
         return (
           <View>
-            {renderPicker('Dificuldade', 'difficulty', ['Smooth', 'Hard', 'Very Hard'])}
-            {renderPicker('Esforço', 'effort', ['Low', 'Moderate', 'Hard'])}
-            {renderTextInput('Número de Quedas', 'falls')}
-            {renderPicker('Tipo de Ascensão', 'ascentType', ['Redpoint', 'Onsight', 'Flash'])}
+            {renderPicker('Difficulty', 'difficulty', ['Smooth', 'Hard', 'Very Hard'])}
+            {renderPicker('Effort', 'effort', ['Low', 'Moderate', 'Hard'])}
+            {renderTextInput('Number of Falls', 'falls')}
+            {renderPicker('Ascent Type', 'ascentType', ['Redpoint', 'Onsight', 'Flash'])}
           </View>
         );
 
       case 4:
         return (
           <View>
-            {renderTextInput('Movimento Usado', 'movement', 'Lift, Yard, Compress, etc')}
-            {renderTextInput('Pegada', 'grip', 'Crimp, Pocket, Jug, etc')}
-            {renderTextInput('Trabalho de Pés', 'footwork', 'Edge, Smear, Heel, etc')}
+            {renderTextInput('Movement Used', 'movement')}
+            {renderTextInput('Grip', 'grip')}
+            {renderTextInput('Footwork', 'footwork')}
           </View>
         );
 
       case 5:
         return (
           <View>
-            {renderTextInput('Avaliação da Rota', 'routeRating')}
-            {renderTextInput('Avaliação do Setter', 'settersRating')}
+            {renderTextInput('Route Rating', 'routeRating')}
+            {renderTextInput('Setter Rating', 'settersRating')}
           </View>
         );
 
       case 6:
         return (
           <View>
-            {renderTextInput('Como se Sentiu', 'howItFelt')}
+            {renderTextInput('How It Felt', 'howItFelt')}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Comentários/Dicas</Text>
+              <Text style={styles.label}>Comments/Tips</Text>
               <TextInput
                 style={[styles.textInput, styles.textArea]}
                 value={formData.comments}
                 onChangeText={(value) => updateField('comments', value)}
-                placeholder="Adicione suas observações..."
                 multiline
                 numberOfLines={4}
               />
@@ -469,98 +775,109 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     : styles.contentFixed;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={handleClose}>
-        <TouchableOpacity style={[styles.container, needsScroll ? styles.containerFullScreen : styles.containerAdaptive]} activeOpacity={1}>
-          
-          {needsScroll ? (
-            // Modo com scroll - conteúdo ocupa tela toda
-            <>
-              <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentScrollable}>
-                {renderStep()}
-              </ScrollView>
-              
-              {/* Botões fixos na parte inferior */}
-              <View style={styles.navigationContainer}>
-                <TouchableOpacity 
-                  style={[
-                    styles.navButton, 
-                    currentStep === 1 ? styles.cancelButton : (currentStep === 1 && styles.navButtonDisabled)
-                  ]}
-                  onPress={currentStep === 1 ? handleClose : handlePrevious}
-                  disabled={false}
+    <>
+      <Modal visible={visible} animationType="slide" transparent={true}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={handleClose}>
+          <TouchableOpacity style={[styles.container, needsScroll ? styles.containerFullScreen : styles.containerAdaptive]} activeOpacity={1}>
+            
+            {needsScroll ? (
+              // Modo com scroll - conteúdo ocupa tela toda
+              <>
+                <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentScrollable}>
+                  {renderStep()}
+                </ScrollView>
+                
+                {/* Botões fixos na parte inferior */}
+                <View style={styles.navigationContainer}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.navButton, 
+                      currentStep === 1 ? styles.cancelButton : (currentStep === 1 && styles.navButtonDisabled)
+                    ]}
+                    onPress={currentStep === 1 ? handleClose : handlePrevious}
+                    disabled={false}
+                  >
+                    <Text style={[
+                      styles.navButtonText, 
+                      currentStep === 1 ? styles.cancelButtonText : (currentStep === 1 && styles.navButtonTextDisabled)
+                    ]}>
+                      {currentStep === 1 ? 'Cancel' : 'Previous'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.buttonSpacer} />
+
+                  {currentStep < totalSteps ? (
+                    <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+                      <Text style={styles.nextButtonText}>Next</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                      <Text style={styles.saveButtonText}>Save</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
+            ) : (
+              // Modo sem scroll - conteúdo se adapta de baixo para cima
+              <>
+                <View style={styles.spacer} />
+                
+                <View 
+                  style={contentContainerStyle}
+                  onLayout={(event) => {
+                    const { height } = event.nativeEvent.layout;
+                    setContentHeight(height);
+                  }}
                 >
-                  <Text style={[
-                    styles.navButtonText, 
-                    currentStep === 1 ? styles.cancelButtonText : (currentStep === 1 && styles.navButtonTextDisabled)
-                  ]}>
-                    {currentStep === 1 ? 'Cancelar' : 'Anterior'}
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={styles.buttonSpacer} />
-
-                {currentStep < totalSteps ? (
-                  <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-                    <Text style={styles.nextButtonText}>Próximo</Text>
+                  {renderStep()}
+                </View>
+                
+                {/* Botões na parte inferior */}
+                <View style={styles.navigationContainer}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.navButton, 
+                      currentStep === 1 ? styles.cancelButton : (currentStep === 1 && styles.navButtonDisabled)
+                    ]}
+                    onPress={currentStep === 1 ? handleClose : handlePrevious}
+                    disabled={false}
+                  >
+                    <Text style={[
+                      styles.navButtonText, 
+                      currentStep === 1 ? styles.cancelButtonText : (currentStep === 1 && styles.navButtonTextDisabled)
+                    ]}>
+                      {currentStep === 1 ? 'Cancel' : 'Previous'}
+                    </Text>
                   </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                    <Text style={styles.saveButtonText}>Salvar</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </>
-          ) : (
-            // Modo sem scroll - conteúdo se adapta de baixo para cima
-            <>
-              <View style={styles.spacer} />
-              
-              <View 
-                style={contentContainerStyle}
-                onLayout={(event) => {
-                  const { height } = event.nativeEvent.layout;
-                  setContentHeight(height);
-                }}
-              >
-                {renderStep()}
-              </View>
-              
-              {/* Botões na parte inferior */}
-              <View style={styles.navigationContainer}>
-                <TouchableOpacity 
-                  style={[
-                    styles.navButton, 
-                    currentStep === 1 ? styles.cancelButton : (currentStep === 1 && styles.navButtonDisabled)
-                  ]}
-                  onPress={currentStep === 1 ? handleClose : handlePrevious}
-                  disabled={false}
-                >
-                  <Text style={[
-                    styles.navButtonText, 
-                    currentStep === 1 ? styles.cancelButtonText : (currentStep === 1 && styles.navButtonTextDisabled)
-                  ]}>
-                    {currentStep === 1 ? 'Cancelar' : 'Anterior'}
-                  </Text>
-                </TouchableOpacity>
 
-                <View style={styles.buttonSpacer} />
+                  <View style={styles.buttonSpacer} />
 
-                {currentStep < totalSteps ? (
-                  <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-                    <Text style={styles.nextButtonText}>Próximo</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                    <Text style={styles.saveButtonText}>Salvar</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </>
-          )}
+                  {currentStep < totalSteps ? (
+                    <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+                      <Text style={styles.nextButtonText}>Next</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                      <Text style={styles.saveButtonText}>Save</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
+            )}
+          </TouchableOpacity>
         </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
+      </Modal>
+      
+      {/* Modal do Seletor de Cores */}
+      {renderColorPickerModal()}
+      
+      {/* Modal do Seletor de Grade */}
+      {renderGradePickerModal('grade', gradeOptions, showGradePicker, () => setShowGradePicker(false))}
+      
+      {/* Modal do Seletor de Suggested Grade */}
+      {renderGradePickerModal('suggestedGrade', gradeOptions, showSuggestedGradePicker, () => setShowSuggestedGradePicker(false))}
+    </>
   );
 }
 
@@ -780,5 +1097,179 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  // Estilos do seletor de cores
+  colorSelectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: THEME_COLORS.background.input,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    width: 80,
+    height: 50,
+  },
+  colorPreview: {
+    width: 30,
+    height: 30,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+  },
+  colorDropdownIcon: {
+    marginLeft: 0,
+  },
+  // Estilos do modal de cores
+  colorModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    zIndex: 1000,
+  },
+  colorGrid: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colorRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    marginBottom: 16,
+    width: 240, // 5 cores × 36px + 4 espaços × 12px = 228px + margem
+  },
+  colorRowLast: {
+    marginBottom: 0,
+  },
+  colorOption: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  colorOptionWhite: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  colorOptionSelected: {
+    transform: [{ scale: 1.15 }],
+    elevation: 4,
+    shadowOpacity: 0.3,
+  },
+  colorCheckmark: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorCheckmarkText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  // Estilos para linha compartilhada
+  sharedRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 15,
+  },
+  routeNameContainer: {
+    flex: 1,
+    marginRight: 15,
+  },
+  routeColorContainer: {
+    alignItems: 'flex-end',
+  },
+  routeNameInput: {
+    height: 50, // Mesma altura que o colorSelectorButton
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: THEME_COLORS.background.input,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    minWidth: 120,
+    height: 50,
+  },
+  dropdownButtonText: {
+    fontSize: 16,
+    color: '#000000',
+    fontWeight: '500',
+  },
+  dropdownPlaceholderText: {
+    color: '#999',
+  },
+  dropdownIcon: {
+    marginLeft: 0,
+  },
+  gradeModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gradeModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    width: '80%',
+    maxWidth: 300,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  gradeModalHeader: {
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  gradeModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  gradeList: {
+    maxHeight: 200,
+  },
+  gradeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 15,
+    borderRadius: 8,
+    marginVertical: 2,
+  },
+  gradeOptionSelected: {
+    backgroundColor: '#f0f7ff',
+  },
+  gradeOptionText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  gradeOptionTextSelected: {
+    color: THEME_COLORS.bluePrimary,
   },
 }); 
