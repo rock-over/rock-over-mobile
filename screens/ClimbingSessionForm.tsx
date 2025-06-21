@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { THEME_COLORS, THEME_SIZES } from '../constants/Theme';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -251,7 +252,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
           <FontAwesome6 
             name="calendar-days" 
             size={18} 
-            color="#4285F4" 
+            color={THEME_COLORS.bluePrimary}
             style={styles.dateIcon}
           />
           <TextInput
@@ -497,6 +498,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                   </Text>
                 </TouchableOpacity>
 
+                <View style={styles.buttonSpacer} />
+
                 {currentStep < totalSteps ? (
                   <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
                     <Text style={styles.nextButtonText}>Próximo</Text>
@@ -541,6 +544,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                   </Text>
                 </TouchableOpacity>
 
+                <View style={styles.buttonSpacer} />
+
                 {currentStep < totalSteps ? (
                   <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
                     <Text style={styles.nextButtonText}>Próximo</Text>
@@ -562,13 +567,13 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: THEME_COLORS.background.overlay,
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: '#f5f5f5',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: THEME_COLORS.background.primary,
+    borderTopLeftRadius: THEME_SIZES.borderRadius.large,
+    borderTopRightRadius: THEME_SIZES.borderRadius.large,
   },
   containerAdaptive: {
     maxHeight: '90%',
@@ -628,8 +633,8 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
   },
   optionButtonSelected: {
-    backgroundColor: '#4285F4',
-    borderColor: '#4285F4',
+    backgroundColor: THEME_COLORS.bluePrimary,
+    borderColor: THEME_COLORS.bluePrimary,
   },
   optionText: {
     fontSize: 14,
@@ -658,7 +663,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   locationButtonSelected: {
-    borderColor: '#4285F4',
+    borderColor: THEME_COLORS.bluePrimary,
     backgroundColor: '#f0f7ff',
   },
   locationImage: {
@@ -676,11 +681,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   locationTextSelected: {
-    color: '#4285F4',
+    color: THEME_COLORS.bluePrimary,
   },
   navigationContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: '#fff',
@@ -692,7 +696,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingVertical: 12,
     borderRadius: 8,
-    marginHorizontal: 5,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#e0e0e0',
@@ -711,10 +714,9 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     flex: 1,
-    backgroundColor: '#4285F4',
+    backgroundColor: THEME_COLORS.bluePrimary,
     paddingVertical: 12,
     borderRadius: 8,
-    marginHorizontal: 5,
     alignItems: 'center',
   },
   nextButtonText: {
@@ -724,10 +726,9 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#4285F4',
+    backgroundColor: THEME_COLORS.bluePrimary,
     paddingVertical: 12,
     borderRadius: 8,
-    marginHorizontal: 5,
     alignItems: 'center',
   },
   saveButtonText: {
@@ -775,8 +776,8 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   cancelButton: {
-    backgroundColor: '#dc3545',
-    borderColor: '#dc3545',
+    backgroundColor: THEME_COLORS.softRed,
+    borderColor: THEME_COLORS.softRed,
   },
   cancelButtonText: {
     color: '#fff',
