@@ -1,3 +1,4 @@
+import { FontAwesome6 } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -25,9 +26,10 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   const totalSteps = 6;
   const [contentHeight, setContentHeight] = useState(0);
   const [needsScroll, setNeedsScroll] = useState(false);
+  
   const [formData, setFormData] = useState({
     place: '',
-    when: new Date().toISOString().split('T')[0], // Data de hoje (obrigatória)
+    when: new Date().toISOString(), // Data e hora atual (obrigatória)
     activity: '',
     colour: '',
     routeNumber: '',
@@ -183,21 +185,88 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     </View>
   );
 
+  // Função para converter timestamp para formato amigável
+  const formatDateForDisplay = (timestamp: string): string => {
+    if (!timestamp) return '';
+    try {
+      const date = new Date(timestamp);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      
+      return `${day} ${month} ${year}, ${hours}:${minutes}`;
+    } catch {
+      return timestamp; // Fallback caso não seja um timestamp válido
+    }
+  };
+
+  // Função para converter formato amigável para timestamp
+  const parseDisplayDate = (displayDate: string): string => {
+    if (!displayDate) return '';
+    try {
+      // Se já é um timestamp, retorna como está
+      if (displayDate.includes('T') || displayDate.match(/^\d{4}-\d{2}-\d{2}/)) {
+        return displayDate;
+      }
+
+      // Parse do formato "DD MMM YYYY, HH:MM"
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      const parts = displayDate.split(', ');
+      if (parts.length !== 2) return displayDate;
+      
+      const [datePart, timePart] = parts;
+      const dateComponents = datePart.split(' ');
+      const [hours, minutes] = timePart.split(':');
+      
+      if (dateComponents.length !== 3) return displayDate;
+      
+      const day = parseInt(dateComponents[0]);
+      const monthIndex = months.indexOf(dateComponents[1]);
+      const year = parseInt(dateComponents[2]);
+      
+      if (monthIndex === -1) return displayDate;
+      
+      const date = new Date(year, monthIndex, day, parseInt(hours), parseInt(minutes));
+      return date.toISOString();
+    } catch {
+      return displayDate; // Fallback
+    }
+  };
+
   const renderDateInput = (title: string, field: string, placeholder?: string) => {
-    const isEmpty = !formData[field as keyof typeof formData] || formData[field as keyof typeof formData] === '';
+    const fieldValue = formData[field as keyof typeof formData];
+    const isEmpty = !fieldValue || fieldValue === '';
+    const displayValue = formatDateForDisplay(fieldValue);
     
     return (
       <View style={styles.fieldContainer}>
-        <Text style={styles.label}>{title}</Text>
-        <TextInput
-          style={[
-            styles.textInput,
-            isEmpty && styles.textInputError
-          ]}
-          value={formData[field as keyof typeof formData]}
-          onChangeText={(value) => updateField(field, value)}
-          placeholder={placeholder}
-        />
+        <View style={styles.dateInputContainer}>
+          <FontAwesome6 
+            name="calendar-days" 
+            size={18} 
+            color="#4285F4" 
+            style={styles.dateIcon}
+          />
+          <TextInput
+            style={[
+              styles.dateInputWithIcon,
+              isEmpty && styles.textInputError
+            ]}
+            value={displayValue}
+            onChangeText={(value) => {
+              const timestamp = parseDisplayDate(value);
+              updateField(field, timestamp);
+            }}
+            placeholder={placeholder}
+          />
+        </View>
         {isEmpty && (
           <Text style={styles.errorText}>This field is required</Text>
         )}
@@ -222,31 +291,55 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     return (
       <View style={styles.fieldContainer}>
         <View style={styles.locationContainer}>
-          {options.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              style={[
-                styles.locationButton,
-                formData[field as keyof typeof formData] === option.value && styles.locationButtonSelected
-              ]}
-              onPress={() => handleOptionPress(option.value)}
-            >
-              <Image
-                key={`${field}-${option.value}-image`}
-                source={{ uri: option.imageUrl }}
-                style={styles.locationImage}
-                resizeMode="cover"
-                onError={(error) => console.log(`Erro ${option.label}:`, error.nativeEvent.error)}
-                onLoad={() => console.log(`✅ ${option.label} carregou`)}
-              />
-              <Text style={[
-                styles.locationText,
-                formData[field as keyof typeof formData] === option.value && styles.locationTextSelected
-              ]}>
-                {option.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          <TouchableOpacity
+            key={options[0].value}
+            style={[
+              styles.locationButton,
+              formData[field as keyof typeof formData] === options[0].value && styles.locationButtonSelected
+            ]}
+            onPress={() => handleOptionPress(options[0].value)}
+          >
+            <Image
+              key={`${field}-${options[0].value}-image`}
+              source={{ uri: options[0].imageUrl }}
+              style={styles.locationImage}
+              resizeMode="cover"
+              onError={(error) => console.log(`Erro ${options[0].label}:`, error.nativeEvent.error)}
+              onLoad={() => console.log(`✅ ${options[0].label} carregou`)}
+            />
+            <Text style={[
+              styles.locationText,
+              formData[field as keyof typeof formData] === options[0].value && styles.locationTextSelected
+            ]}>
+              {options[0].label}
+            </Text>
+          </TouchableOpacity>
+          
+          <View style={styles.buttonSpacer} />
+          
+          <TouchableOpacity
+            key={options[1].value}
+            style={[
+              styles.locationButton,
+              formData[field as keyof typeof formData] === options[1].value && styles.locationButtonSelected
+            ]}
+            onPress={() => handleOptionPress(options[1].value)}
+          >
+            <Image
+              key={`${field}-${options[1].value}-image`}
+              source={{ uri: options[1].imageUrl }}
+              style={styles.locationImage}
+              resizeMode="cover"
+              onError={(error) => console.log(`Erro ${options[1].label}:`, error.nativeEvent.error)}
+              onLoad={() => console.log(`✅ ${options[1].label} carregou`)}
+            />
+            <Text style={[
+              styles.locationText,
+              formData[field as keyof typeof formData] === options[1].value && styles.locationTextSelected
+            ]}>
+              {options[1].label}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -291,11 +384,17 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       case 1:
         return (
           <View>
-            {renderDateInput('Tell us about your climbing session', 'when', 'YYYY-MM-DD')}
+            <Text style={styles.modalTitle}>Log your climbing session ✨</Text>
+            <Text style={styles.modalSubtitle}>
+              Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
+            </Text>
+            {renderDateInput('', 'when', '15 Mar 2024, 14:30')}
             {renderLocationSelector()}
             {renderActivitySelector()}
             {formData.activity === 'Climbing' && 
-              renderPickerNoTitle('climbingType', ['Top', 'Lead'])
+              <View style={{marginTop: 15}}>
+                {renderPickerNoTitle('climbingType', ['Top', 'Lead'])}
+              </View>
             }
           </View>
         );
@@ -370,43 +469,31 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
-      <TouchableOpacity 
-        style={styles.modalOverlay} 
-        activeOpacity={1} 
-        onPress={handleClose}
-      >
-        <TouchableOpacity 
-          style={containerStyle} 
-          activeOpacity={1} 
-          onPress={(e) => e.stopPropagation()}
-        >
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={handleClose}>
+        <TouchableOpacity style={[styles.container, needsScroll ? styles.containerFullScreen : styles.containerAdaptive]} activeOpacity={1}>
+          
           {needsScroll ? (
             // Modo com scroll - conteúdo ocupa tela toda
             <>
-              <ScrollView 
-                style={styles.scrollView}
-                contentContainerStyle={contentContainerStyle}
-                showsVerticalScrollIndicator={false}
-              >
-                <View 
-                  onLayout={(event) => {
-                    const { height } = event.nativeEvent.layout;
-                    setContentHeight(height);
-                  }}
-                >
-                  {renderStep()}
-                </View>
+              <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentScrollable}>
+                {renderStep()}
               </ScrollView>
               
               {/* Botões fixos na parte inferior */}
               <View style={styles.navigationContainer}>
                 <TouchableOpacity 
-                  style={[styles.navButton, currentStep === 1 && styles.navButtonDisabled]}
-                  onPress={handlePrevious}
-                  disabled={currentStep === 1}
+                  style={[
+                    styles.navButton, 
+                    currentStep === 1 ? styles.cancelButton : (currentStep === 1 && styles.navButtonDisabled)
+                  ]}
+                  onPress={currentStep === 1 ? handleClose : handlePrevious}
+                  disabled={false}
                 >
-                  <Text style={[styles.navButtonText, currentStep === 1 && styles.navButtonTextDisabled]}>
-                    Anterior
+                  <Text style={[
+                    styles.navButtonText, 
+                    currentStep === 1 ? styles.cancelButtonText : (currentStep === 1 && styles.navButtonTextDisabled)
+                  ]}>
+                    {currentStep === 1 ? 'Cancelar' : 'Anterior'}
                   </Text>
                 </TouchableOpacity>
 
@@ -439,12 +526,18 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
               {/* Botões na parte inferior */}
               <View style={styles.navigationContainer}>
                 <TouchableOpacity 
-                  style={[styles.navButton, currentStep === 1 && styles.navButtonDisabled]}
-                  onPress={handlePrevious}
-                  disabled={currentStep === 1}
+                  style={[
+                    styles.navButton, 
+                    currentStep === 1 ? styles.cancelButton : (currentStep === 1 && styles.navButtonDisabled)
+                  ]}
+                  onPress={currentStep === 1 ? handleClose : handlePrevious}
+                  disabled={false}
                 >
-                  <Text style={[styles.navButtonText, currentStep === 1 && styles.navButtonTextDisabled]}>
-                    Anterior
+                  <Text style={[
+                    styles.navButtonText, 
+                    currentStep === 1 ? styles.cancelButtonText : (currentStep === 1 && styles.navButtonTextDisabled)
+                  ]}>
+                    {currentStep === 1 ? 'Cancelar' : 'Anterior'}
                   </Text>
                 </TouchableOpacity>
 
@@ -501,7 +594,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   fieldContainer: {
-    marginBottom: 20,
+    marginBottom: 0,
   },
   label: {
     fontSize: 16,
@@ -548,11 +641,13 @@ const styles = StyleSheet.create({
   },
   locationContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
+    marginTop: 15,
+  },
+  buttonSpacer: {
+    width: 15,
   },
   locationButton: {
-    width: 140,
+    flex: 1,
     height: 120,
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -647,5 +742,44 @@ const styles = StyleSheet.create({
     color: '#ff0000',
     fontSize: 12,
     marginTop: 4,
+  },
+  dateInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+  },
+  dateInputWithIcon: {
+    flex: 1,
+    fontSize: 16,
+    marginLeft: 10,
+    padding: 0,
+  },
+  dateIcon: {
+    marginRight: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    marginTop: 0,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 25,
+  },
+  cancelButton: {
+    backgroundColor: '#dc3545',
+    borderColor: '#dc3545',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 }); 
