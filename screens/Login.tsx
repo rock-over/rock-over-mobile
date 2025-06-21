@@ -5,8 +5,9 @@ import {
     isSuccessResponse,
     statusCodes
 } from "@react-native-google-signin/google-signin";
-import { useState } from "react";
+import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { THEME_COLORS } from '../constants/Theme';
 
 interface LoginProps {
     onLoginSuccess?: (user: any) => void;
@@ -110,7 +111,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: THEME_COLORS.background.primary,
         paddingHorizontal: 20,
     },
     title: {
@@ -120,7 +121,7 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     loginButton: {
-        backgroundColor: '#4285F4',
+        backgroundColor: THEME_COLORS.bluePrimary,
         paddingHorizontal: 40,
         paddingVertical: 15,
         borderRadius: 8,

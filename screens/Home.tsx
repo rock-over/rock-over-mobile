@@ -2,6 +2,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, Modal, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { THEME_COLORS } from '../constants/Theme';
 import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
 import ClimbingSessionForm from './ClimbingSessionForm';
 import SessionDetails from './SessionDetails';
@@ -102,7 +103,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
+      <StatusBar barStyle="dark-content" backgroundColor={THEME_COLORS.background.primary} />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.welcomeText}>
@@ -178,7 +179,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: THEME_COLORS.background.primary,
   },
   header: {
     flexDirection: 'row',

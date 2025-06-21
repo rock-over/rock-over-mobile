@@ -1,5 +1,7 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
+import { THEME_COLORS } from '../constants/Theme';
 import { ClimbingSession } from '../services/climbingSessionService';
 
 interface SessionDetailsProps {
@@ -32,7 +34,7 @@ export default function SessionDetails({ session, onClose }: SessionDetailsProps
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaViewContext style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onClose}>
@@ -104,14 +106,14 @@ export default function SessionDetails({ session, onClose }: SessionDetailsProps
 
         <View style={styles.bottomSpace} />
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaViewContext>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: THEME_COLORS.background.primary,
   },
   header: {
     flexDirection: 'row',
@@ -128,7 +130,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     fontSize: 16,
-    color: '#4285F4',
+    color: THEME_COLORS.bluePrimary,
     fontWeight: '600',
   },
   title: {

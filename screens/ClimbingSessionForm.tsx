@@ -608,13 +608,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: '#fff',
+    backgroundColor: THEME_COLORS.background.input,
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: 12,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    color: '#000000',
   },
   textArea: {
     height: 100,
@@ -654,7 +653,7 @@ const styles = StyleSheet.create({
   locationButton: {
     flex: 1,
     height: 120,
-    backgroundColor: '#fff',
+    backgroundColor: THEME_COLORS.background.primary,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#e0e0e0',
@@ -747,10 +746,8 @@ const styles = StyleSheet.create({
   dateInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: THEME_COLORS.background.input,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
     paddingHorizontal: 15,
     paddingVertical: 12,
   },
@@ -759,6 +756,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 10,
     padding: 0,
+    color: '#000000',
   },
   dateIcon: {
     marginRight: 10,

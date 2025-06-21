@@ -15,9 +15,10 @@ export const THEME_COLORS = {
     darker: '#333333',
   },
   background: {
-    primary: '#f5f5f5',
+    primary: '#FEFEFF',
     secondary: '#ffffff',
     overlay: 'rgba(0, 0, 0, 0.5)',
+    input: '#E9EDF6',
   },
   text: {
     primary: '#333333',
