@@ -31,6 +31,13 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showGradePicker, setShowGradePicker] = useState(false);
   const [showSuggestedGradePicker, setShowSuggestedGradePicker] = useState(false);
+  const [showMovementModal, setShowMovementModal] = useState(false);
+  const [showGripModal, setShowGripModal] = useState(false);
+  const [showFootworkModal, setShowFootworkModal] = useState(false);
+  const [tempMovementTags, setTempMovementTags] = useState<string[]>([]);
+  const [tempGripTags, setTempGripTags] = useState<string[]>([]);
+  const [tempFootworkTags, setTempFootworkTags] = useState<string[]>([]);
+
   
   // Opções de graduação de escalada
   const gradeOptions = [
@@ -91,9 +98,9 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     difficulty: 5, // Mudado para 5 (meio do slider)
     falls: 0,
     ascentType: '',
-    movement: '',
-    grip: '',
-    footwork: '',
+    movement: [] as string[],
+    grip: [] as string[],
+    footwork: [] as string[],
     routeRating: '',
     settersRating: '',
     howItFelt: '',
@@ -142,6 +149,29 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const updateArrayField = (field: string, value: string[]) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Opções para as tags
+  const movementOptions = [
+    'Dynamic', 'Static', 'Compression', 'Mantling', 'Stemming', 'Layback', 
+    'Undercling', 'Deadpoint', 'Dyno', 'Campus', 'Lock-off', 'Gaston',
+    'Side Pull', 'Heel Hook', 'Toe Hook', 'Flagging', 'Barn Door', 'Drop Knee'
+  ];
+
+  const gripOptions = [
+    'Crimp', 'Open Hand', 'Pinch', 'Sloper', 'Jug', 'Pocket', 'Edge',
+    'Volume', 'Undercling', 'Side Pull', 'Gaston', 'Horn', 'Rail',
+    'Incut', 'Two Finger Pocket', 'Three Finger Pocket', 'Mono'
+  ];
+
+  const footworkOptions = [
+    'Edging', 'Smearing', 'Heel Hook', 'Toe Hook', 'Inside Edge', 'Outside Edge',
+    'Drop Knee', 'High Step', 'Rock Over', 'Mantling', 'Stemming', 'Flagging',
+    'Back Step', 'Bicycle', 'Cam Hook', 'Toe Cam', 'Knee Bar', 'Rest Position'
+  ];
+
   // Função para converter valor numérico da dificuldade em texto
   const getDifficultyLabel = (value: number) => {
     if (value <= 3) return 'Smooth';
@@ -174,11 +204,13 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       return;
     }
 
-    // Converter campos vazios para null, mas manter difficulty como número
+    // Converter campos vazios para null, mas manter difficulty como número e arrays como arrays
     const cleanData = Object.fromEntries(
       Object.entries(formData).map(([key, value]) => [
         key, 
-        key === 'difficulty' ? value : (value === '' ? null : value)
+        key === 'difficulty' ? value : 
+        Array.isArray(value) ? value : 
+        (value === '' ? null : value)
       ])
     );
 
@@ -188,8 +220,43 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   };
 
   const handleClose = () => {
+    // Reset todos os campos para o estado inicial
+    setFormData({
+      place: '',
+      when: new Date().toISOString(),
+      activity: '',
+      colour: '#ffffff',
+      routeNumber: '',
+      grade: '',
+      suggestedGrade: '',
+      difficulty: 5,
+      falls: 0,
+      ascentType: '',
+      movement: [],
+      grip: [],
+      footwork: [],
+      routeRating: '',
+      settersRating: '',
+      howItFelt: '',
+      comments: '',
+      climbingType: ''
+    });
+    
+    // Reset estados dos modais
+    setShowColorPicker(false);
+    setShowGradePicker(false);
+    setShowSuggestedGradePicker(false);
+    setShowMovementModal(false);
+    setShowGripModal(false);
+    setShowFootworkModal(false);
+    
+    // Reset estados temporários de tags
+    setTempMovementTags([]);
+    setTempGripTags([]);
+    setTempFootworkTags([]);
+    
+    setCurrentStep(1);
     onClose();
-    setCurrentStep(1); // Reset para o primeiro passo
   };
 
   const renderColorSelector = () => {
@@ -765,6 +832,128 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     );
   };
 
+  // Componente para seleção de tags
+  const renderTagSelector = (title: string, field: string, options: string[], showModal: boolean, setShowModal: (show: boolean) => void) => {
+    const selectedTags = formData[field as keyof typeof formData] as string[];
+    
+    // Determinar qual estado temporário usar baseado no campo
+    const getTempTags = () => {
+      switch (field) {
+        case 'movement': return tempMovementTags;
+        case 'grip': return tempGripTags;
+        case 'footwork': return tempFootworkTags;
+        default: return [];
+      }
+    };
+
+    const setTempTags = (tags: string[]) => {
+      switch (field) {
+        case 'movement': setTempMovementTags(tags); break;
+        case 'grip': setTempGripTags(tags); break;
+        case 'footwork': setTempFootworkTags(tags); break;
+      }
+    };
+
+    const tempSelectedTags = getTempTags();
+
+    const openModal = () => {
+      setTempTags([...selectedTags]);
+      setShowModal(true);
+    };
+
+    const toggleTag = (tag: string) => {
+      const newTags = tempSelectedTags.includes(tag) 
+        ? tempSelectedTags.filter(t => t !== tag)
+        : [...tempSelectedTags, tag];
+      setTempTags(newTags);
+    };
+
+
+
+    const saveSelection = () => {
+      updateArrayField(field, tempSelectedTags);
+      setShowModal(false);
+    };
+
+    const removeTag = (tagToRemove: string) => {
+      const newTags = selectedTags.filter(tag => tag !== tagToRemove);
+      updateArrayField(field, newTags);
+    };
+
+    const getFieldName = () => {
+      switch (field) {
+        case 'movement': return 'movement';
+        case 'grip': return 'grip';
+        case 'footwork': return 'footwork';
+        default: return field;
+      }
+    };
+
+    return (
+      <View style={[styles.fieldContainer, styles.fieldContainerWithTags]}>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.tagsContainer}>
+          {selectedTags.map((tag, index) => (
+            <TouchableOpacity key={index} style={styles.tagChip} onPress={() => removeTag(tag)}>
+              <Text style={styles.tagChipText}>{tag}</Text>
+              <FontAwesome6 name="xmark" size={12} color="#fff" style={styles.tagChipRemove} />
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={styles.addTagButton} onPress={openModal}>
+            <Text style={styles.addTagButtonText}>+ Add {getFieldName()}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Modal
+          visible={showModal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowModal(false)}
+        >
+          <TouchableOpacity 
+            style={styles.tagModalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowModal(false)}
+          >
+            <TouchableOpacity 
+              style={styles.tagModalContainer}
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.tagModalHeader}>
+                <Text style={styles.tagModalTitle}>Select {title}</Text>
+              </View>
+              <ScrollView style={styles.tagsList} showsVerticalScrollIndicator={true}>
+                {[...options].sort().map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.tagOption,
+                      tempSelectedTags.includes(option) && styles.tagOptionSelected
+                    ]}
+                    onPress={() => toggleTag(option)}
+                  >
+                    <Text style={[
+                      styles.tagOptionText,
+                      tempSelectedTags.includes(option) && styles.tagOptionTextSelected
+                    ]}>
+                      {option}
+                    </Text>
+                    <Text style={styles.tagOptionPlus}>+</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              
+              <TouchableOpacity style={styles.tagSaveButton} onPress={saveSelection}>
+                <Text style={styles.tagSaveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      </View>
+    );
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -831,9 +1020,11 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       case 3:
         return (
           <View>
-            {renderTextInput('Movement Used', 'movement')}
-            {renderTextInput('Grip', 'grip')}
-            {renderTextInput('Footwork', 'footwork')}
+            <Text style={styles.modalTitle}>Keep track of your moves 🧗‍♀️</Text>
+            <Text style={styles.modalSubtitle}>Select the moves on this route</Text>
+            {renderTagSelector('Movement', 'movement', movementOptions, showMovementModal, setShowMovementModal)}
+            {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
+            {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
           </View>
         );
 
@@ -1459,9 +1650,123 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  counterValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-}); 
+     counterValue: {
+     fontSize: 16,
+     fontWeight: '600',
+     color: '#333',
+   },
+   // Estilos para tags
+   tagsContainer: {
+     flexDirection: 'row',
+     flexWrap: 'wrap',
+     alignItems: 'center',
+     marginTop: 5,
+   },
+   tagChip: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     backgroundColor: THEME_COLORS.bluePrimary,
+     borderRadius: 16,
+     paddingHorizontal: 12,
+     paddingVertical: 6,
+     marginRight: 8,
+     marginBottom: 8,
+   },
+   tagChipText: {
+     color: '#fff',
+     fontSize: 14,
+     fontWeight: '500',
+   },
+   tagChipRemove: {
+     marginLeft: 6,
+   },
+   fieldContainerWithTags: {
+     marginBottom: 20,
+   },
+   addTagButton: {
+     borderColor: THEME_COLORS.bluePrimary,
+     borderWidth: 1,
+     borderStyle: 'dashed',
+     borderRadius: 16,
+     paddingHorizontal: 12,
+     paddingVertical: 6,
+     marginBottom: 8,
+   },
+   addTagButtonText: {
+     color: THEME_COLORS.bluePrimary,
+     fontSize: 14,
+     fontWeight: '500',
+   },
+   tagModalOverlay: {
+     flex: 1,
+     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+     justifyContent: 'center',
+     alignItems: 'center',
+   },
+   tagModalContainer: {
+     backgroundColor: '#fff',
+     borderRadius: 16,
+     padding: 20,
+     marginHorizontal: 20,
+     width: '85%',
+     maxWidth: 350,
+     maxHeight: '70%',
+     elevation: 8,
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 4 },
+     shadowOpacity: 0.3,
+     shadowRadius: 8,
+   },
+   tagModalHeader: {
+     alignItems: 'center',
+     marginBottom: 15,
+   },
+   tagModalTitle: {
+     fontSize: 18,
+     fontWeight: '600',
+     color: '#333',
+   },
+   tagsList: {
+     maxHeight: 300,
+   },
+   tagOption: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     justifyContent: 'space-between',
+     padding: 12,
+     borderRadius: 8,
+     marginVertical: 2,
+     borderWidth: 1,
+     borderColor: '#e0e0e0',
+   },
+   tagOptionSelected: {
+     backgroundColor: '#f0f7ff',
+     borderColor: THEME_COLORS.bluePrimary,
+   },
+   tagOptionText: {
+     fontSize: 14,
+     color: '#333',
+     fontWeight: '500',
+   },
+   tagOptionTextSelected: {
+     color: THEME_COLORS.bluePrimary,
+   },
+   tagOptionPlus: {
+     fontSize: 16,
+     color: '#999',
+     fontWeight: 'bold',
+   },
+   tagSaveButton: {
+     backgroundColor: THEME_COLORS.bluePrimary,
+     borderRadius: 8,
+     paddingVertical: 12,
+     alignItems: 'center',
+     marginTop: 15,
+   },
+   tagSaveButtonText: {
+     color: '#fff',
+     fontSize: 16,
+     fontWeight: '600',
+   },
+
+ }); 

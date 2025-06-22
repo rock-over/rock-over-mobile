@@ -48,3 +48,11 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## To Do
+
+- [ ] Adicionar componente de date picker
+- [ ] Possibilitar a adição de movimentos customizados
+- [ ] Criar tabela de usuarios e utiliza-la
+- [ ] Passo 3: consertar scroll
+- [ ] Passo 3: ajustar altura do componente ao deletar tags
