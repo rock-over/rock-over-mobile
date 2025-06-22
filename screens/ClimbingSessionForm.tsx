@@ -2,16 +2,16 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { THEME_COLORS, THEME_SIZES } from '../constants/Theme';
 
@@ -25,7 +25,7 @@ interface ClimbingSessionFormProps {
 
 export default function ClimbingSessionForm({ visible, onClose, onSave }: ClimbingSessionFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 5;
+  const totalSteps = 4;
   const [contentHeight, setContentHeight] = useState(0);
   const [needsScroll, setNeedsScroll] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -101,8 +101,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     movement: [] as string[],
     grip: [] as string[],
     footwork: [] as string[],
-    routeRating: '',
-    settersRating: '',
+    routeRating: 0,
+    settersRating: 0,
     howItFelt: '',
     comments: '',
     // Campos condicionais
@@ -151,6 +151,255 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
 
   const updateArrayField = (field: string, value: string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+    // Renderizar avaliação por estrelas
+  const renderStarRating = (title: string, field: string) => {
+    const rating = formData[field as keyof typeof formData] as number || 0;
+    
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.starsContainer}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <TouchableOpacity
+              key={star}
+              onPress={() => updateNumericField(field, star)}
+              style={styles.starButton}
+            >
+              <FontAwesome6
+                name="star"
+                size={28}
+                color={star <= rating ? "#FFD700" : "#E0E0E0"}
+                solid={star <= rating}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  // Versões compactas para passos 1 e 2
+  const renderDateInputCompact = (title: string, field: string, placeholder?: string) => {
+    const fieldValue = formData[field as keyof typeof formData];
+    const isEmpty = !fieldValue || fieldValue === '';
+    const displayValue = formatDateForDisplay(fieldValue as string);
+    
+    return (
+      <View style={styles.fieldContainer}>
+        <View style={styles.dateInputContainer}>
+          <FontAwesome6 
+            name="calendar-days" 
+            size={18} 
+            color={THEME_COLORS.bluePrimary}
+            style={styles.dateIcon}
+          />
+          <TextInput
+            style={[
+              styles.dateInputWithIcon,
+              isEmpty && styles.textInputError
+            ]}
+            value={displayValue}
+            onChangeText={(value) => {
+              const timestamp = parseDisplayDate(value);
+              updateField(field, timestamp);
+            }}
+            placeholder={placeholder}
+          />
+        </View>
+        {isEmpty && (
+          <Text style={styles.errorText}>This field is required</Text>
+        )}
+      </View>
+    );
+  };
+
+  const renderVisualSelectorCompact = (
+    title: string, 
+    field: string, 
+    options: Array<{value: string, label: string, imageUrl: string}>
+  ) => {
+    const handleOptionPress = (value: string) => {
+      if (formData[field as keyof typeof formData] === value) {
+        updateField(field, '');
+      } else {
+        updateField(field, value);
+      }
+    };
+
+    return (
+      <View style={styles.fieldContainer}>
+        <View style={styles.locationContainer}>
+          <TouchableOpacity
+            key={options[0].value}
+            style={[
+              styles.locationButton,
+              formData[field as keyof typeof formData] === options[0].value && styles.locationButtonSelected
+            ]}
+            onPress={() => handleOptionPress(options[0].value)}
+          >
+            <Image
+              key={`${field}-${options[0].value}-image`}
+              source={{ uri: options[0].imageUrl }}
+              style={styles.locationImage}
+              resizeMode="cover"
+              onError={(error) => console.log(`Erro ${options[0].label}:`, error.nativeEvent.error)}
+              onLoad={() => console.log(`✅ ${options[0].label} carregou`)}
+            />
+            <Text style={[
+              styles.locationText,
+              formData[field as keyof typeof formData] === options[0].value && styles.locationTextSelected
+            ]}>
+              {options[0].label}
+            </Text>
+          </TouchableOpacity>
+          
+          <View style={styles.buttonSpacer} />
+          
+          <TouchableOpacity
+            key={options[1].value}
+            style={[
+              styles.locationButton,
+              formData[field as keyof typeof formData] === options[1].value && styles.locationButtonSelected
+            ]}
+            onPress={() => handleOptionPress(options[1].value)}
+          >
+            <Image
+              key={`${field}-${options[1].value}-image`}
+              source={{ uri: options[1].imageUrl }}
+              style={styles.locationImage}
+              resizeMode="cover"
+              onError={(error) => console.log(`Erro ${options[1].label}:`, error.nativeEvent.error)}
+              onLoad={() => console.log(`✅ ${options[1].label} carregou`)}
+            />
+            <Text style={[
+              styles.locationText,
+              formData[field as keyof typeof formData] === options[1].value && styles.locationTextSelected
+            ]}>
+              {options[1].label}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderColorSelectorCompact = () => {
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Color</Text>
+        <TouchableOpacity
+          style={styles.colorSelectorButton}
+          onPress={() => setShowColorPicker(true)}
+        >
+          <View style={[styles.colorPreview, { backgroundColor: formData.colour }]} />
+          <FontAwesome6 
+            name="chevron-down" 
+            size={14} 
+            color="#666"
+            style={styles.colorDropdownIcon}
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderDropdownPickerCompact = (title: string, field: string, options: string[], showPicker: boolean, setShowPicker: (show: boolean) => void) => {
+    const selectedValue = formData[field as keyof typeof formData] || '';
+    
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <TouchableOpacity
+          style={styles.dropdownButton}
+          onPress={() => setShowPicker(true)}
+        >
+          <Text style={[styles.dropdownButtonText, !selectedValue && styles.dropdownPlaceholderText]}>
+            {selectedValue || 'Select grade'}
+          </Text>
+          <FontAwesome6 
+            name="chevron-down" 
+            size={14} 
+            color="#666"
+            style={styles.dropdownIcon}
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderPickerNoTitleCompact = (field: string, options: string[]) => {
+    const handleOptionPress = (value: string) => {
+      if (formData[field as keyof typeof formData] === value) {
+        updateField(field, '');
+      } else {
+        updateField(field, value);
+      }
+    };
+
+    return (
+      <View style={styles.fieldContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsContainer}>
+          {options.map((option) => (
+            <TouchableOpacity
+              key={option}
+              style={[
+                styles.optionButton,
+                formData[field as keyof typeof formData] === option && styles.optionButtonSelected
+              ]}
+              onPress={() => handleOptionPress(option)}
+            >
+              <Text style={[
+                styles.optionText,
+                formData[field as keyof typeof formData] === option && styles.optionTextSelected
+              ]}>
+                {option}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Renderizar seletor de sentimentos
+  const renderFeelingSelector = () => {
+    const feelings = [
+      { value: 'amazing', label: 'Amazing', emoji: '🤩' },
+      { value: 'good', label: 'Good', emoji: '😊' },
+      { value: 'okay', label: 'Just OK', emoji: '😐' },
+      { value: 'tired', label: 'Tired', emoji: '😴' }
+    ];
+
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>How It Felt</Text>
+        <View style={styles.feelingsContainer}>
+          {feelings.map((feeling) => (
+            <TouchableOpacity
+              key={feeling.value}
+              style={[
+                styles.feelingButton,
+                formData.howItFelt === feeling.value && styles.feelingButtonSelected
+              ]}
+              onPress={() => updateField('howItFelt', feeling.value)}
+            >
+              <Text style={styles.feelingEmoji}>{feeling.emoji}</Text>
+                             <Text 
+                 style={[
+                   styles.feelingText,
+                   formData.howItFelt === feeling.value && styles.feelingTextSelected
+                 ]}
+                 numberOfLines={1}
+               >
+                 {feeling.label}
+               </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
   };
 
   // Opções para as tags
@@ -204,11 +453,11 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       return;
     }
 
-    // Converter campos vazios para null, mas manter difficulty como número e arrays como arrays
+    // Converter campos vazios para null, mas manter números e arrays como estão
     const cleanData = Object.fromEntries(
       Object.entries(formData).map(([key, value]) => [
         key, 
-        key === 'difficulty' ? value : 
+        key === 'difficulty' || key === 'falls' || key === 'routeRating' || key === 'settersRating' ? value : 
         Array.isArray(value) ? value : 
         (value === '' ? null : value)
       ])
@@ -235,8 +484,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       movement: [],
       grip: [],
       footwork: [],
-      routeRating: '',
-      settersRating: '',
+      routeRating: 0,
+      settersRating: 0,
       howItFelt: '',
       comments: '',
       climbingType: ''
@@ -742,7 +991,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       }
     ];
 
-    return renderVisualSelector('Local', 'place', locationOptions);
+    return renderVisualSelectorCompact('Local', 'place', locationOptions);
   };
 
   const renderActivitySelector = () => {
@@ -759,7 +1008,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       }
     ];
 
-    return renderVisualSelector('Atividade', 'activity', activityOptions);
+    return renderVisualSelectorCompact('Atividade', 'activity', activityOptions);
   };
 
   // Componente do slider nativo para dificuldade
@@ -963,12 +1212,12 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
             <Text style={styles.modalSubtitle}>
               Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
             </Text>
-            {renderDateInput('', 'when', '15 Mar 2024, 14:30')}
+            {renderDateInputCompact('', 'when', '15 Mar 2024, 14:30')}
             {renderLocationSelector()}
             {renderActivitySelector()}
             {formData.activity === 'Climbing' && 
               <View style={{marginTop: 15}}>
-                {renderPickerNoTitle('climbingType', ['Top', 'Lead'])}
+                {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
               </View>
             }
           </View>
@@ -993,17 +1242,17 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                 </View>
               </View>
               <View style={styles.routeColorContainer}>
-                {renderColorSelector()}
+                {renderColorSelectorCompact()}
               </View>
             </View>
             {/* Linha com Grade e Suggested Grade */}
             <View style={styles.gradeRowContainer}>
               <View style={[styles.gradeContainer, { width: gradeFieldWidth }]}>
-                {renderDropdownPicker('Grade', 'grade', gradeOptions, showGradePicker, setShowGradePicker)}
+                {renderDropdownPickerCompact('Grade', 'grade', gradeOptions, showGradePicker, setShowGradePicker)}
               </View>
               <View style={styles.gradeSpacer} />
               <View style={[styles.gradeContainer, { width: gradeFieldWidth }]}>
-                {renderDropdownPicker('Suggested Grade', 'suggestedGrade', gradeOptions, showSuggestedGradePicker, setShowSuggestedGradePicker)}
+                {renderDropdownPickerCompact('Suggested Grade', 'suggestedGrade', gradeOptions, showSuggestedGradePicker, setShowSuggestedGradePicker)}
               </View>
             </View>
             
@@ -1012,7 +1261,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
             {renderFallsCounter()}
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Ascent Type</Text>
-              {renderPickerNoTitle('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
+              {renderPickerNoTitleCompact('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
             </View>
           </View>
         );
@@ -1031,15 +1280,13 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       case 4:
         return (
           <View>
-            {renderTextInput('Route Rating', 'routeRating')}
-            {renderTextInput('Setter Rating', 'settersRating')}
-          </View>
-        );
-
-      case 5:
-        return (
-          <View>
-            {renderTextInput('How It Felt', 'howItFelt')}
+            <Text style={styles.modalTitle}>How was your experience? ⭐</Text>
+            <Text style={styles.modalSubtitle}>Share your thoughts and save insights for your future climbs</Text>
+            
+            {renderStarRating('Route Rating', 'routeRating')}
+            {renderStarRating('Setter Rating', 'settersRating')}
+            {renderFeelingSelector()}
+            
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Comments/Tips</Text>
               <TextInput
@@ -1048,6 +1295,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                 onChangeText={(value) => updateField('comments', value)}
                 multiline
                 numberOfLines={4}
+
               />
             </View>
           </View>
@@ -1681,7 +1929,7 @@ const styles = StyleSheet.create({
      marginLeft: 6,
    },
    fieldContainerWithTags: {
-     marginBottom: 20,
+     marginBottom: 8,
    },
    addTagButton: {
      borderColor: THEME_COLORS.bluePrimary,
@@ -1763,10 +2011,50 @@ const styles = StyleSheet.create({
      alignItems: 'center',
      marginTop: 15,
    },
-   tagSaveButtonText: {
+      tagSaveButtonText: {
      color: '#fff',
      fontSize: 16,
      fontWeight: '600',
    },
-
- }); 
+   // Estilos para avaliação por estrelas
+   starsContainer: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     marginTop: 8,
+     marginBottom: 10,
+   },
+   starButton: {
+     marginRight: 8,
+     padding: 4,
+   },
+   // Estilos para seletor de sentimentos
+   feelingsContainer: {
+     flexDirection: 'row',
+     justifyContent: 'space-between',
+     marginTop: 8,
+   },
+   feelingButton: {
+     flex: 1,
+     alignItems: 'center',
+     padding: 12,
+     marginHorizontal: 4,
+   },
+   feelingButtonSelected: {
+     // Sem background nem borda quando selecionado
+   },
+   feelingEmoji: {
+     fontSize: 24,
+     marginBottom: 4,
+   },
+   feelingText: {
+     fontSize: 11,
+     fontWeight: '400',
+     color: '#666',
+     textAlign: 'center',
+   },
+   feelingTextSelected: {
+     color: THEME_COLORS.bluePrimary,
+     fontWeight: '500',
+   },
+ 
+ });  

@@ -56,3 +56,4 @@ Join our community of developers creating universal apps.
 - [ ] Criar tabela de usuarios e utiliza-la
 - [ ] Passo 3: consertar scroll
 - [ ] Passo 3: ajustar altura do componente ao deletar tags
+- [ ] Adicionar grade no perfil
