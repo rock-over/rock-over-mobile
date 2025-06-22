@@ -89,7 +89,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     grade: '',
     suggestedGrade: '',
     difficulty: 5, // Mudado para 5 (meio do slider)
-    falls: '',
+    falls: 0,
     ascentType: '',
     movement: '',
     grip: '',
@@ -723,6 +723,48 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     );
   };
 
+  // Componente do step counter para número de quedas
+  const renderFallsCounter = () => {
+    const currentValue = formData.falls as number;
+    
+    const incrementFalls = () => {
+      const newValue = Math.min(currentValue + 1, 50);
+      updateNumericField('falls', newValue);
+    };
+    
+    const decrementFalls = () => {
+      const newValue = Math.max(currentValue - 1, 0);
+      updateNumericField('falls', newValue);
+    };
+    
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Number of Falls</Text>
+        <View style={styles.counterContainer}>
+          <TouchableOpacity 
+            style={[styles.counterButton, currentValue <= 0 && styles.counterButtonDisabled]} 
+            onPress={decrementFalls}
+            disabled={currentValue <= 0}
+          >
+            <Text style={[styles.counterButtonText, currentValue <= 0 && styles.counterButtonTextDisabled]}>-</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.counterValueContainer}>
+            <Text style={styles.counterValue}>{currentValue}</Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={[styles.counterButton, currentValue >= 50 && styles.counterButtonDisabled]} 
+            onPress={incrementFalls}
+            disabled={currentValue >= 50}
+          >
+            <Text style={[styles.counterButtonText, currentValue >= 50 && styles.counterButtonTextDisabled]}>+</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -778,8 +820,11 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
             
             {/* Campos do antigo passo 3 */}
             {renderDifficultySlider()}
-            {renderTextInput('Number of Falls', 'falls')}
-            {renderPicker('Ascent Type', 'ascentType', ['Redpoint', 'Onsight', 'Flash'])}
+            {renderFallsCounter()}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Ascent Type</Text>
+              {renderPickerNoTitle('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
+            </View>
           </View>
         );
 
@@ -1381,5 +1426,42 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     backgroundColor: THEME_COLORS.bluePrimary,
+  },
+     // Estilos para o step counter
+   counterContainer: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     justifyContent: 'center',
+     paddingHorizontal: 15,
+     paddingVertical: 12,
+   },
+   counterButton: {
+     width: 30,
+     height: 30,
+     borderRadius: 15,
+     backgroundColor: THEME_COLORS.bluePrimary,
+     justifyContent: 'center',
+     alignItems: 'center',
+   },
+   counterButtonDisabled: {
+     backgroundColor: '#e0e0e0',
+   },
+     counterButtonText: {
+     fontSize: 16,
+     fontWeight: '600',
+     color: '#fff',
+   },
+  counterButtonTextDisabled: {
+    color: '#999',
+  },
+  counterValueContainer: {
+    width: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  counterValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
   },
 }); 
