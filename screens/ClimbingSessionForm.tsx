@@ -1,16 +1,17 @@
 import { FontAwesome6 } from '@expo/vector-icons';
+import Slider from '@react-native-community/slider';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Dimensions,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { THEME_COLORS, THEME_SIZES } from '../constants/Theme';
 
@@ -24,7 +25,7 @@ interface ClimbingSessionFormProps {
 
 export default function ClimbingSessionForm({ visible, onClose, onSave }: ClimbingSessionFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 6;
+  const totalSteps = 5;
   const [contentHeight, setContentHeight] = useState(0);
   const [needsScroll, setNeedsScroll] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -87,8 +88,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     routeNumber: '',
     grade: '',
     suggestedGrade: '',
-    difficulty: '',
-    effort: '',
+    difficulty: 5, // Mudado para 5 (meio do slider)
     falls: '',
     ascentType: '',
     movement: '',
@@ -114,7 +114,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
 
   // Altura estimada dos botões + padding
   const navigationHeight = 80;
-  const maxContentHeight = screenHeight * 0.9 - navigationHeight;
+  const maxContentHeight = screenHeight * 0.85 - navigationHeight;
   
   // Cálculo da largura dos campos Grade baseado na fórmula:
   // padding_esquerda + largura_campo + 20px + largura_campo + padding_direita = largura_total
@@ -128,8 +128,26 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     setNeedsScroll(contentHeight > maxContentHeight);
   }, [contentHeight, maxContentHeight]);
 
+  useEffect(() => {
+    // Reset contentHeight when step changes to recalculate height adaptation
+    setContentHeight(0);
+    setNeedsScroll(false);
+  }, [currentStep]);
+
   const updateField = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateNumericField = (field: string, value: number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Função para converter valor numérico da dificuldade em texto
+  const getDifficultyLabel = (value: number) => {
+    if (value <= 3) return 'Smooth';
+    if (value <= 6) return 'Moderate';
+    if (value <= 8) return 'Hard';
+    return 'Very Hard';
   };
 
   // Função para determinar a cor do texto do checkmark baseada na cor de fundo
@@ -156,11 +174,11 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       return;
     }
 
-    // Converter campos vazios para null
+    // Converter campos vazios para null, mas manter difficulty como número
     const cleanData = Object.fromEntries(
       Object.entries(formData).map(([key, value]) => [
         key, 
-        value === '' ? null : value
+        key === 'difficulty' ? value : (value === '' ? null : value)
       ])
     );
 
@@ -541,7 +559,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   const renderDateInput = (title: string, field: string, placeholder?: string) => {
     const fieldValue = formData[field as keyof typeof formData];
     const isEmpty = !fieldValue || fieldValue === '';
-    const displayValue = formatDateForDisplay(fieldValue);
+    const displayValue = formatDateForDisplay(fieldValue as string);
     
     return (
       <View style={styles.fieldContainer}>
@@ -677,6 +695,34 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     return renderVisualSelector('Atividade', 'activity', activityOptions);
   };
 
+  // Componente do slider nativo para dificuldade
+  const renderDifficultySlider = () => {
+    const currentValue = formData.difficulty as number;
+    
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Difficulty</Text>
+        <View style={styles.sliderContainerFullWidth}>
+          <Slider
+            style={styles.sliderNativeFullWidth}
+            minimumValue={1}
+            maximumValue={10}
+            step={1}
+            value={currentValue}
+            onValueChange={(value: number) => updateNumericField('difficulty', value)}
+            minimumTrackTintColor={THEME_COLORS.bluePrimary}
+            maximumTrackTintColor="#e0e0e0"
+            thumbTintColor={THEME_COLORS.bluePrimary}
+          />
+          <View style={styles.sliderLabelsContainer}>
+            <Text style={styles.sliderLabelLeft}>Smooth</Text>
+            <Text style={styles.sliderLabelRight}>Very Hard</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -729,20 +775,15 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                 {renderDropdownPicker('Suggested Grade', 'suggestedGrade', gradeOptions, showSuggestedGradePicker, setShowSuggestedGradePicker)}
               </View>
             </View>
-          </View>
-        );
-
-      case 3:
-        return (
-          <View>
-            {renderPicker('Difficulty', 'difficulty', ['Smooth', 'Hard', 'Very Hard'])}
-            {renderPicker('Effort', 'effort', ['Low', 'Moderate', 'Hard'])}
+            
+            {/* Campos do antigo passo 3 */}
+            {renderDifficultySlider()}
             {renderTextInput('Number of Falls', 'falls')}
             {renderPicker('Ascent Type', 'ascentType', ['Redpoint', 'Onsight', 'Flash'])}
           </View>
         );
 
-      case 4:
+      case 3:
         return (
           <View>
             {renderTextInput('Movement Used', 'movement')}
@@ -751,7 +792,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
           </View>
         );
 
-      case 5:
+      case 4:
         return (
           <View>
             {renderTextInput('Route Rating', 'routeRating')}
@@ -759,7 +800,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
           </View>
         );
 
-      case 6:
+      case 5:
         return (
           <View>
             {renderTextInput('How It Felt', 'howItFelt')}
@@ -909,7 +950,7 @@ const styles = StyleSheet.create({
   },
   containerAdaptive: {
     maxHeight: '90%',
-    minHeight: '30%',
+    minHeight: '20%',
   },
   containerFullScreen: {
     height: '90%',
@@ -1301,5 +1342,44 @@ const styles = StyleSheet.create({
   gradeSpacer: {
     width: 20,
     flexShrink: 0, // Impede que o espaçador seja comprimido
+  },
+  // Estilos para o slider nativo
+  sliderContainerNoBg: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    justifyContent: 'space-between',
+  },
+  sliderContainerFullWidth: {
+    padding: 15,
+  },
+  sliderLabelsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  sliderLabelLeft: {
+    fontSize: 14,
+    color: '#666',
+    marginRight: 15,
+  },
+  sliderLabelRight: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 15,
+  },
+  sliderNative: {
+    width: 200,
+    height: 40,
+  },
+  sliderNativeFullWidth: {
+    width: '100%',
+    height: 40,
+  },
+  sliderThumbNative: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: THEME_COLORS.bluePrimary,
   },
 }); 
