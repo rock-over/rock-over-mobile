@@ -8,6 +8,11 @@
     "scheme": "rockover",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-screen.png",
+      "resizeMode": "native",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rockover.app",
@@ -33,11 +38,11 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-screen.png",
-          "resizeMode": "cover",
+          "resizeMode": "native",
           "backgroundColor": "#ffffff",
           "dark": {
             "image": "./assets/images/splash-screen.png",
-            "resizeMode": "cover",
+            "resizeMode": "native",
             "backgroundColor": "#ffffff"
           }
         }
