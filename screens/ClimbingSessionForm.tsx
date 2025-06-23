@@ -1,17 +1,19 @@
 import { FontAwesome6 } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Dimensions,
+    Image,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { THEME_COLORS, THEME_SIZES } from '../constants/Theme';
 
@@ -34,6 +36,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   const [showMovementModal, setShowMovementModal] = useState(false);
   const [showGripModal, setShowGripModal] = useState(false);
   const [showFootworkModal, setShowFootworkModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState<'date' | 'time'>('date');
   const [tempMovementTags, setTempMovementTags] = useState<string[]>([]);
   const [tempGripTags, setTempGripTags] = useState<string[]>([]);
   const [tempFootworkTags, setTempFootworkTags] = useState<string[]>([]);
@@ -181,6 +185,95 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   };
 
   // Versões compactas para passos 1 e 2
+  const renderDateTimePickerCompact = (title: string, field: string) => {
+    const fieldValue = formData[field as keyof typeof formData] as string;
+    const currentDate = fieldValue ? new Date(fieldValue) : new Date();
+    const isEmpty = !fieldValue || fieldValue === '';
+    
+    const formatDateTime = (date: Date) => {
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${day}/${month}/${year}, ${hours}:${minutes}`;
+    };
+
+    const handleDateChange = (event: any, selectedDate?: Date) => {
+      if (selectedDate) {
+        if (datePickerMode === 'date') {
+          // Após selecionar a data, automaticamente abrir seleção de hora
+          if (Platform.OS === 'android') {
+            setShowDatePicker(false);
+            // Pequeno delay para melhor UX no Android
+            setTimeout(() => {
+              setDatePickerMode('time');
+              setShowDatePicker(true);
+            }, 100);
+          } else {
+            // No iOS, mudar diretamente para modo time
+            setDatePickerMode('time');
+          }
+        } else {
+          // Após selecionar a hora, fechar o picker
+          if (Platform.OS === 'android') {
+            setShowDatePicker(false);
+          }
+        }
+        
+        updateField(field, selectedDate.toISOString());
+      } else if (Platform.OS === 'android') {
+        setShowDatePicker(false);
+      }
+    };
+
+    const showDateTimePicker = () => {
+      setDatePickerMode('date');
+      setShowDatePicker(true);
+    };
+
+    return (
+      <View style={styles.fieldContainer}>
+        <View style={styles.dateTimePickerContainer}>
+          <TouchableOpacity
+            style={[styles.dateTimeButton, isEmpty && styles.dateTimeButtonError]}
+            onPress={showDateTimePicker}
+          >
+            <FontAwesome6 
+              name="calendar-days" 
+              size={18} 
+              color={THEME_COLORS.bluePrimary}
+              style={styles.dateIcon}
+            />
+            <Text style={[styles.dateTimeButtonText, isEmpty && styles.dateTimeButtonTextError]}>
+              {isEmpty ? 'Select date and time' : formatDateTime(currentDate)}
+            </Text>
+            <FontAwesome6 
+              name="chevron-down" 
+              size={14} 
+              color="#666"
+            />
+          </TouchableOpacity>
+        </View>
+        
+        {isEmpty && (
+          <Text style={styles.errorText}>This field is required</Text>
+        )}
+        
+        {showDatePicker && (
+          <DateTimePicker
+            value={currentDate}
+            mode={datePickerMode}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            minimumDate={new Date(2020, 0, 1)}
+            maximumDate={new Date(2030, 11, 31)}
+          />
+        )}
+      </View>
+    );
+  };
+
   const renderDateInputCompact = (title: string, field: string, placeholder?: string) => {
     const fieldValue = formData[field as keyof typeof formData];
     const isEmpty = !fieldValue || fieldValue === '';
@@ -859,13 +952,12 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       
       if (dateComponents.length !== 3) return displayDate;
       
-      const day = parseInt(dateComponents[0]);
-      const monthIndex = months.indexOf(dateComponents[1]);
-      const year = parseInt(dateComponents[2]);
+      const [day, month, year] = dateComponents;
+      const monthIndex = months.indexOf(month);
       
       if (monthIndex === -1) return displayDate;
       
-      const date = new Date(year, monthIndex, day, parseInt(hours), parseInt(minutes));
+      const date = new Date(parseInt(year), monthIndex, parseInt(day), parseInt(hours), parseInt(minutes));
       return date.toISOString();
     } catch {
       return displayDate; // Fallback
@@ -1212,7 +1304,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
             <Text style={styles.modalSubtitle}>
               Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
             </Text>
-            {renderDateInputCompact('', 'when', '15 Mar 2024, 14:30')}
+            {renderDateTimePickerCompact('', 'when')}
             {renderLocationSelector()}
             {renderActivitySelector()}
             {formData.activity === 'Climbing' && 
@@ -2056,5 +2148,41 @@ const styles = StyleSheet.create({
      color: THEME_COLORS.bluePrimary,
      fontWeight: '500',
    },
- 
+   // Estilos para o novo seletor de data e hora
+   dateTimePickerContainer: {
+     flexDirection: 'row',
+     alignItems: 'center',
+   },
+   dateTimeButton: {
+     flex: 1,
+     flexDirection: 'row',
+     alignItems: 'center',
+     justifyContent: 'space-between',
+     backgroundColor: '#f5f5f5',
+     borderRadius: 8,
+     paddingHorizontal: 15,
+     paddingVertical: 12,
+     borderWidth: 1,
+     borderColor: '#e0e0e0',
+   },
+   dateTimeButtonError: {
+     borderColor: '#ff0000',
+     backgroundColor: '#fff5f5',
+   },
+   dateTimeButtonText: {
+     fontSize: 16,
+     color: '#333',
+     fontWeight: '500',
+     marginLeft: 10,
+     flex: 1,
+   },
+   dateTimeButtonTextError: {
+     color: '#ff0000',
+   },
+   timeButton: {
+     padding: 8,
+     marginLeft: 10,
+     backgroundColor: '#f0f0f0',
+     borderRadius: 6,
+   },
  });  
