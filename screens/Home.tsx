@@ -278,7 +278,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME_COLORS.bluePrimary} />
+      <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
       
       {/* Blue Header */}
       <View style={styles.header}>

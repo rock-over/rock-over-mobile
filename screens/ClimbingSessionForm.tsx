@@ -10,6 +10,7 @@ import {
   Modal,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -56,6 +57,9 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       // Reset values before opening
       overlayOpacity.setValue(0);
       containerTranslateY.setValue(1000);
+      
+      // Ensure status bar is light-content for modal
+      StatusBar.setBarStyle('light-content', true);
       
       // Modal opening animation
       Animated.parallel([
@@ -630,7 +634,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Reset form and close modal after animation
+      // Reset form and close modal
       setCurrentStep(1);
       setFormData({
         place: '',
@@ -652,11 +656,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
         comments: '',
         climbingType: '',
       });
-      
-      // Reset animated values for next opening
-      overlayOpacity.setValue(0);
-      containerTranslateY.setValue(1000);
-      
       onClose();
     });
   };
@@ -1464,7 +1463,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
 
   return (
     <>
-      <Modal visible={visible} transparent={true}>
+      <Modal visible={visible} transparent={true} statusBarTranslucent={true}>
         {/* Dark overlay that covers the entire screen */}
         <Animated.View 
           style={[
