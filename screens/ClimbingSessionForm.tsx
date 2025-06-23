@@ -1,19 +1,20 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { THEME_COLORS, THEME_SIZES } from '../constants/Theme';
 
@@ -28,8 +29,6 @@ interface ClimbingSessionFormProps {
 export default function ClimbingSessionForm({ visible, onClose, onSave }: ClimbingSessionFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
-  const [contentHeight, setContentHeight] = useState(0);
-  const [needsScroll, setNeedsScroll] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showGradePicker, setShowGradePicker] = useState(false);
   const [showSuggestedGradePicker, setShowSuggestedGradePicker] = useState(false);
@@ -42,7 +41,129 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   const [tempGripTags, setTempGripTags] = useState<string[]>([]);
   const [tempFootworkTags, setTempFootworkTags] = useState<string[]>([]);
 
-  
+  // Dynamic height management
+  const [contentHeight, setContentHeight] = useState(0);
+  const [modalHeight, setModalHeight] = useState(300); // Initialize with minimum height
+  const [needsScroll, setNeedsScroll] = useState(false);
+
+  // Animated values for custom modal animation
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const containerTranslateY = useRef(new Animated.Value(1000)).current;
+
+  // Animate modal entrance/exit
+  useEffect(() => {
+    if (visible) {
+      // Reset values before opening
+      overlayOpacity.setValue(0);
+      containerTranslateY.setValue(1000);
+      
+      // Modal opening animation
+      Animated.parallel([
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(containerTranslateY, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
+  // Calculate dynamic modal height
+  useEffect(() => {
+    const navigationHeight = 85; // Fixed navigation bar height
+    const contentPadding = 30; // paddingTop (30) + paddingBottom (0)
+    const safeAreaFromBottom = 10; // Small margin from screen bottom
+    
+    if (contentHeight > 0) {
+      // Calculate total height needed
+      const totalRequiredHeight = contentHeight + navigationHeight + contentPadding + safeAreaFromBottom;
+      const maxAvailableHeight = screenHeight - 100; // Reserve space for status bar
+      
+      // Use the required height, but respect max available
+      const finalHeight = Math.min(totalRequiredHeight, maxAvailableHeight);
+      setModalHeight(finalHeight);
+      
+      // Determine if we need scroll (content doesn't fit)
+      setNeedsScroll(totalRequiredHeight > maxAvailableHeight);
+    } else {
+      // Fallback height when content hasn't been measured yet
+      const fallbackHeight = navigationHeight + contentPadding + 200 + safeAreaFromBottom; // 200px estimated content
+      setModalHeight(Math.min(fallbackHeight, screenHeight - 100));
+      setNeedsScroll(false);
+    }
+  }, [contentHeight, screenHeight, currentStep]);
+
+  // Reset height calculation when step changes
+  useEffect(() => {
+    setContentHeight(0);
+    setModalHeight(0);
+    setNeedsScroll(false);
+  }, [currentStep]);
+
+  // Cálculo da largura dos campos Grade baseado na fórmula:
+  // padding_esquerda + largura_campo + 20px + largura_campo + padding_direita = largura_total
+  const horizontalPadding = 20; // padding padrão usado no formulário
+  const gradeSpacing = 20; // espaçamento entre os campos
+  const availableWidth = screenWidth - (2 * horizontalPadding) - gradeSpacing;
+  const gradeFieldWidth = availableWidth / 2;
+
+  const [formData, setFormData] = useState({
+    place: '',
+    when: new Date().toISOString(), // Data e hora atual (obrigatória)
+    activity: '',
+    colour: '#ffffff', // Cor inicial branca
+    routeNumber: '',
+    grade: '',
+    suggestedGrade: '',
+    difficulty: 5, // Mudado para 5 (meio do slider)
+    falls: 0,
+    ascentType: '',
+    movement: [] as string[],
+    grip: [] as string[],
+    footwork: [] as string[],
+    routeRating: 0,
+    settersRating: 0,
+    howItFelt: '',
+    comments: '',
+    // Campos condicionais
+    climbingType: '',
+  });
+
+  // Cores disponíveis para seleção (3 linhas de 5 cores cada)
+  const colorOptions = [
+    // Primeira linha
+    '#ffffff', '#ffeb3b', '#ff9800', '#f44336', '#e91e63',
+    // Segunda linha  
+    '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4',
+    // Terceira linha
+    '#00bcd4', '#009688', '#4caf50', '#bdbdbd', '#000000'
+  ];
+
+  // Altura estimada dos botões + padding
+  const navigationHeight = 95;
+  const maxContentHeight = screenHeight * 0.85 - navigationHeight;
+
+  const updateField = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateNumericField = (field: string, value: number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateArrayField = (field: string, value: string[]) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Force height recalculation when content changes
+    setTimeout(() => {
+      setContentHeight(0);
+    }, 100);
+  };
+
   // Opções de graduação de escalada
   const gradeOptions = [
     // Sistema Francês (Sport Climbing)
@@ -90,74 +211,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     // Sistema M (Mixed Climbing)
     'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15'
   ];
-  
-  const [formData, setFormData] = useState({
-    place: '',
-    when: new Date().toISOString(), // Data e hora atual (obrigatória)
-    activity: '',
-    colour: '#ffffff', // Cor inicial branca
-    routeNumber: '',
-    grade: '',
-    suggestedGrade: '',
-    difficulty: 5, // Mudado para 5 (meio do slider)
-    falls: 0,
-    ascentType: '',
-    movement: [] as string[],
-    grip: [] as string[],
-    footwork: [] as string[],
-    routeRating: 0,
-    settersRating: 0,
-    howItFelt: '',
-    comments: '',
-    // Campos condicionais
-    climbingType: '',
-  });
 
-  // Cores disponíveis para seleção (3 linhas de 5 cores cada)
-  const colorOptions = [
-    // Primeira linha
-    '#ffffff', '#ffeb3b', '#ff9800', '#f44336', '#e91e63',
-    // Segunda linha  
-    '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4',
-    // Terceira linha
-    '#00bcd4', '#009688', '#4caf50', '#bdbdbd', '#000000'
-  ];
-
-  // Altura estimada dos botões + padding
-  const navigationHeight = 80;
-  const maxContentHeight = screenHeight * 0.85 - navigationHeight;
-  
-  // Cálculo da largura dos campos Grade baseado na fórmula:
-  // padding_esquerda + largura_campo + 20px + largura_campo + padding_direita = largura_total
-  const horizontalPadding = 20; // padding padrão usado no formulário
-  const gradeSpacing = 20; // espaçamento entre os campos
-  const availableWidth = screenWidth - (2 * horizontalPadding) - gradeSpacing;
-  const gradeFieldWidth = availableWidth / 2;
-
-  useEffect(() => {
-    // Determinar se precisa de scroll baseado na altura do conteúdo
-    setNeedsScroll(contentHeight > maxContentHeight);
-  }, [contentHeight, maxContentHeight]);
-
-  useEffect(() => {
-    // Reset contentHeight when step changes to recalculate height adaptation
-    setContentHeight(0);
-    setNeedsScroll(false);
-  }, [currentStep]);
-
-  const updateField = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const updateNumericField = (field: string, value: number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const updateArrayField = (field: string, value: string[]) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-    // Renderizar avaliação por estrelas
+  // Renderizar avaliação por estrelas
   const renderStarRating = (title: string, field: string) => {
     const rating = formData[field as keyof typeof formData] as number || 0;
     
@@ -311,7 +366,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   const renderVisualSelectorCompact = (
     title: string, 
     field: string, 
-    options: Array<{value: string, label: string, imageUrl: string}>
+    options: Array<{value: string, label: string, imageUrl: any}>
   ) => {
     const handleOptionPress = (value: string) => {
       if (formData[field as keyof typeof formData] === value) {
@@ -334,7 +389,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
           >
             <Image
               key={`${field}-${options[0].value}-image`}
-              source={{ uri: options[0].imageUrl }}
+              source={options[0].imageUrl}
               style={styles.locationImage}
               resizeMode="cover"
               onError={(error) => console.log(`Erro ${options[0].label}:`, error.nativeEvent.error)}
@@ -360,7 +415,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
           >
             <Image
               key={`${field}-${options[1].value}-image`}
-              source={{ uri: options[1].imageUrl }}
+              source={options[1].imageUrl}
               style={styles.locationImage}
               resizeMode="cover"
               onError={(error) => console.log(`Erro ${options[1].label}:`, error.nativeEvent.error)}
@@ -562,43 +617,48 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   };
 
   const handleClose = () => {
-    // Reset todos os campos para o estado inicial
-    setFormData({
-      place: '',
-      when: new Date().toISOString(),
-      activity: '',
-      colour: '#ffffff',
-      routeNumber: '',
-      grade: '',
-      suggestedGrade: '',
-      difficulty: 5,
-      falls: 0,
-      ascentType: '',
-      movement: [],
-      grip: [],
-      footwork: [],
-      routeRating: 0,
-      settersRating: 0,
-      howItFelt: '',
-      comments: '',
-      climbingType: ''
+    // Modal closing animation
+    Animated.parallel([
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(containerTranslateY, {
+        toValue: 1000,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Reset form and close modal after animation
+      setCurrentStep(1);
+      setFormData({
+        place: '',
+        when: new Date().toISOString(),
+        activity: '',
+        colour: '#ffffff',
+        routeNumber: '',
+        grade: '',
+        suggestedGrade: '',
+        difficulty: 5,
+        falls: 0,
+        ascentType: '',
+        movement: [] as string[],
+        grip: [] as string[],
+        footwork: [] as string[],
+        routeRating: 0,
+        settersRating: 0,
+        howItFelt: '',
+        comments: '',
+        climbingType: '',
+      });
+      
+      // Reset animated values for next opening
+      overlayOpacity.setValue(0);
+      containerTranslateY.setValue(1000);
+      
+      onClose();
     });
-    
-    // Reset estados dos modais
-    setShowColorPicker(false);
-    setShowGradePicker(false);
-    setShowSuggestedGradePicker(false);
-    setShowMovementModal(false);
-    setShowGripModal(false);
-    setShowFootworkModal(false);
-    
-    // Reset estados temporários de tags
-    setTempMovementTags([]);
-    setTempGripTags([]);
-    setTempFootworkTags([]);
-    
-    setCurrentStep(1);
-    onClose();
   };
 
   const renderColorSelector = () => {
@@ -1001,7 +1061,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
   const renderVisualSelector = (
     title: string, 
     field: string, 
-    options: Array<{value: string, label: string, imageUrl: string}>
+    options: Array<{value: string, label: string, imageUrl: any}>
   ) => {
     const handleOptionPress = (value: string) => {
       // Se clicar na opção já selecionada, desseleciona
@@ -1025,7 +1085,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
           >
             <Image
               key={`${field}-${options[0].value}-image`}
-              source={{ uri: options[0].imageUrl }}
+              source={options[0].imageUrl}
               style={styles.locationImage}
               resizeMode="cover"
               onError={(error) => console.log(`Erro ${options[0].label}:`, error.nativeEvent.error)}
@@ -1051,7 +1111,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
           >
             <Image
               key={`${field}-${options[1].value}-image`}
-              source={{ uri: options[1].imageUrl }}
+              source={options[1].imageUrl}
               style={styles.locationImage}
               resizeMode="cover"
               onError={(error) => console.log(`Erro ${options[1].label}:`, error.nativeEvent.error)}
@@ -1074,12 +1134,12 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       {
         value: 'Indoor',
         label: 'Indoor',
-        imageUrl: 'https://weareclimbmax.com/wp-content/uploads/2024/08/sundevil-climbing.png'
+        imageUrl: require('../assets/images/indoor.png')
       },
       {
         value: 'Outdoor',
         label: 'Outdoor',
-        imageUrl: 'https://images.squarespace-cdn.com/content/v1/59e802b9be42d61a159cbf16/1628946429794-AXAG9YP5WE05XM3GQKCK/Twyla.png'
+        imageUrl: require('../assets/images/outdoor.png')
       }
     ];
 
@@ -1091,12 +1151,12 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
       {
         value: 'Climbing',
         label: 'Climbing',
-        imageUrl: 'https://weareclimbmax.com/wp-content/uploads/2024/08/sundevil-climbing.png' // Temporário - substitua pela imagem de climbing
+        imageUrl: require('../assets/images/climbing.png')
       },
       {
         value: 'Bouldering',
         label: 'Bouldering',
-        imageUrl: 'https://images.squarespace-cdn.com/content/v1/59e802b9be42d61a159cbf16/1628946429794-AXAG9YP5WE05XM3GQKCK/Twyla.png' // Temporário - substitua pela imagem de bouldering
+        imageUrl: require('../assets/images/bouldering.png')
       }
     ];
 
@@ -1208,8 +1268,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
         : [...tempSelectedTags, tag];
       setTempTags(newTags);
     };
-
-
 
     const saveSelection = () => {
       updateArrayField(field, tempSelectedTags);
@@ -1387,7 +1445,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                 onChangeText={(value) => updateField('comments', value)}
                 multiline
                 numberOfLines={4}
-
               />
             </View>
           </View>
@@ -1398,65 +1455,60 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
     }
   };
 
-  const containerStyle = needsScroll 
-    ? [styles.container, styles.containerFullScreen]
-    : [styles.container, styles.containerAdaptive];
-
-  const contentContainerStyle = needsScroll 
-    ? styles.contentScrollable 
-    : styles.contentFixed;
+  // Force height recalculation when content changes
+  const recalculateHeight = () => {
+    setContentHeight(0);
+    setModalHeight(0);
+    setNeedsScroll(false);
+  };
 
   return (
     <>
-      <Modal visible={visible} animationType="slide" transparent={true}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={handleClose}>
-          <TouchableOpacity style={[styles.container, needsScroll ? styles.containerFullScreen : styles.containerAdaptive]} activeOpacity={1}>
-            
-            {needsScroll ? (
-              // Modo com scroll - conteúdo ocupa tela toda
-              <>
-                <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentScrollable}>
-                  {renderStep()}
-                </ScrollView>
-                
-                {/* Botões fixos na parte inferior */}
-                <View style={styles.navigationContainer}>
-                  <TouchableOpacity 
-                    style={[
-                      styles.navButton, 
-                      currentStep === 1 ? styles.cancelButton : (currentStep === 1 && styles.navButtonDisabled)
-                    ]}
-                    onPress={currentStep === 1 ? handleClose : handlePrevious}
-                    disabled={false}
+      <Modal visible={visible} transparent={true}>
+        {/* Dark overlay that covers the entire screen */}
+        <Animated.View 
+          style={[
+            styles.fullScreenOverlay, 
+            { opacity: overlayOpacity }
+          ]}
+        >
+          {/* Touchable area that closes modal (fills remaining space) */}
+          <TouchableOpacity 
+            style={styles.overlayTouchable} 
+            activeOpacity={1} 
+            onPress={handleClose}
+          />
+          
+          {/* Modal content container with dynamic height */}
+          <Animated.View 
+            style={[
+              styles.modalContainer,
+              { 
+                transform: [{ translateY: containerTranslateY }],
+                height: modalHeight > 0 ? modalHeight : 300,
+              }
+            ]}
+          >
+            {/* Modal content */}
+            <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
+              {needsScroll ? (
+                <ScrollView 
+                  style={styles.scrollableContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View 
+                    style={styles.contentContainer}
+                    onLayout={(event) => {
+                      const { height } = event.nativeEvent.layout;
+                      setContentHeight(height);
+                    }}
                   >
-                    <Text style={[
-                      styles.navButtonText, 
-                      currentStep === 1 ? styles.cancelButtonText : (currentStep === 1 && styles.navButtonTextDisabled)
-                    ]}>
-                      {currentStep === 1 ? 'Cancel' : 'Previous'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.buttonSpacer} />
-
-                  {currentStep < totalSteps ? (
-                    <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-                      <Text style={styles.nextButtonText}>Next</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                      <Text style={styles.saveButtonText}>Save</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </>
-            ) : (
-              // Modo sem scroll - conteúdo se adapta de baixo para cima
-              <>
-                <View style={styles.spacer} />
-                
+                    {renderStep()}
+                  </View>
+                </ScrollView>
+              ) : (
                 <View 
-                  style={contentContainerStyle}
+                  style={styles.contentContainer}
                   onLayout={(event) => {
                     const { height } = event.nativeEvent.layout;
                     setContentHeight(height);
@@ -1464,41 +1516,41 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                 >
                   {renderStep()}
                 </View>
-                
-                {/* Botões na parte inferior */}
-                <View style={styles.navigationContainer}>
-                  <TouchableOpacity 
-                    style={[
-                      styles.navButton, 
-                      currentStep === 1 ? styles.cancelButton : (currentStep === 1 && styles.navButtonDisabled)
-                    ]}
-                    onPress={currentStep === 1 ? handleClose : handlePrevious}
-                    disabled={false}
-                  >
-                    <Text style={[
-                      styles.navButtonText, 
-                      currentStep === 1 ? styles.cancelButtonText : (currentStep === 1 && styles.navButtonTextDisabled)
-                    ]}>
-                      {currentStep === 1 ? 'Cancel' : 'Previous'}
-                    </Text>
-                  </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+            
+            {/* Fixed navigation bar at bottom */}
+            <View style={styles.navigationContainer}>
+              <TouchableOpacity 
+                style={[
+                  styles.navButton, 
+                  currentStep === 1 ? styles.cancelButton : (currentStep === 1 && styles.navButtonDisabled)
+                ]}
+                onPress={currentStep === 1 ? handleClose : handlePrevious}
+                disabled={false}
+              >
+                <Text style={[
+                  styles.navButtonText, 
+                  currentStep === 1 ? styles.cancelButtonText : (currentStep === 1 && styles.navButtonTextDisabled)
+                ]}>
+                  {currentStep === 1 ? 'Cancel' : 'Previous'}
+                </Text>
+              </TouchableOpacity>
 
-                  <View style={styles.buttonSpacer} />
+              <View style={styles.buttonSpacer} />
 
-                  {currentStep < totalSteps ? (
-                    <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-                      <Text style={styles.nextButtonText}>Next</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                      <Text style={styles.saveButtonText}>Save</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
+              {currentStep < totalSteps ? (
+                <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+                  <Text style={styles.nextButtonText}>Next</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </Animated.View>
+        </Animated.View>
       </Modal>
       
       {/* Modal do Seletor de Cores */}
@@ -1514,15 +1566,34 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: {
+  fullScreenOverlay: {
     flex: 1,
     backgroundColor: THEME_COLORS.background.overlay,
     justifyContent: 'flex-end',
   },
-  container: {
+  overlayTouchable: {
+    flex: 1,
+  },
+  modalContainer: {
     backgroundColor: THEME_COLORS.background.primary,
     borderTopLeftRadius: THEME_SIZES.borderRadius.large,
     borderTopRightRadius: THEME_SIZES.borderRadius.large,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    minHeight: 150, // Ensure navigation bar is always visible
+  },
+  modalContent: {
+    flex: 1,
+  },
+  scrollableContent: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 30,
+    paddingBottom: 0,
   },
   containerAdaptive: {
     maxHeight: '90%',
@@ -1554,7 +1625,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   textInput: {
     backgroundColor: THEME_COLORS.background.input,
@@ -1618,7 +1689,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 60,
     borderRadius: 8,
-    marginBottom: 8,
+    marginBottom: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1638,6 +1709,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+    height: 85,
+    minHeight: 85,
+    maxHeight: 85,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   navButton: {
     flex: 1,
@@ -1645,8 +1721,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#e0e0e0',
+    minHeight: 44,
   },
   navButtonDisabled: {
     backgroundColor: '#e9ecef',
@@ -1666,6 +1744,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
   },
   nextButtonText: {
     fontSize: 16,
@@ -1678,6 +1758,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
   },
   saveButtonText: {
     fontSize: 16,
@@ -2021,7 +2103,7 @@ const styles = StyleSheet.create({
      marginLeft: 6,
    },
    fieldContainerWithTags: {
-     marginBottom: 8,
+     marginBottom: 6,
    },
    addTagButton: {
      borderColor: THEME_COLORS.bluePrimary,
@@ -2113,7 +2195,7 @@ const styles = StyleSheet.create({
      flexDirection: 'row',
      alignItems: 'center',
      marginTop: 8,
-     marginBottom: 10,
+     marginBottom: 8,
    },
    starButton: {
      marginRight: 8,
@@ -2161,7 +2243,7 @@ const styles = StyleSheet.create({
      backgroundColor: '#f5f5f5',
      borderRadius: 8,
      paddingHorizontal: 15,
-     paddingVertical: 12,
+     paddingVertical: 10,
      borderWidth: 1,
      borderColor: '#e0e0e0',
    },
