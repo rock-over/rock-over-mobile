@@ -965,6 +965,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
         value={String(formData[field as keyof typeof formData] || '')}
         onChangeText={(value) => updateField(field, value)}
         placeholder={placeholder}
+        selectionColor="#333"
       />
     </View>
   );
@@ -1048,6 +1049,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
               updateField(field, timestamp);
             }}
             placeholder={placeholder}
+            selectionColor="#333"
           />
         </View>
         {isEmpty && (
@@ -1387,6 +1389,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                     style={[styles.textInput, styles.routeNameInput]}
                     value={formData.routeNumber}
                     onChangeText={(value) => updateField('routeNumber', value)}
+                    selectionColor="#333"
                   />
                 </View>
               </View>
@@ -1444,6 +1447,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                 onChangeText={(value) => updateField('comments', value)}
                 multiline
                 numberOfLines={4}
+                selectionColor="#333"
               />
             </View>
           </View>
@@ -1496,7 +1500,10 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                   showsVerticalScrollIndicator={false}
                 >
                   <View 
-                    style={styles.contentContainer}
+                    style={[
+                      styles.contentContainer,
+                      currentStep === 2 && { paddingBottom: 16 }
+                    ]}
                     onLayout={(event) => {
                       const { height } = event.nativeEvent.layout;
                       setContentHeight(height);
@@ -1507,7 +1514,10 @@ export default function ClimbingSessionForm({ visible, onClose, onSave }: Climbi
                 </ScrollView>
               ) : (
                 <View 
-                  style={styles.contentContainer}
+                  style={[
+                    styles.contentContainer,
+                    currentStep === 2 && { paddingBottom: 16 }
+                  ]}
                   onLayout={(event) => {
                     const { height } = event.nativeEvent.layout;
                     setContentHeight(height);
@@ -1671,7 +1681,7 @@ const styles = StyleSheet.create({
   },
   locationButton: {
     flex: 1,
-    height: 120,
+    height: 150,
     backgroundColor: THEME_COLORS.background.primary,
     borderRadius: 12,
     borderWidth: 2,
@@ -1685,8 +1695,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f7ff',
   },
   locationImage: {
-    width: 80,
-    height: 60,
+    width: 100,
+    height: 100,
     borderRadius: 8,
     marginBottom: 6,
     alignItems: 'center',

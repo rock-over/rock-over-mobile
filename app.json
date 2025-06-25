@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-screen.png",
-      "resizeMode": "native",
+      "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
     "ios": {
@@ -38,11 +38,11 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-screen.png",
-          "resizeMode": "native",
+          "resizeMode": "cover",
           "backgroundColor": "#ffffff",
           "dark": {
             "image": "./assets/images/splash-screen.png",
-            "resizeMode": "native",
+            "resizeMode": "cover",
             "backgroundColor": "#ffffff"
           }
         }

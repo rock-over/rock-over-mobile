@@ -22,6 +22,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<ClimbingSession | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (userInfo?.email) {
@@ -69,11 +70,20 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       const newSession = await climbingSessionService.createSession(sessionWithUser);
       setSessions(prev => [newSession, ...prev]);
       setShowForm(false);
-      Alert.alert('Sucesso', 'Sessão salva com sucesso!');
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Erro ao salvar sessão:', error);
       Alert.alert('Erro', 'Não foi possível salvar a sessão. Tente novamente.');
     }
+  };
+
+  const handleAddAnotherLog = () => {
+    setShowSuccessModal(false);
+    setShowForm(true);
+  };
+
+  const handleBackToHome = () => {
+    setShowSuccessModal(false);
   };
 
   const handleCardPress = (session: ClimbingSession) => {
@@ -276,6 +286,62 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     );
   };
 
+  const renderSuccessModal = () => {
+    if (!showSuccessModal) return null;
+
+    return (
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        statusBarTranslucent={true}
+        onRequestClose={handleBackToHome}
+      >
+        <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
+        
+        {/* Full screen overlay */}
+        <View style={successStyles.fullScreenOverlay}>
+          {/* Modal container */}
+          <View style={successStyles.modalContainer}>
+            {/* Content */}
+            <View style={successStyles.content}>
+              {/* Success Icon */}
+              <View style={successStyles.iconContainer}>
+                <FontAwesome6 name="trophy" size={80} color={THEME_COLORS.bluePrimary} />
+              </View>
+              
+              {/* Success Message */}
+              <Text style={successStyles.title}>Parabéns!</Text>
+              <Text style={successStyles.subtitle}>Sua sessão foi salva com sucesso!</Text>
+            </View>
+
+            {/* Navigation Bar */}
+            <View style={successStyles.navigationBar}>
+              <TouchableOpacity 
+                style={[successStyles.button, successStyles.secondaryButton]} 
+                onPress={handleAddAnotherLog}
+              >
+                <View style={successStyles.buttonContent}>
+                  <FontAwesome6 name="plus" size={16} color={THEME_COLORS.bluePrimary} />
+                  <Text style={[successStyles.buttonText, successStyles.secondaryButtonText]}>Adicionar outro log</Text>
+                </View>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[successStyles.button, successStyles.primaryButton]} 
+                onPress={handleBackToHome}
+              >
+                <View style={successStyles.buttonContent}>
+                  <FontAwesome6 name="home" size={16} color="#fff" />
+                  <Text style={[successStyles.buttonText, successStyles.primaryButtonText]}>Voltar para home</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
@@ -342,6 +408,9 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
         onClose={() => setShowForm(false)}
         onSave={handleSaveSession}
       />
+
+      {/* Success Modal */}
+      {renderSuccessModal()}
 
       {/* Modal de Detalhes da Sessão */}
       <Modal
@@ -539,5 +608,91 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 8,
+  },
+});
+
+const successStyles = StyleSheet.create({
+  fullScreenOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 30,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  content: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 30,
+  },
+  iconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F0F8FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: THEME_COLORS.bluePrimary,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  navigationBar: {
+    height: 85,
+    minHeight: 85,
+    maxHeight: 85,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 0,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  button: {
+    flex: 1,
+    minHeight: 44,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: THEME_COLORS.bluePrimary,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  secondaryButton: {
+    backgroundColor: '#fff',
+  },
+  primaryButton: {
+    backgroundColor: THEME_COLORS.bluePrimary,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: THEME_COLORS.bluePrimary,
+  },
+  secondaryButtonText: {
+    color: THEME_COLORS.bluePrimary,
+  },
+  primaryButtonText: {
+    color: '#fff',
   },
 });

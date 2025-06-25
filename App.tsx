@@ -5,9 +5,8 @@ import React, { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Importar as telas
+import AuthFlow from './screens/AuthFlow';
 import Home from './screens/Home';
-import Login from './screens/Login';
-import SignUp from './screens/SignUp';
 
 const Stack = createStackNavigator();
 
@@ -60,26 +59,15 @@ function App() {
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!isLoggedIn ? (
-            // Telas quando não está logado
-            <>
-              <Stack.Screen name="Login">
-                {(props) => (
-                  <Login 
-                    {...props} 
-                    onLoginSuccess={(user) => updateLoginStatus(true, user)}
-                    onNavigateToSignUp={() => props.navigation.navigate('SignUp')}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="SignUp">
-                {(props) => (
-                  <SignUp 
-                    {...props} 
-                    onSignUpSuccess={(user) => updateLoginStatus(true, user)}
-                  />
-                )}
-              </Stack.Screen>
-            </>
+            // Fluxo de autenticação com Welcome, Login e SignUp
+            <Stack.Screen name="AuthFlow">
+              {(props) => (
+                <AuthFlow 
+                  {...props}
+                  onAuthSuccess={(user) => updateLoginStatus(true, user)}
+                />
+              )}
+            </Stack.Screen>
           ) : (
             // Telas quando está logado
             <Stack.Screen name="Home">

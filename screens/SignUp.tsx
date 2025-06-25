@@ -1,24 +1,24 @@
 import { FontAwesome6 } from '@expo/vector-icons';
+import {
+    GoogleSignin,
+    isErrorWithCode,
+    isSuccessResponse,
+    statusCodes
+} from "@react-native-google-signin/google-signin";
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { THEME_COLORS } from '../constants/Theme';
-import { registerUserSimple } from '../lib/supabase';
+import { registerUserSimple, upsertGoogleUser } from '../lib/supabase';
 
 interface SignUpProps {
     onSignUpSuccess?: (user: any) => void;
-    navigation?: any;
+    onGoBack?: () => void;
+    onNavigateToLogin?: () => void;
 }
 
-const GRADING_SYSTEMS = [
-    { label: 'YDS (American)', value: 'yds', description: '5.6, 5.7, 5.8...' },
-    { label: 'French', value: 'french', description: '4a, 4b, 4c...' },
-    { label: 'UIAA', value: 'uiaa', description: 'IV, V, VI...' },
-    { label: 'British', value: 'british', description: 'VS, HVS, E1...' },
-    { label: 'V-Scale (Bouldering)', value: 'v-scale', description: 'V0, V1, V2...' },
-    { label: 'Font (Bouldering)', value: 'font', description: '4, 5, 6A...' }
-];
 
-export default function SignUp({ onSignUpSuccess, navigation }: SignUpProps) {
+
+export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin }: SignUpProps) {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -38,6 +38,8 @@ export default function SignUp({ onSignUpSuccess, navigation }: SignUpProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [acceptTerms, setAcceptTerms] = useState(false);
+    const [message, setMessage] = useState("");
 
     // Email validation regex
     const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
@@ -119,15 +121,13 @@ export default function SignUp({ onSignUpSuccess, navigation }: SignUpProps) {
         const nameValid = validateField('name', formData.name);
         const emailValid = validateField('email', formData.email);
         const passwordValid = validateField('password', formData.password);
-        const confirmPasswordValid = validateField('confirmPassword', formData.confirmPassword);
-        const gradingSystemValid = validateField('gradingSystem', formData.gradingSystem);
 
-        return nameValid && emailValid && passwordValid && confirmPasswordValid && gradingSystemValid;
+        return nameValid && emailValid && passwordValid && acceptTerms;
     };
 
     const handleSignUp = async () => {
         if (!validateForm()) {
-            Alert.alert('Error', 'Please fix all errors before submitting');
+            Alert.alert('Error', 'Please fill all fields correctly and accept the terms');
             return;
         }
 
@@ -166,293 +166,349 @@ export default function SignUp({ onSignUpSuccess, navigation }: SignUpProps) {
         }
     };
 
-    const handleGoBack = () => {
-        if (navigation) {
-            navigation.goBack();
+    const handleGoogleSignIn = async () => {
+        try {
+           setIsSubmitting(true);
+    
+           await GoogleSignin.hasPlayServices();
+           const result = await GoogleSignin.signIn();
+    
+           if (isSuccessResponse(result)) {
+            const { idToken, user } = result.data;
+            const { id, name, email, photo } = user;
+            
+            // Save/update user in Supabase
+            const response = await upsertGoogleUser(
+                id, 
+                email, 
+                name, 
+                photo || ''
+            );
+            
+            if (!response.success) {
+                Alert.alert('Login Failed', response.error || 'Failed to process Google login');
+                return;
+            }
+            
+            // Success - call the callback with Supabase user data
+            onSignUpSuccess?.(response.user);
+            
+           } else {
+            showMessage("Google Signin was cancelled");
+           }
+    
+        } catch (error) {
+            if (isErrorWithCode(error)) {
+                switch (error.code) {
+                    case statusCodes.SIGN_IN_CANCELLED:
+                        showMessage("Google Signin was cancelled");
+                        break;
+                    case statusCodes.IN_PROGRESS:
+                        showMessage("Google Signin is in progress");
+                        break;
+                    case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+                        showMessage("Play Services not available");
+                        break;
+                    default:
+                        showMessage(error.code);
+                }
+            } else {
+                showMessage("An error occurred during Google Sign-In");
+                console.error('Google Sign-In error:', error);
+            }
+        } finally {
+            setIsSubmitting(false);
         }
     };
+
+    const handleFacebookLogin = () => {
+        Alert.alert("Facebook Login", "Facebook login functionality will be implemented soon");
+    };
+
+    const showMessage = (message: string) => {
+        setMessage(message);
+        setTimeout(() => {
+            setMessage("");
+        }, 5000);
+    }
 
     const isFormValid = () => {
         return formData.name.trim() && 
                formData.email.trim() && 
-               formData.password && 
-               formData.confirmPassword &&
-               formData.gradingSystem &&
+               formData.password &&
+               acceptTerms &&
                Object.values(errors).every(error => !error);
     };
 
     return (
-        <KeyboardAvoidingView 
-            style={styles.container} 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-            <ScrollView 
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Header with Back Button */}
-                <View style={styles.header}>
-                    <TouchableOpacity 
-                        style={styles.backButton} 
-                        onPress={handleGoBack}
-                    >
-                        <FontAwesome6 name="arrow-left" size={20} color="#333" />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>Create Account</Text>
-                    <Text style={styles.subtitle}>Join the climbing community</Text>
-                </View>
-
-                {/* Form */}
-                <View style={styles.formContainer}>
-                    {/* Name Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Full Name</Text>
-                        <TextInput
-                            style={[styles.textInput, errors.name ? styles.textInputError : null]}
-                            value={formData.name}
-                            onChangeText={(text) => handleInputChange('name', text)}
-                            placeholder="Enter your full name"
-                            placeholderTextColor="#999"
-                            autoCapitalize="words"
-                            autoCorrect={false}
-                        />
-                        {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
+            
+            {/* Header with curved background */}
+            <View style={styles.header}>
+                <TouchableOpacity 
+                    style={styles.backButton} 
+                    onPress={onGoBack}
+                >
+                    <FontAwesome6 name="arrow-left" size={20} color="#FFF" />
+                </TouchableOpacity>
+                
+                <View style={styles.headerContent}>
+                    <View style={styles.logoContainer}>
+                        <Text style={styles.logoText}>RV</Text>
                     </View>
+                </View>
+            </View>
 
-                    {/* Email Input */}
-                    <View style={styles.inputContainer}>
+            {/* Form Container with curved top */}
+            <View style={styles.formContainer}>
+                <KeyboardAvoidingView 
+                    style={styles.keyboardContainer}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                >
+                    <View style={styles.scrollContent}>
+                        <Text style={styles.title}>SIGN UP</Text>
+                        
+                                        {/* Name Input */}
+                <View style={styles.inputContainer}>
+                    <View style={styles.labelContainer}>
+                        <FontAwesome6 name="user" size={16} color="#333" style={styles.labelIcon} />
+                        <Text style={styles.inputLabel}>Name</Text>
+                    </View>
+                            <View style={styles.inputWrapper}>
+                                <TextInput
+                                    style={styles.textInput}
+                                    value={formData.name}
+                                    onChangeText={(text) => handleInputChange('name', text)}
+                                    placeholder=""
+                                    placeholderTextColor="#999"
+                                    autoCapitalize="words"
+                                    autoCorrect={false}
+                                />
+                            </View>
+                        </View>
+
+                                        {/* Email Input */}
+                <View style={styles.inputContainer}>
+                    <View style={styles.labelContainer}>
+                        <FontAwesome6 name="envelope" size={16} color="#333" style={styles.labelIcon} />
                         <Text style={styles.inputLabel}>Email</Text>
-                        <TextInput
-                            style={[styles.textInput, errors.email ? styles.textInputError : null]}
-                            value={formData.email}
-                            onChangeText={(text) => handleInputChange('email', text)}
-                            placeholder="Enter your email"
-                            placeholderTextColor="#999"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                        />
-                        {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
                     </View>
+                            <View style={styles.inputWrapper}>
+                                <TextInput
+                                    style={styles.textInput}
+                                    value={formData.email}
+                                    onChangeText={(text) => handleInputChange('email', text)}
+                                    placeholder=""
+                                    placeholderTextColor="#999"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                />
+                            </View>
+                        </View>
 
-                    {/* Password Input */}
-                    <View style={styles.inputContainer}>
+                                        {/* Password Input */}
+                <View style={styles.inputContainer}>
+                    <View style={styles.labelContainer}>
+                        <FontAwesome6 name="lock" size={16} color="#333" style={styles.labelIcon} />
                         <Text style={styles.inputLabel}>Password</Text>
-                        <View style={styles.passwordContainer}>
-                            <TextInput
-                                style={[styles.passwordInput, errors.password ? styles.textInputError : null]}
-                                value={formData.password}
-                                onChangeText={(text) => handleInputChange('password', text)}
-                                placeholder="Create a password"
-                                placeholderTextColor="#999"
-                                secureTextEntry={!showPassword}
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                            />
-                            <TouchableOpacity
-                                style={styles.eyeButton}
-                                onPress={() => setShowPassword(!showPassword)}
-                            >
-                                <FontAwesome6 
-                                    name={showPassword ? "eye-slash" : "eye"} 
-                                    size={16} 
-                                    color="#666" 
-                                />
-                            </TouchableOpacity>
-                        </View>
-                        {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
-                        <Text style={styles.helpText}>
-                            Must be at least 8 characters with uppercase, lowercase, and number
-                        </Text>
                     </View>
-
-                    {/* Confirm Password Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Confirm Password</Text>
-                        <View style={styles.passwordContainer}>
-                            <TextInput
-                                style={[styles.passwordInput, errors.confirmPassword ? styles.textInputError : null]}
-                                value={formData.confirmPassword}
-                                onChangeText={(text) => handleInputChange('confirmPassword', text)}
-                                placeholder="Confirm your password"
-                                placeholderTextColor="#999"
-                                secureTextEntry={!showConfirmPassword}
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                            />
-                            <TouchableOpacity
-                                style={styles.eyeButton}
-                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                            >
-                                <FontAwesome6 
-                                    name={showConfirmPassword ? "eye-slash" : "eye"} 
-                                    size={16} 
-                                    color="#666" 
+                            <View style={styles.inputWrapper}>
+                                <TextInput
+                                    style={styles.textInput}
+                                    value={formData.password}
+                                    onChangeText={(text) => handleInputChange('password', text)}
+                                    placeholder=""
+                                    placeholderTextColor="#999"
+                                    secureTextEntry={!showPassword}
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
                                 />
-                            </TouchableOpacity>
-                        </View>
-                        {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
-                    </View>
-
-                    {/* Grading System Selection */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Preferred Grading System</Text>
-                        <Text style={styles.helpText}>Choose your preferred climbing grade system</Text>
-                        <View style={styles.gradingSystemContainer}>
-                            {GRADING_SYSTEMS.map((system) => (
                                 <TouchableOpacity
-                                    key={system.value}
-                                    style={[
-                                        styles.gradingSystemOption,
-                                        formData.gradingSystem === system.value ? styles.gradingSystemSelected : null
-                                    ]}
-                                    onPress={() => handleInputChange('gradingSystem', system.value)}
+                                    style={styles.eyeButton}
+                                    onPress={() => setShowPassword(!showPassword)}
                                 >
-                                    <View style={styles.gradingSystemContent}>
-                                        <Text style={[
-                                            styles.gradingSystemLabel,
-                                            formData.gradingSystem === system.value ? styles.gradingSystemLabelSelected : null
-                                        ]}>
-                                            {system.label}
-                                        </Text>
-                                        <Text style={[
-                                            styles.gradingSystemDescription,
-                                            formData.gradingSystem === system.value ? styles.gradingSystemDescriptionSelected : null
-                                        ]}>
-                                            {system.description}
-                                        </Text>
-                                    </View>
-                                    {formData.gradingSystem === system.value && (
-                                        <FontAwesome6 name="check" size={16} color="#fff" />
-                                    )}
+                                    <FontAwesome6 
+                                        name={showPassword ? "eye-slash" : "eye"} 
+                                        size={16} 
+                                        color="#999" 
+                                    />
                                 </TouchableOpacity>
-                            ))}
+                            </View>
                         </View>
-                        {errors.gradingSystem ? <Text style={styles.errorText}>{errors.gradingSystem}</Text> : null}
+
+                        {/* Terms Checkbox */}
+                        <TouchableOpacity
+                            style={styles.termsContainer}
+                            onPress={() => setAcceptTerms(!acceptTerms)}
+                        >
+                            <View style={[styles.checkbox, acceptTerms && styles.checkboxSelected]}>
+                                {acceptTerms && (
+                                    <FontAwesome6 name="check" size={12} color="#FFF" />
+                                )}
+                            </View>
+                            <Text style={styles.termsText}>
+                                Agree to the <Text style={styles.termsLink}>Term</Text> and <Text style={styles.termsLink}>Privacy Policy</Text>
+                            </Text>
+                        </TouchableOpacity>
+
+                        {/* Sign Up Button */}
+                        <TouchableOpacity 
+                            style={[
+                                styles.signUpButton, 
+                                (!isFormValid() || isSubmitting) ? styles.signUpButtonDisabled : null
+                            ]} 
+                            onPress={handleSignUp}
+                            disabled={!isFormValid() || isSubmitting}
+                        >
+                            <Text style={styles.signUpButtonText}>
+                                {isSubmitting ? "Creating Account..." : "Sign Up"}
+                            </Text>
+                        </TouchableOpacity>
+
+                        {/* Separator */}
+                        <View style={styles.separatorContainer}>
+                            <View style={styles.separatorLine} />
+                            <Text style={styles.separatorText}>or</Text>
+                            <View style={styles.separatorLine} />
+                        </View>
+
+                        {/* Social Login Buttons */}
+                        <View style={styles.socialButtonsContainer}>
+                            <TouchableOpacity 
+                                style={styles.socialButton} 
+                                onPress={handleGoogleSignIn}
+                                disabled={isSubmitting}
+                            >
+                                <FontAwesome6 name="google" size={20} color="#4285F4" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={styles.socialButton} 
+                                onPress={handleFacebookLogin}
+                            >
+                                <FontAwesome6 name="facebook" size={20} color="#1877F2" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Error Message */}
+                        {message ? (
+                            <Text style={styles.message}>{message}</Text>
+                        ) : null}
                     </View>
-
-                    {/* Create Account Button */}
-                    <TouchableOpacity 
-                        style={[
-                            styles.createButton, 
-                            (!isFormValid() || isSubmitting) ? styles.createButtonDisabled : null
-                        ]} 
-                        onPress={handleSignUp}
-                        disabled={!isFormValid() || isSubmitting}
-                    >
-                        <Text style={[
-                            styles.createButtonText,
-                            (!isFormValid() || isSubmitting) ? styles.createButtonTextDisabled : null
-                        ]}>
-                            {isSubmitting ? "Creating Account..." : "Create Account"}
-                        </Text>
-                    </TouchableOpacity>
-
-                    {/* Back to Login Link */}
-                    <TouchableOpacity 
-                        style={styles.loginLinkContainer}
-                        onPress={handleGoBack}
-                    >
-                        <Text style={styles.loginLinkText}>
-                            Already have an account? <Text style={styles.loginLink}>Sign In</Text>
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
+                </KeyboardAvoidingView>
+            </View>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8F9FA',
+        backgroundColor: THEME_COLORS.bluePrimary,
+    },
+    header: {
+        paddingTop: 50,
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        position: 'relative',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    backButton: {
+        position: 'absolute',
+        left: 20,
+        top: 55,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerContent: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logoContainer: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    logoText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#FFF',
+    },
+    formContainer: {
+        flex: 1,
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+    },
+    keyboardContainer: {
+        flex: 1,
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
         flexGrow: 1,
+        paddingHorizontal: 32,
+        paddingTop: 40,
         paddingBottom: 40,
-    },
-    header: {
-        paddingTop: 60,
-        paddingHorizontal: 24,
-        alignItems: 'center',
-        marginBottom: 32,
-        position: 'relative',
-    },
-    backButton: {
-        position: 'absolute',
-        left: 24,
-        top: 65,
-        padding: 8,
-        zIndex: 1,
     },
     title: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: 'bold',
         color: '#333',
-        marginBottom: 8,
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#666',
-        textAlign: 'center',
-    },
-    formContainer: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        paddingHorizontal: 24,
-        paddingTop: 32,
-        paddingBottom: 40,
-        flex: 1,
+        textAlign: 'left',
+        marginBottom: 24,
+        letterSpacing: 1,
     },
     inputContainer: {
         marginBottom: 20,
     },
-    inputLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#333',
-        marginBottom: 8,
-    },
-    textInput: {
-        backgroundColor: '#F8F9FA',
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        fontSize: 16,
-        color: '#333',
-        borderWidth: 1,
-        borderColor: '#E9ECEF',
-    },
-    textInputError: {
-        borderColor: '#DC3545',
-        backgroundColor: '#FFF5F5',
-    },
-    passwordContainer: {
+    labelContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8F9FA',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E9ECEF',
+        marginBottom: 6,
     },
-    passwordInput: {
-        flex: 1,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
+    labelIcon: {
+        marginRight: 6,
+    },
+    inputLabel: {
         fontSize: 16,
+        fontWeight: '600',
         color: '#333',
-        backgroundColor: 'transparent',
+    },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: THEME_COLORS.background.input,
+        borderRadius: 8,
+        paddingHorizontal: 15,
+        paddingVertical: 0,
+    },
+    inputIcon: {
+        marginRight: 12,
+    },
+    textInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#000000',
+        fontWeight: '500',
     },
     eyeButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 14,
+        padding: 4,
     },
     errorText: {
         color: '#DC3545',
@@ -502,34 +558,92 @@ const styles = StyleSheet.create({
     gradingSystemDescriptionSelected: {
         color: 'rgba(255, 255, 255, 0.8)',
     },
-    createButton: {
-        backgroundColor: THEME_COLORS.bluePrimary,
-        borderRadius: 12,
-        paddingVertical: 16,
+    termsContainer: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 8,
-        marginBottom: 20,
+        marginBottom: 32,
+        paddingHorizontal: 4,
     },
-    createButtonDisabled: {
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#E9ECEF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    checkboxSelected: {
+        backgroundColor: THEME_COLORS.bluePrimary,
+        borderColor: THEME_COLORS.bluePrimary,
+    },
+    termsText: {
+        fontSize: 14,
+        color: '#666',
+        flex: 1,
+    },
+    termsLink: {
+        color: THEME_COLORS.bluePrimary,
+        fontWeight: '500',
+    },
+    signUpButton: {
+        backgroundColor: THEME_COLORS.bluePrimary,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 32,
+        minHeight: 40,
+    },
+    signUpButtonDisabled: {
         backgroundColor: '#E9ECEF',
     },
-    createButtonText: {
+    signUpButtonText: {
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+        letterSpacing: 0.5,
     },
-    createButtonTextDisabled: {
-        color: '#999',
-    },
-    loginLinkContainer: {
+    separatorContainer: {
+        flexDirection: 'row',
         alignItems: 'center',
+        marginBottom: 20,
     },
-    loginLinkText: {
+    separatorLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#E9ECEF',
+    },
+    separatorText: {
         fontSize: 14,
-        color: '#666',
+        color: '#999',
+        marginHorizontal: 16,
     },
-    loginLink: {
-        color: THEME_COLORS.bluePrimary,
-        fontWeight: '600',
+    socialButtonsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 20,
+        marginBottom: 32,
+    },
+    socialButton: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#FFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E9ECEF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    message: {
+        marginTop: 16,
+        color: '#DC3545',
+        textAlign: 'center',
+        fontSize: 14,
     },
 }); 
