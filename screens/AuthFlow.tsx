@@ -22,8 +22,12 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
                 setCurrentScreen('welcome');
                 return true; // Prevent default behavior (closing app)
             } else if (currentScreen === 'profile') {
-                // On profile screen, complete with temp user
-                onAuthSuccess?.(tempUser);
+                // On profile screen, complete with temp user and default profile photo
+                const userWithDefaults = {
+                    ...tempUser,
+                    profilePhoto: 'illustration_1' // Default to first illustration
+                };
+                onAuthSuccess?.(userWithDefaults);
                 return true;
             }
             // On welcome screen, allow default behavior (close app)
@@ -48,8 +52,12 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
     };
 
     const handleLoginSuccess = (user: any) => {
-        // Login direto, sem profile setup
-        onAuthSuccess?.(user);
+        // Login direto, adicionar profilePhoto padrão se não existir
+        const userWithDefaults = {
+            ...user,
+            profilePhoto: user.profilePhoto || 'illustration_1'
+        };
+        onAuthSuccess?.(userWithDefaults);
     };
 
     const handleSignUpSuccess = (user: any) => {
@@ -58,16 +66,26 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
         setCurrentScreen('profile');
     };
 
-    const handleProfileComplete = (profileData: { photoUri?: string; gradingSystem: string }) => {
-        // Aqui você pode salvar os dados do perfil no Supabase
-        console.log('Profile data:', profileData);
-        // Por enquanto, vamos apenas completar o fluxo
-        onAuthSuccess?.(tempUser);
+    const handleProfileComplete = (profileData: { photoUri: string; gradingSystem: string }) => {
+        // Combinar dados do usuário temporário com dados do perfil
+        const finalUser = {
+            ...tempUser,
+            profilePhoto: profileData.photoUri,
+            gradingSystem: profileData.gradingSystem
+        };
+        
+        console.log('Profile completed with data:', profileData);
+        onAuthSuccess?.(finalUser);
     };
 
     const handleProfileSkip = () => {
-        // Usuário pulou o setup do perfil
-        onAuthSuccess?.(tempUser);
+        // Usuário pulou o setup do perfil, usar padrões
+        const userWithDefaults = {
+            ...tempUser,
+            profilePhoto: 'illustration_1',
+            gradingSystem: 'yds'
+        };
+        onAuthSuccess?.(userWithDefaults);
     };
 
     switch (currentScreen) {

@@ -57,3 +57,4 @@ Join our community of developers creating universal apps.
 - [ ] Passo 3: consertar scroll
 - [ ] Passo 3: ajustar altura do componente ao deletar tags
 - [ ] Adicionar grade no perfil
+- [ ] Fazer o fluxo de validação de email

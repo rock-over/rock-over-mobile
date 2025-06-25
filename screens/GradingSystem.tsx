@@ -12,7 +12,6 @@ import { THEME_COLORS } from '../constants/Theme';
 
 interface GradingSystemProps {
     onComplete: (gradingSystem: string) => void;
-    onSkip: () => void;
 }
 
 interface GradingSystemOption {
@@ -61,7 +60,7 @@ const gradingSystems: GradingSystemOption[] = [
     }
 ];
 
-export default function GradingSystem({ onComplete, onSkip }: GradingSystemProps) {
+export default function GradingSystem({ onComplete }: GradingSystemProps) {
     const [selectedSystem, setSelectedSystem] = useState<string>('yds');
 
     const handleSystemSelect = (systemId: string) => {
@@ -132,12 +131,8 @@ export default function GradingSystem({ onComplete, onSkip }: GradingSystemProps
                     ))}
                 </ScrollView>
 
-                {/* Buttons */}
+                {/* Button */}
                 <View style={styles.buttonsContainer}>
-                    <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
-                        <Text style={styles.skipButtonText}>Skip for now</Text>
-                    </TouchableOpacity>
-                    
                     <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
                         <Text style={styles.completeButtonText}>Complete Setup</Text>
                     </TouchableOpacity>
@@ -254,28 +249,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     buttonsContainer: {
-        gap: 16,
-    },
-    skipButton: {
-        backgroundColor: 'transparent',
-        borderRadius: 8,
-        paddingVertical: 8,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#E9ECEF',
-        minHeight: 36,
-    },
-    skipButtonText: {
-        color: '#666',
-        fontSize: 16,
-        fontWeight: '500',
+        // Removed gap since we only have one button now
     },
     completeButton: {
         backgroundColor: THEME_COLORS.bluePrimary,
         borderRadius: 8,
-        paddingVertical: 8,
+        paddingVertical: 12,
         alignItems: 'center',
-        minHeight: 36,
+        minHeight: 48,
+        justifyContent: 'center',
     },
     completeButtonText: {
         color: '#fff',

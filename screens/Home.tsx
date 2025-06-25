@@ -14,6 +14,7 @@ interface HomeProps {
     name: string | null;
     email: string;
     photo: string | null;
+    profilePhoto?: string;
   } | null;
 }
 
@@ -342,6 +343,56 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     );
   };
 
+  // Function to get the profile image source
+  const getProfileImageSource = () => {
+    const profilePhoto = userInfo?.profilePhoto;
+    
+    // If no profile photo selected, use default illustration
+    if (!profilePhoto) {
+      return require('../assets/images/profile-illustrations/profile_illustration_1.png');
+    }
+    
+    // If it's a custom photo (URI), return as URI
+    if (profilePhoto.startsWith('file://') || profilePhoto.startsWith('content://') || profilePhoto.startsWith('http')) {
+      return { uri: profilePhoto };
+    }
+    
+    // If it's an illustration ID, return the corresponding image
+    if (profilePhoto.startsWith('illustration_')) {
+      const illustrationId = profilePhoto.replace('illustration_', '');
+      try {
+        switch (illustrationId) {
+          case '1':
+            return require('../assets/images/profile-illustrations/profile_illustration_1.png');
+          case '2':
+            return require('../assets/images/profile-illustrations/profile_illustration_2.png');
+          case '3':
+            return require('../assets/images/profile-illustrations/profile_illustration_3.png');
+          case '4':
+            return require('../assets/images/profile-illustrations/profile_illustration_4.png');
+          case '5':
+            return require('../assets/images/profile-illustrations/profile_illustration_5.png');
+          case '6':
+            return require('../assets/images/profile-illustrations/profile_illustration_6.png');
+          case '7':
+            return require('../assets/images/profile-illustrations/profile_illustration_7.png');
+          case '8':
+            return require('../assets/images/profile-illustrations/profile_illustration_8.png');
+          case '9':
+            return require('../assets/images/profile-illustrations/profile_illustration_9.png');
+          default:
+            return require('../assets/images/profile-illustrations/profile_illustration_1.png');
+        }
+      } catch (error) {
+        console.log('Error loading profile illustration:', error);
+        return require('../assets/images/profile-illustrations/profile_illustration_1.png');
+      }
+    }
+    
+    // Fallback to default illustration
+    return require('../assets/images/profile-illustrations/profile_illustration_1.png');
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
@@ -350,13 +401,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       <View style={styles.header}>
         <View style={styles.profileSection}>
           <TouchableOpacity onPress={handleLogout} style={styles.profileImageContainer}>
-            {userInfo?.photo ? (
-              <Image source={{ uri: userInfo.photo }} style={styles.profileImage} />
-            ) : (
-              <View style={styles.defaultProfileImage}>
-                <FontAwesome6 name="user" size={24} color="#fff" />
-              </View>
-            )}
+            <Image source={getProfileImageSource()} style={styles.profileImage} />
           </TouchableOpacity>
           
           <View style={styles.welcomeSection}>
@@ -407,6 +452,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
         visible={showForm}
         onClose={() => setShowForm(false)}
         onSave={handleSaveSession}
+        userInfo={userInfo}
       />
 
       {/* Success Modal */}

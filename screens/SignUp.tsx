@@ -8,15 +8,12 @@ import {
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { THEME_COLORS } from '../constants/Theme';
-import { registerUserSimple, upsertGoogleUser } from '../lib/supabase';
 
 interface SignUpProps {
     onSignUpSuccess?: (user: any) => void;
     onGoBack?: () => void;
     onNavigateToLogin?: () => void;
 }
-
-
 
 export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin }: SignUpProps) {
     const [formData, setFormData] = useState({
@@ -134,26 +131,23 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin }:
         setIsSubmitting(true);
 
         try {
-            // Use simplified Supabase registration
-            const response = await registerUserSimple(
-                formData.email,
-                formData.name,
-                formData.password,
-                formData.gradingSystem
-            );
-
-            if (!response.success) {
-                Alert.alert('Registration Failed', response.error || 'Failed to create account. Please try again.');
-                return;
-            }
+            // Simple mock signup for now - just create a user object
+            const mockUser = {
+                id: Date.now().toString(),
+                name: formData.name,
+                email: formData.email,
+                photo: null,
+                profilePhoto: 'illustration_1', // Default profile photo
+                gradingSystem: formData.gradingSystem || 'yds'
+            };
 
             Alert.alert(
                 'Success!', 
-                'Account created successfully! You are now logged in.',
+                'Account created successfully!',
                 [
                     {
                         text: 'OK',
-                        onPress: () => onSignUpSuccess?.(response.user)
+                        onPress: () => onSignUpSuccess?.(mockUser)
                     }
                 ]
             );
@@ -174,24 +168,20 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin }:
            const result = await GoogleSignin.signIn();
     
            if (isSuccessResponse(result)) {
-            const { idToken, user } = result.data;
+            const { user } = result.data;
             const { id, name, email, photo } = user;
             
-            // Save/update user in Supabase
-            const response = await upsertGoogleUser(
-                id, 
-                email, 
-                name, 
-                photo || ''
-            );
+            // Create user object with Google data
+            const googleUser = {
+                id: id,
+                name: name || 'Unknown User',
+                email: email,
+                photo: photo,
+                profilePhoto: 'illustration_1' // Default profile photo (not using Google photo)
+            };
             
-            if (!response.success) {
-                Alert.alert('Login Failed', response.error || 'Failed to process Google login');
-                return;
-            }
-            
-            // Success - call the callback with Supabase user data
-            onSignUpSuccess?.(response.user);
+            // Success - call the callback with user data
+            onSignUpSuccess?.(googleUser);
             
            } else {
             showMessage("Google Signin was cancelled");

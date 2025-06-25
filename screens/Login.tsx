@@ -9,7 +9,6 @@ import {
 import React, { useState } from 'react';
 import { Alert, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { THEME_COLORS } from '../constants/Theme';
-import { authenticateUser, upsertGoogleUser } from '../lib/supabase';
 
 interface LoginProps {
     onLoginSuccess?: (user: any) => void;
@@ -43,15 +42,17 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
         setIsSubmitting(true);
         
         try {
-            const response = await authenticateUser(email, password);
+            // Simple mock login for now - just create a user object
+            const mockUser = {
+                id: Date.now().toString(),
+                name: email.split('@')[0], // Use email prefix as name
+                email: email,
+                photo: null,
+                profilePhoto: 'illustration_1' // Default profile photo
+            };
             
-            if (!response.success) {
-                Alert.alert('Login Failed', response.error || 'Invalid email or password');
-                return;
-            }
-
             // Success - call the callback with user data
-            onLoginSuccess?.(response.user);
+            onLoginSuccess?.(mockUser);
             
         } catch (error) {
             console.error('Login error:', error);
@@ -60,8 +61,6 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
             setIsSubmitting(false);
         }
     };
-
-
 
     const handleFacebookLogin = () => {
         // Facebook login functionality will be implemented later
@@ -76,24 +75,20 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
            const result = await GoogleSignin.signIn();
     
            if (isSuccessResponse(result)) {
-            const { idToken, user } = result.data;
+            const { user } = result.data;
             const { id, name, email, photo } = user;
             
-            // Save/update user in Supabase
-            const response = await upsertGoogleUser(
-                id, 
-                email, 
-                name, 
-                photo
-            );
+            // Create user object with Google data
+            const googleUser = {
+                id: id,
+                name: name || 'Unknown User',
+                email: email,
+                photo: photo,
+                profilePhoto: 'illustration_1' // Default profile photo (not using Google photo)
+            };
             
-            if (!response.success) {
-                Alert.alert('Login Failed', response.error || 'Failed to process Google login');
-                return;
-            }
-            
-            // Success - call the callback with Supabase user data
-            onLoginSuccess?.(response.user);
+            // Success - call the callback with user data
+            onLoginSuccess?.(googleUser);
             
            } else {
             showMessage("Google Signin was cancelled");

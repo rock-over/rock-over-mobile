@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
     Alert,
     Image,
+    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
@@ -13,12 +14,27 @@ import {
 import { THEME_COLORS } from '../constants/Theme';
 
 interface ProfilePhotoProps {
-    onContinue: (photoUri?: string) => void;
+    onContinue: (photoUri: string) => void;
     onSkip: () => void;
 }
 
+// Pre-defined profile illustrations
+const PROFILE_ILLUSTRATIONS = [
+    { id: 1, source: require('../assets/images/profile-illustrations/profile_illustration_1.png') },
+    { id: 2, source: require('../assets/images/profile-illustrations/profile_illustration_2.png') },
+    { id: 3, source: require('../assets/images/profile-illustrations/profile_illustration_3.png') },
+    { id: 4, source: require('../assets/images/profile-illustrations/profile_illustration_4.png') },
+    { id: 5, source: require('../assets/images/profile-illustrations/profile_illustration_5.png') },
+    { id: 6, source: require('../assets/images/profile-illustrations/profile_illustration_6.png') },
+    { id: 7, source: require('../assets/images/profile-illustrations/profile_illustration_7.png') },
+    { id: 8, source: require('../assets/images/profile-illustrations/profile_illustration_8.png') },
+    { id: 9, source: require('../assets/images/profile-illustrations/profile_illustration_9.png') },
+];
+
 export default function ProfilePhoto({ onContinue, onSkip }: ProfilePhotoProps) {
-    const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+    // Pre-select profile_illustration_1 as default
+    const [selectedPhoto, setSelectedPhoto] = useState<string>('illustration_1');
+    const [customPhotoUri, setCustomPhotoUri] = useState<string | null>(null);
 
     const requestCameraPermission = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -50,7 +66,8 @@ export default function ProfilePhoto({ onContinue, onSkip }: ProfilePhotoProps) 
         });
 
         if (!result.canceled && result.assets[0]) {
-            setSelectedPhoto(result.assets[0].uri);
+            setCustomPhotoUri(result.assets[0].uri);
+            setSelectedPhoto('custom');
         }
     };
 
@@ -66,13 +83,14 @@ export default function ProfilePhoto({ onContinue, onSkip }: ProfilePhotoProps) 
         });
 
         if (!result.canceled && result.assets[0]) {
-            setSelectedPhoto(result.assets[0].uri);
+            setCustomPhotoUri(result.assets[0].uri);
+            setSelectedPhoto('custom');
         }
     };
 
     const showImagePickerOptions = () => {
         Alert.alert(
-            'Select Photo',
+            'Add Custom Photo',
             'Choose how you want to add your profile photo',
             [
                 { text: 'Camera', onPress: takePhoto },
@@ -82,8 +100,26 @@ export default function ProfilePhoto({ onContinue, onSkip }: ProfilePhotoProps) 
         );
     };
 
+    const handleIllustrationSelect = (illustrationId: number) => {
+        setSelectedPhoto(`illustration_${illustrationId}`);
+    };
+
     const handleContinue = () => {
-        onContinue(selectedPhoto || undefined);
+        if (selectedPhoto === 'custom' && customPhotoUri) {
+            onContinue(customPhotoUri);
+        } else {
+            onContinue(selectedPhoto);
+        }
+    };
+
+    const getSelectedImageSource = () => {
+        if (selectedPhoto === 'custom' && customPhotoUri) {
+            return { uri: customPhotoUri };
+        }
+        
+        const illustrationId = selectedPhoto.replace('illustration_', '');
+        const illustration = PROFILE_ILLUSTRATIONS.find(ill => ill.id.toString() === illustrationId);
+        return illustration ? illustration.source : PROFILE_ILLUSTRATIONS[0].source;
     };
 
     return (
@@ -101,40 +137,59 @@ export default function ProfilePhoto({ onContinue, onSkip }: ProfilePhotoProps) 
 
             {/* Content */}
             <View style={styles.content}>
-                <Text style={styles.title}>Add Profile Photo</Text>
+                <Text style={styles.title}>Profile Photo</Text>
                 <Text style={styles.subtitle}>
-                    Let others see who you are! Add a profile photo to personalize your climbing journey.
+                    Choose a profile photo to personalize your climbing journey.
                 </Text>
 
-                {/* Photo Container */}
-                <View style={styles.photoContainer}>
-                    <TouchableOpacity style={styles.photoButton} onPress={showImagePickerOptions}>
-                        {selectedPhoto ? (
-                            <Image source={{ uri: selectedPhoto }} style={styles.photoPreview} />
-                        ) : (
-                            <View style={styles.photoPlaceholder}>
-                                <FontAwesome6 name="camera" size={32} color="#999" />
-                                <Text style={styles.photoPlaceholderText}>Add Photo</Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                    
-                    {selectedPhoto && (
-                        <TouchableOpacity 
-                            style={styles.changePhotoButton} 
-                            onPress={showImagePickerOptions}
-                        >
-                            <FontAwesome6 name="pencil" size={16} color={THEME_COLORS.bluePrimary} />
-                        </TouchableOpacity>
-                    )}
+                {/* Selected Photo Preview */}
+                <View style={styles.selectedPhotoContainer}>
+                    <Image source={getSelectedImageSource()} style={styles.selectedPhoto} />
                 </View>
 
-                {/* Buttons */}
+                {/* Choose Photo Label */}
+                <Text style={styles.sectionTitle}>Choose Photo</Text>
+
+                {/* Profile Illustrations Scroll */}
+                <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false} 
+                    style={styles.illustrationsScroll}
+                    contentContainerStyle={styles.illustrationsContainer}
+                >
+                    {PROFILE_ILLUSTRATIONS.map((illustration) => (
+                        <TouchableOpacity
+                            key={illustration.id}
+                            style={[
+                                styles.illustrationButton,
+                                selectedPhoto === `illustration_${illustration.id}` && styles.illustrationSelected
+                            ]}
+                            onPress={() => handleIllustrationSelect(illustration.id)}
+                        >
+                            <Image source={illustration.source} style={styles.illustrationImage} />
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                {/* Add Custom Photo Button */}
+                <TouchableOpacity 
+                    style={[
+                        styles.customPhotoButton,
+                        selectedPhoto === 'custom' && styles.customPhotoSelected
+                    ]} 
+                    onPress={showImagePickerOptions}
+                >
+                    <FontAwesome6 name="camera" size={20} color={selectedPhoto === 'custom' ? '#FFF' : THEME_COLORS.bluePrimary} />
+                    <Text style={[
+                        styles.customPhotoText,
+                        selectedPhoto === 'custom' && styles.customPhotoTextSelected
+                    ]}>
+                        Add custom
+                    </Text>
+                </TouchableOpacity>
+
+                {/* Continue Button */}
                 <View style={styles.buttonsContainer}>
-                    <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
-                        <Text style={styles.skipButtonText}>Skip for now</Text>
-                    </TouchableOpacity>
-                    
                     <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
                         <Text style={styles.continueButtonText}>Continue</Text>
                     </TouchableOpacity>
@@ -193,77 +248,82 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#666',
         textAlign: 'left',
-        marginBottom: 40,
+        marginBottom: 32,
         lineHeight: 24,
     },
-    photoContainer: {
+    selectedPhotoContainer: {
         alignItems: 'center',
-        marginBottom: 60,
-        position: 'relative',
+        marginBottom: 32,
     },
-    photoButton: {
-        width: 150,
-        height: 150,
-        borderRadius: 75,
-        backgroundColor: '#F8F9FA',
+    selectedPhoto: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 16,
+    },
+    illustrationsScroll: {
+        marginBottom: 24,
+    },
+    illustrationsContainer: {
+        paddingRight: 16,
+    },
+    illustrationButton: {
+        width: 70,
+        height: 70,
+        borderRadius: 35,
+        marginRight: 16,
         borderWidth: 2,
-        borderColor: '#E9ECEF',
-        borderStyle: 'dashed',
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderColor: 'transparent',
         overflow: 'hidden',
     },
-    photoPreview: {
+    illustrationSelected: {
+        borderColor: THEME_COLORS.bluePrimary,
+        borderWidth: 3,
+    },
+    illustrationImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 73,
+        borderRadius: 33,
     },
-    photoPlaceholder: {
+    customPhotoButton: {
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    photoPlaceholderText: {
-        fontSize: 14,
-        color: '#999',
-        marginTop: 8,
-        fontWeight: '500',
-    },
-    changePhotoButton: {
-        position: 'absolute',
-        bottom: 5,
-        right: 5,
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#FFF',
-        alignItems: 'center',
-        justifyContent: 'center',
+        backgroundColor: 'transparent',
         borderWidth: 2,
         borderColor: THEME_COLORS.bluePrimary,
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginBottom: 32,
+    },
+    customPhotoSelected: {
+        backgroundColor: THEME_COLORS.bluePrimary,
+    },
+    customPhotoText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: THEME_COLORS.bluePrimary,
+        marginLeft: 8,
+    },
+    customPhotoTextSelected: {
+        color: '#FFF',
     },
     buttonsContainer: {
-        gap: 16,
-    },
-    skipButton: {
-        backgroundColor: 'transparent',
-        borderRadius: 8,
-        paddingVertical: 8,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#E9ECEF',
-        minHeight: 36,
-    },
-    skipButtonText: {
-        color: '#666',
-        fontSize: 16,
-        fontWeight: '500',
+        marginTop: 'auto',
     },
     continueButton: {
         backgroundColor: THEME_COLORS.bluePrimary,
         borderRadius: 8,
-        paddingVertical: 8,
+        paddingVertical: 12,
         alignItems: 'center',
-        minHeight: 36,
+        minHeight: 48,
+        justifyContent: 'center',
     },
     continueButtonText: {
         color: '#fff',
