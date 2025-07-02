@@ -102,54 +102,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Opções de graduação de escalada
-  const gradeOptions = [
-    // Sistema Francês (Sport Climbing)
-    '3a', '3b', '3c', '4a', '4b', '4c', 
-    '5a', '5b', '5c', '6a', '6a+', '6b', '6b+', '6c', '6c+',
-    '7a', '7a+', '7b', '7b+', '7c', '7c+',
-    '8a', '8a+', '8b', '8b+', '8c', '8c+',
-    '9a', '9a+', '9b', '9b+', '9c',
-    
-    // Sistema Americano (YDS)
-    '5.0', '5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7', '5.8', '5.9',
-    '5.10a', '5.10b', '5.10c', '5.10d',
-    '5.11a', '5.11b', '5.11c', '5.11d',
-    '5.12a', '5.12b', '5.12c', '5.12d',
-    '5.13a', '5.13b', '5.13c', '5.13d',
-    '5.14a', '5.14b', '5.14c', '5.14d',
-    '5.15a', '5.15b', '5.15c', '5.15d',
-    
-    // Sistema UIAA
-    'I', 'I+', 'II', 'II+', 'III', 'III+', 'IV', 'IV+', 'V', 'V+', 'VI', 'VI+',
-    'VII-', 'VII', 'VII+', 'VIII-', 'VIII', 'VIII+', 'IX-', 'IX', 'IX+',
-    'X-', 'X', 'X+', 'XI-', 'XI', 'XI+', 'XII-', 'XII', 'XII+',
-    
-    // Sistema V-Scale (Boulder)
-    'VB', 'V0-', 'V0', 'V0+', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9',
-    'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17',
-    
-    // Sistema Font (Boulder)
-    '3', '4-', '4', '4+', '5', '5+', '6A', '6A+', '6B', '6B+', '6C', '6C+',
-    '7A', '7A+', '7B', '7B+', '7C', '7C+', '8A', '8A+', '8B', '8B+', '8C', '8C+', '9A',
-    
-    // Sistema Britânico (E-grade) - Exemplos principais
-    'M 1a', 'D 2a', 'VD 3a', 'S 4a', 'HS 4b', 'HVS 4c', 'HVS 5a',
-    'E1 5a', 'E1 5b', 'E2 5b', 'E2 5c', 'E3 5c', 'E3 6a', 'E4 6a', 'E4 6b',
-    'E5 6a', 'E5 6b', 'E6 6b', 'E6 6c', 'E7 6c', 'E7 7a', 'E8 7a', 'E9 7b',
-    
-    // Sistema Australiano (Ewbank) - Principais
-    '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
-    '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
-    '31', '32', '33', '34', '35', '36', '37', '38', '39',
-    
-    // Sistema WI (Ice Climbing)
-    'WI1', 'WI2', 'WI3', 'WI4', 'WI5', 'WI6', 'WI7', 'WI8', 'WI9', 'WI10', 'WI11', 'WI12', 'WI13',
-    
-    // Sistema M (Mixed Climbing)
-    'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15'
-  ];
-
   // Function to filter grade options based on user's preferred grading system
   const getFilteredGradeOptions = (gradingSystem?: string): string[] => {
     if (!gradingSystem) {
@@ -176,21 +128,17 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
           '8a', '8a+', '8b', '8b+', '8c', '8c+',
           '9a', '9a+', '9b', '9b+', '9c'
         ];
-      case 'uiaa':
+      case 'british':
         return [
-          'I', 'I+', 'II', 'II+', 'III', 'III+', 'IV', 'IV+', 'V', 'V+', 'VI', 'VI+',
-          'VII-', 'VII', 'VII+', 'VIII-', 'VIII', 'VIII+', 'IX-', 'IX', 'IX+',
-          'X-', 'X', 'X+', 'XI-', 'XI', 'XI+', 'XII-', 'XII', 'XII+'
+          'M 1a', 'D 2a', 'VD 3a', 'S 4a', 'HS 4b', 'HVS 4c', 'HVS 5a',
+          'E1 5a', 'E1 5b', 'E2 5b', 'E2 5c', 'E3 5c', 'E3 6a', 'E4 6a', 'E4 6b',
+          'E5 6a', 'E5 6b', 'E6 6b', 'E6 6c', 'E7 6c', 'E7 7a', 'E8 7a', 'E9 7b',
+          'E10 7b', 'E11 7c'
         ];
       case 'v-scale':
         return [
           'VB', 'V0-', 'V0', 'V0+', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9',
           'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16', 'V17'
-        ];
-      case 'font':
-        return [
-          '3', '4-', '4', '4+', '5', '5+', '6A', '6A+', '6B', '6B+', '6C', '6C+',
-          '7A', '7A+', '7B', '7B+', '7C', '7C+', '8A', '8A+', '8B', '8B+', '8C', '8C+', '9A'
         ];
       default:
         // Fallback to YDS
@@ -511,10 +459,10 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   // Renderizar seletor de sentimentos
   const renderFeelingSelector = () => {
     const feelings = [
-      { value: 'amazing', label: 'Amazing', emoji: '🤩' },
+      { value: 'soft', label: 'Soft', emoji: '😌' },
+      { value: 'stiff', label: 'Stiff', emoji: '😰' },
       { value: 'good', label: 'Good', emoji: '😊' },
-      { value: 'okay', label: 'Just OK', emoji: '😐' },
-      { value: 'tired', label: 'Tired', emoji: '😴' }
+      { value: 'bad', label: 'Bad', emoji: '😞' }
     ];
 
     return (
@@ -1343,7 +1291,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             </Text>
             {renderDateTimePickerCompact('', 'when')}
             {renderLocationSelector()}
-            {renderActivitySelector()}
+            {/* Só mostra o seletor de atividade após selecionar Indoor/Outdoor */}
+            {formData.place && renderActivitySelector()}
           </View>
         );
 
@@ -1390,7 +1339,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
               
               {/* Campo Climbing Type - apenas para Climbing, não para Bouldering */}
               {formData.activity === 'Climbing' && 
-                <View style={styles.fieldContainer}>
+                <View style={[styles.fieldContainer, { marginTop: 12 }]}>
                   <Text style={styles.label}>Climbing Type</Text>
                   {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
                 </View>

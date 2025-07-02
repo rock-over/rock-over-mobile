@@ -140,7 +140,7 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
 
             {/* Form Container with curved top */}
             <View style={styles.formContainer}>
-                <Text style={styles.title}>LOGIN</Text>
+                                        <Text style={styles.title}>Login</Text>
                 
                 {/* Email Input */}
                 <View style={styles.inputContainer}>

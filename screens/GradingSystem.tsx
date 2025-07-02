@@ -23,6 +23,12 @@ interface GradingSystemOption {
 
 const gradingSystems: GradingSystemOption[] = [
     {
+        id: 'british',
+        name: 'British (E-grade)',
+        description: 'UK traditional climbing',
+        examples: 'M - E11'
+    },
+    {
         id: 'yds',
         name: 'YDS (Yosemite Decimal System)',
         description: 'Most common in USA',
@@ -35,33 +41,15 @@ const gradingSystems: GradingSystemOption[] = [
         examples: '3a - 9c'
     },
     {
-        id: 'uiaa',
-        name: 'UIAA',
-        description: 'International system',
-        examples: 'I - XII+'
-    },
-    {
-        id: 'british',
-        name: 'British (E-grade)',
-        description: 'UK traditional climbing',
-        examples: 'M - E11'
-    },
-    {
         id: 'v-scale',
-        name: 'V-Scale',
+        name: 'V-Scale (Bouldering)',
         description: 'Bouldering standard',
         examples: 'VB - V17'
-    },
-    {
-        id: 'font',
-        name: 'Font (Fontainebleau)',
-        description: 'European bouldering',
-        examples: '3 - 9A'
     }
 ];
 
 export default function GradingSystem({ onComplete }: GradingSystemProps) {
-    const [selectedSystem, setSelectedSystem] = useState<string>('yds');
+    const [selectedSystem, setSelectedSystem] = useState<string>('british');
 
     const handleSystemSelect = (systemId: string) => {
         setSelectedSystem(systemId);
@@ -86,9 +74,9 @@ export default function GradingSystem({ onComplete }: GradingSystemProps) {
 
             {/* Content */}
             <View style={styles.content}>
-                <Text style={styles.title}>Choose Grading System</Text>
+                <Text style={styles.title}>Choose grading system</Text>
                 <Text style={styles.subtitle}>
-                    Select your preferred climbing grade system. You can change this later in settings.
+                    Select you preferred system. You can change it later
                 </Text>
 
                 {/* Grading Systems List */}
@@ -108,12 +96,6 @@ export default function GradingSystem({ onComplete }: GradingSystemProps) {
                                     selectedSystem === system.id && styles.systemNameSelected
                                 ]}>
                                     {system.name}
-                                </Text>
-                                <Text style={[
-                                    styles.systemDescription,
-                                    selectedSystem === system.id && styles.systemDescriptionSelected
-                                ]}>
-                                    {system.description}
                                 </Text>
                                 <Text style={[
                                     styles.systemExamples,
@@ -224,14 +206,6 @@ const styles = StyleSheet.create({
     },
     systemNameSelected: {
         color: '#FFF',
-    },
-    systemDescription: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 4,
-    },
-    systemDescriptionSelected: {
-        color: 'rgba(255, 255, 255, 0.8)',
     },
     systemExamples: {
         fontSize: 12,

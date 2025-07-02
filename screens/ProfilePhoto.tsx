@@ -137,7 +137,7 @@ export default function ProfilePhoto({ onContinue, onSkip }: ProfilePhotoProps) 
 
             {/* Content */}
             <View style={styles.content}>
-                <Text style={styles.title}>Profile Photo</Text>
+                <Text style={styles.title}>Profile photo</Text>
                 <Text style={styles.subtitle}>
                     Choose a profile photo to personalize your climbing journey.
                 </Text>

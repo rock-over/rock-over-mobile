@@ -257,7 +257,7 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin }:
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 >
                     <View style={styles.scrollContent}>
-                        <Text style={styles.title}>SIGN UP</Text>
+                        <Text style={styles.title}>Sign up</Text>
                         
                                         {/* Name Input */}
                 <View style={styles.inputContainer}>
