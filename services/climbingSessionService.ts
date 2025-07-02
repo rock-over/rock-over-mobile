@@ -8,14 +8,13 @@ export interface ClimbingSessionData {
   climbingType?: string | null;
   routeNumber?: string | null;
   grade?: string | null;
+  completion?: string | null;
   difficulty: string | null;
   effort: string | null;
   falls: string | null;
   ascentType: string | null;
   colour?: string | null;
   routeRating?: string | null;
-  settersRating?: string | null;
-  suggestedGrade?: string | null;
   howItFelt?: string | null;
   movement?: string | null;
   grip?: string | null;

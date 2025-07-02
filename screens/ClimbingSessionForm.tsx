@@ -39,7 +39,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   const totalSteps = 4;
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showGradePicker, setShowGradePicker] = useState(false);
-  const [showSuggestedGradePicker, setShowSuggestedGradePicker] = useState(false);
   const [showMovementModal, setShowMovementModal] = useState(false);
   const [showGripModal, setShowGripModal] = useState(false);
   const [showFootworkModal, setShowFootworkModal] = useState(false);
@@ -63,7 +62,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     colour: '#ffffff', // Cor inicial branca
     routeNumber: '',
     grade: '',
-    suggestedGrade: '',
     difficulty: 5, // Mudado para 5 (meio do slider)
     falls: 0,
     ascentType: '',
@@ -71,11 +69,11 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     grip: [] as string[],
     footwork: [] as string[],
     routeRating: 0,
-    settersRating: 0,
     howItFelt: '',
     comments: '',
     // Campos condicionais
     climbingType: '',
+    completion: '', // Novo campo para completed/attempt
   });
 
   // Cores disponíveis para seleção (3 linhas de 5 cores cada)
@@ -604,7 +602,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     const cleanData = Object.fromEntries(
       Object.entries(formData).map(([key, value]) => [
         key, 
-        key === 'difficulty' || key === 'falls' || key === 'routeRating' || key === 'settersRating' ? value : 
+        key === 'difficulty' || key === 'falls' || key === 'routeRating' ? value : 
         Array.isArray(value) ? value : 
         (value === '' ? null : value)
       ])
@@ -625,7 +623,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       colour: '#ffffff',
       routeNumber: '',
       grade: '',
-      suggestedGrade: '',
       difficulty: 5,
       falls: 0,
       ascentType: '',
@@ -633,10 +630,10 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       grip: [] as string[],
       footwork: [] as string[],
       routeRating: 0,
-      settersRating: 0,
       howItFelt: '',
       comments: '',
       climbingType: '',
+      completion: '',
     });
     onClose();
   };
@@ -1347,56 +1344,70 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             {renderDateTimePickerCompact('', 'when')}
             {renderLocationSelector()}
             {renderActivitySelector()}
-            {formData.activity === 'Climbing' && 
-              <View style={{marginTop: 15}}>
-                {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
-              </View>
-            }
           </View>
         );
 
       case 2:
         return (
-          <View>
-            <Text style={styles.modalTitle}>Add route details 🧗‍♂️</Text>
-            <Text style={styles.modalSubtitle}>Enter the information about your climbing route</Text>
-            
-            {/* Linha compartilhada: Route name + Route Color */}
-            <View style={styles.sharedRowContainer}>
-              <View style={styles.routeNameContainer}>
-                <View style={styles.fieldContainer}>
-                  <Text style={styles.label}>Name</Text>
-                  <TextInput
-                    style={[styles.textInput, styles.routeNameInput]}
-                    value={formData.routeNumber}
-                    onChangeText={(value) => updateField('routeNumber', value)}
-                    selectionColor="#333"
-                  />
+          <ScrollView style={styles.stepScrollView} showsVerticalScrollIndicator={false}>
+            <View>
+              <Text style={styles.modalTitle}>Add route details 🧗‍♂️</Text>
+              <Text style={styles.modalSubtitle}>Enter the information about your climbing route</Text>
+              
+              {/* Linha compartilhada: Route number + Route Color */}
+              <View style={styles.sharedRowContainer}>
+                <View style={styles.routeNameContainer}>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.label}>Route number</Text>
+                    <TextInput
+                      style={[styles.textInput, styles.routeNameInput]}
+                      value={formData.routeNumber}
+                      onChangeText={(value) => updateField('routeNumber', value)}
+                      placeholder="Add number"
+                      placeholderTextColor="#999"
+                      selectionColor="#333"
+                    />
+                  </View>
+                </View>
+                <View style={styles.routeColorContainer}>
+                  {renderColorSelectorCompact()}
                 </View>
               </View>
-              <View style={styles.routeColorContainer}>
-                {renderColorSelectorCompact()}
-              </View>
-            </View>
-            {/* Linha com Grade e Suggested Grade */}
-            <View style={styles.gradeRowContainer}>
-              <View style={[styles.gradeContainer, { width: gradeFieldWidth }]}>
+              
+              {/* Campo Grade - largura total */}
+              <View style={styles.fieldContainer}>
                 {renderDropdownPickerCompact('Grade', 'grade', filteredGradeOptions, showGradePicker, setShowGradePicker)}
               </View>
-              <View style={styles.gradeSpacer} />
-              <View style={[styles.gradeContainer, { width: gradeFieldWidth }]}>
-                {renderDropdownPickerCompact('Suggested Grade', 'suggestedGrade', filteredGradeOptions, showSuggestedGradePicker, setShowSuggestedGradePicker)}
+              
+              {/* Espaçamento após Grade */}
+              <View style={styles.sectionSpacer} />
+              
+              {/* Campo Completion */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Completion</Text>
+                {renderPickerNoTitleCompact('completion', ['Completed', 'Attempt'])}
+              </View>
+              
+              {/* Campo Climbing Type - apenas para Climbing, não para Bouldering */}
+              {formData.activity === 'Climbing' && 
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.label}>Climbing Type</Text>
+                  {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
+                </View>
+              }
+              
+              {/* Espaçamento menor antes da dificuldade */}
+              <View style={styles.smallSectionSpacer} />
+              
+              {/* Campos do antigo passo 3 */}
+              {renderDifficultySlider()}
+              {renderFallsCounter()}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Ascent Type</Text>
+                {renderPickerNoTitleCompact('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
               </View>
             </View>
-            
-            {/* Campos do antigo passo 3 */}
-            {renderDifficultySlider()}
-            {renderFallsCounter()}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Ascent Type</Text>
-              {renderPickerNoTitleCompact('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
-            </View>
-          </View>
+          </ScrollView>
         );
 
       case 3:
@@ -1417,7 +1428,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             <Text style={styles.modalSubtitle}>Share your thoughts and save insights for your future climbs</Text>
             
             {renderStarRating('Route Rating', 'routeRating')}
-            {renderStarRating('Setter Rating', 'settersRating')}
             {renderFeelingSelector()}
             
             <View style={styles.fieldContainer}>
@@ -1426,6 +1436,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
                 style={[styles.textInput, styles.textArea]}
                 value={formData.comments}
                 onChangeText={(value) => updateField('comments', value)}
+                placeholder="Add some notes or tips for your future self"
+                placeholderTextColor="#999"
                 multiline
                 numberOfLines={4}
                 selectionColor="#333"
@@ -1497,9 +1509,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       
       {/* Modal do Seletor de Grade */}
       {renderGradePickerModal('grade', filteredGradeOptions, showGradePicker, () => setShowGradePicker(false))}
-      
-      {/* Modal do Seletor de Suggested Grade */}
-      {renderGradePickerModal('suggestedGrade', filteredGradeOptions, showSuggestedGradePicker, () => setShowSuggestedGradePicker(false))}
     </>
   );
 }
@@ -1600,14 +1609,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  textInput: {
-    backgroundColor: THEME_COLORS.background.input,
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#000000',
-  },
+     textInput: {
+     backgroundColor: THEME_COLORS.background.input,
+     borderRadius: 8,
+     paddingHorizontal: 15,
+     paddingVertical: 12,
+     fontSize: 16,
+     color: '#000000',
+   },
+   textInputPlaceholder: {
+     color: '#999',
+     fontWeight: '400',
+   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
@@ -2022,9 +2035,9 @@ const styles = StyleSheet.create({
      height: 50,
    },
    dropdownButtonText: {
-     fontSize: 16,
+     fontSize: 14,
      color: '#000000',
-     fontWeight: '500',
+     fontWeight: '400',
    },
    dropdownPlaceholderText: {
      color: '#999',
@@ -2182,5 +2195,18 @@ const styles = StyleSheet.create({
      fontSize: 16,
      fontWeight: '600',
      color: '#333',
+   },
+   // Step scroll view styles
+   stepScrollView: {
+     flex: 1,
+     paddingBottom: 20,
+   },
+   sectionSpacer: {
+     height: 12,
+     marginBottom: 0,
+   },
+   smallSectionSpacer: {
+     height: 8,
+     marginBottom: 5,
    },
  });  
