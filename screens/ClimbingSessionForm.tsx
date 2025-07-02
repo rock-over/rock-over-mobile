@@ -1,14 +1,14 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
-  Animated,
   Dimensions,
   Image,
   Modal,
   Platform,
+  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -17,7 +17,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { THEME_COLORS, THEME_SIZES } from '../constants/Theme';
+import { THEME_COLORS } from '../constants/Theme';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
@@ -48,73 +48,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   const [tempMovementTags, setTempMovementTags] = useState<string[]>([]);
   const [tempGripTags, setTempGripTags] = useState<string[]>([]);
   const [tempFootworkTags, setTempFootworkTags] = useState<string[]>([]);
-
-  // Dynamic height management
-  const [contentHeight, setContentHeight] = useState(0);
-  const [modalHeight, setModalHeight] = useState(300); // Initialize with minimum height
-  const [needsScroll, setNeedsScroll] = useState(false);
-
-  // Animated values for custom modal animation
-  const overlayOpacity = useRef(new Animated.Value(0)).current;
-  const containerTranslateY = useRef(new Animated.Value(1000)).current;
-
-  // Animate modal entrance/exit
-  useEffect(() => {
-    if (visible) {
-      // Reset values before opening
-      overlayOpacity.setValue(0);
-      containerTranslateY.setValue(1000);
-      
-      // Ensure status bar is light-content for modal
-      StatusBar.setBarStyle('light-content', true);
-      
-      // Modal opening animation
-      Animated.parallel([
-        Animated.timing(overlayOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(containerTranslateY, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [visible]);
-
-  // Calculate dynamic modal height
-  useEffect(() => {
-    const navigationHeight = 85; // Fixed navigation bar height
-    const contentPadding = 30; // paddingTop (30) + paddingBottom (0)
-    const safeAreaFromBottom = 10; // Small margin from screen bottom
-    
-    if (contentHeight > 0) {
-      // Calculate total height needed
-      const totalRequiredHeight = contentHeight + navigationHeight + contentPadding + safeAreaFromBottom;
-      const maxAvailableHeight = screenHeight - 100; // Reserve space for status bar
-      
-      // Use the required height, but respect max available
-      const finalHeight = Math.min(totalRequiredHeight, maxAvailableHeight);
-      setModalHeight(finalHeight);
-      
-      // Determine if we need scroll (content doesn't fit)
-      setNeedsScroll(totalRequiredHeight > maxAvailableHeight);
-    } else {
-      // Fallback height when content hasn't been measured yet
-      const fallbackHeight = navigationHeight + contentPadding + 200 + safeAreaFromBottom; // 200px estimated content
-      setModalHeight(Math.min(fallbackHeight, screenHeight - 100));
-      setNeedsScroll(false);
-    }
-  }, [contentHeight, screenHeight, currentStep]);
-
-  // Reset height calculation when step changes
-  useEffect(() => {
-    setContentHeight(0);
-    setModalHeight(0);
-    setNeedsScroll(false);
-  }, [currentStep]);
 
   // Cálculo da largura dos campos Grade baseado na fórmula:
   // padding_esquerda + largura_campo + 20px + largura_campo + padding_direita = largura_total
@@ -169,10 +102,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
 
   const updateArrayField = (field: string, value: string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Force height recalculation when content changes
-    setTimeout(() => {
-      setContentHeight(0);
-    }, 100);
   };
 
   // Opções de graduação de escalada
@@ -687,43 +616,29 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   };
 
   const handleClose = () => {
-    // Modal closing animation
-    Animated.parallel([
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(containerTranslateY, {
-        toValue: 1000,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // Reset form and close modal
-      setCurrentStep(1);
-      setFormData({
-        place: '',
-        when: new Date().toISOString(),
-        activity: '',
-        colour: '#ffffff',
-        routeNumber: '',
-        grade: '',
-        suggestedGrade: '',
-        difficulty: 5,
-        falls: 0,
-        ascentType: '',
-        movement: [] as string[],
-        grip: [] as string[],
-        footwork: [] as string[],
-        routeRating: 0,
-        settersRating: 0,
-        howItFelt: '',
-        comments: '',
-        climbingType: '',
-      });
-      onClose();
+    // Reset form and close modal
+    setCurrentStep(1);
+    setFormData({
+      place: '',
+      when: new Date().toISOString(),
+      activity: '',
+      colour: '#ffffff',
+      routeNumber: '',
+      grade: '',
+      suggestedGrade: '',
+      difficulty: 5,
+      falls: 0,
+      ascentType: '',
+      movement: [] as string[],
+      grip: [] as string[],
+      footwork: [] as string[],
+      routeRating: 0,
+      settersRating: 0,
+      howItFelt: '',
+      comments: '',
+      climbingType: '',
     });
+    onClose();
   };
 
   const renderColorSelector = () => {
@@ -1524,108 +1439,57 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     }
   };
 
-  // Force height recalculation when content changes
-  const recalculateHeight = () => {
-    setContentHeight(0);
-    setModalHeight(0);
-    setNeedsScroll(false);
-  };
-
   return (
     <>
-      <Modal visible={visible} transparent={true} statusBarTranslucent={true}>
-        {/* Dark overlay that covers the entire screen */}
-        <Animated.View 
-          style={[
-            styles.fullScreenOverlay, 
-            { opacity: overlayOpacity }
-          ]}
-        >
-          {/* Touchable area that closes modal (fills remaining space) */}
-          <TouchableOpacity 
-            style={styles.overlayTouchable} 
-            activeOpacity={1} 
-            onPress={handleClose}
-          />
+      <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
           
-          {/* Modal content container with dynamic height */}
-          <Animated.View 
-            style={[
-              styles.modalContainer,
-              { 
-                transform: [{ translateY: containerTranslateY }],
-                height: modalHeight > 0 ? modalHeight : 300,
-              }
-            ]}
-          >
-            {/* Modal content */}
-            <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
-              {needsScroll ? (
-                <ScrollView 
-                  style={styles.scrollableContent}
-                  showsVerticalScrollIndicator={false}
-                >
-                  <View 
-                    style={[
-                      styles.contentContainer,
-                      currentStep === 2 && { paddingBottom: 16 }
-                    ]}
-                    onLayout={(event) => {
-                      const { height } = event.nativeEvent.layout;
-                      setContentHeight(height);
-                    }}
-                  >
-                    {renderStep()}
-                  </View>
-                </ScrollView>
-              ) : (
-                <View 
-                  style={[
-                    styles.contentContainer,
-                    currentStep === 2 && { paddingBottom: 16 }
-                  ]}
-                  onLayout={(event) => {
-                    const { height } = event.nativeEvent.layout;
-                    setContentHeight(height);
-                  }}
-                >
-                  {renderStep()}
-                </View>
-              )}
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <FontAwesome6 name="chevron-left" size={20} color="#000" />
             </TouchableOpacity>
-            
-            {/* Fixed navigation bar at bottom */}
-            <View style={styles.navigationContainer}>
-              <TouchableOpacity 
-                style={[
-                  styles.navButton, 
-                  currentStep === 1 ? styles.cancelButton : (currentStep === 1 && styles.navButtonDisabled)
-                ]}
-                onPress={currentStep === 1 ? handleClose : handlePrevious}
-                disabled={false}
-              >
-                <Text style={[
-                  styles.navButtonText, 
-                  currentStep === 1 ? styles.cancelButtonText : (currentStep === 1 && styles.navButtonTextDisabled)
-                ]}>
-                  {currentStep === 1 ? 'Cancel' : 'Previous'}
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.headerRight} />
+          </View>
 
-              <View style={styles.buttonSpacer} />
-
-              {currentStep < totalSteps ? (
-                <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-                  <Text style={styles.nextButtonText}>Next</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
-              )}
+          {/* Content */}
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.contentContainer}>
+              {renderStep()}
             </View>
-          </Animated.View>
-        </Animated.View>
+          </ScrollView>
+
+          {/* Navigation */}
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity 
+              style={[
+                styles.navButton, 
+                currentStep === 1 ? styles.cancelButton : styles.previousButton
+              ]}
+              onPress={currentStep === 1 ? handleClose : handlePrevious}
+            >
+              <Text style={[
+                styles.navButtonText, 
+                currentStep === 1 ? styles.cancelButtonText : styles.previousButtonText
+              ]}>
+                {currentStep === 1 ? 'Cancel' : 'Previous'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.buttonSpacer} />
+
+            {currentStep < totalSteps ? (
+              <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+                <Text style={styles.nextButtonText}>Next</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </SafeAreaView>
       </Modal>
       
       {/* Modal do Seletor de Cores */}
@@ -1641,66 +1505,100 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
 }
 
 const styles = StyleSheet.create({
-  fullScreenOverlay: {
+  container: {
     flex: 1,
-    backgroundColor: THEME_COLORS.background.overlay,
-    justifyContent: 'flex-end',
-  },
-  overlayTouchable: {
-    flex: 1,
-  },
-  modalContainer: {
     backgroundColor: THEME_COLORS.background.primary,
-    borderTopLeftRadius: THEME_SIZES.borderRadius.large,
-    borderTopRightRadius: THEME_SIZES.borderRadius.large,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    minHeight: 150, // Ensure navigation bar is always visible
   },
-  modalContent: {
-    flex: 1,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#fff',
   },
-  scrollableContent: {
+  closeButton: {
+    padding: 5,
+  },
+  headerRight: {
+    width: 40,
+    height: 40,
+  },
+  content: {
     flex: 1,
+    padding: 10,
   },
   contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 30,
+    paddingHorizontal: 10,
+    paddingTop: 0,
     paddingBottom: 0,
   },
-  containerAdaptive: {
-    maxHeight: '90%',
-    minHeight: '20%',
-  },
-  containerFullScreen: {
-    height: '90%',
-  },
-  spacer: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentFixed: {
+  navigationContainer: {
+    flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingTop: 30,
-    paddingBottom: 20,
+    paddingVertical: 15,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    height: 85,
+    minHeight: 85,
+    maxHeight: 85,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  contentScrollable: {
-    paddingHorizontal: 20,
-    paddingTop: 30,
-    paddingBottom: 20,
+  navButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    minHeight: 44,
   },
-  fieldContainer: {
-    marginBottom: 0,
+  previousButton: {
+    backgroundColor: THEME_COLORS.softRed,
+    borderColor: THEME_COLORS.softRed,
   },
-  label: {
+  previousButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: THEME_COLORS.softRed,
+    borderColor: THEME_COLORS.softRed,
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  nextButton: {
+    flex: 1,
+    backgroundColor: THEME_COLORS.bluePrimary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  nextButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 6,
+    color: '#fff',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: THEME_COLORS.bluePrimary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   textInput: {
     backgroundColor: THEME_COLORS.background.input,
@@ -1743,7 +1641,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   buttonSpacer: {
-    width: 15,
+    width: 16,
   },
   locationButton: {
     flex: 1,
@@ -1777,69 +1675,14 @@ const styles = StyleSheet.create({
   locationTextSelected: {
     color: THEME_COLORS.bluePrimary,
   },
-  navigationContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    height: 85,
-    minHeight: 85,
-    maxHeight: 85,
-    justifyContent: 'center',
-    alignItems: 'center',
+  fieldContainer: {
+    marginBottom: 0,
   },
-  navButton: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    minHeight: 44,
-  },
-  navButtonDisabled: {
-    backgroundColor: '#e9ecef',
-    borderColor: '#d6d6d6',
-  },
-  navButtonText: {
+  label: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-  },
-  navButtonTextDisabled: {
-    color: '#999',
-  },
-  nextButton: {
-    flex: 1,
-    backgroundColor: THEME_COLORS.bluePrimary,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  nextButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: THEME_COLORS.bluePrimary,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    marginBottom: 6,
   },
   textInputError: {
     borderColor: '#ff0000',
@@ -1879,204 +1722,6 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 25,
   },
-  cancelButton: {
-    backgroundColor: THEME_COLORS.softRed,
-    borderColor: THEME_COLORS.softRed,
-  },
-  cancelButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  // Estilos do seletor de cores
-  colorSelectorButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: THEME_COLORS.background.input,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    width: 80,
-    height: 50,
-  },
-  colorPreview: {
-    width: 30,
-    height: 30,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-  },
-  colorDropdownIcon: {
-    marginLeft: 0,
-  },
-  // Estilos do modal de cores
-  colorModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  colorModalContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    zIndex: 1000,
-  },
-  colorGrid: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  colorRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
-    marginBottom: 16,
-    width: 240, // 5 cores × 36px + 4 espaços × 12px = 228px + margem
-  },
-  colorRowLast: {
-    marginBottom: 0,
-  },
-  colorOption: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-  },
-  colorOptionWhite: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  colorOptionSelected: {
-    transform: [{ scale: 1.15 }],
-    elevation: 4,
-    shadowOpacity: 0.3,
-  },
-  colorCheckmark: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  colorCheckmarkText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  // Estilos para linha compartilhada
-  sharedRowContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 15,
-  },
-  routeNameContainer: {
-    flex: 1,
-    marginRight: 15,
-  },
-  routeColorContainer: {
-    alignItems: 'flex-end',
-  },
-  routeNameInput: {
-    height: 50, // Mesma altura que o colorSelectorButton
-  },
-  dropdownButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: THEME_COLORS.background.input,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    minWidth: 120,
-    height: 50,
-  },
-  dropdownButtonText: {
-    fontSize: 16,
-    color: '#000000',
-    fontWeight: '500',
-  },
-  dropdownPlaceholderText: {
-    color: '#999',
-  },
-  dropdownIcon: {
-    marginLeft: 0,
-  },
-  gradeModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gradeModalContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 20,
-    width: '80%',
-    maxWidth: 300,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  gradeModalHeader: {
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  gradeModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  gradeList: {
-    maxHeight: 350,
-  },
-  gradeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 15,
-    borderRadius: 8,
-    marginVertical: 2,
-  },
-  gradeOptionSelected: {
-    backgroundColor: '#f0f7ff',
-  },
-  gradeOptionText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
-  gradeOptionTextSelected: {
-    color: THEME_COLORS.bluePrimary,
-  },
-  // Estilos para linha de Grade e Suggested Grade
-  gradeRowContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 15,
-    paddingHorizontal: 0, // Remove padding pois a largura já considera os paddings laterais
-  },
-  gradeContainer: {
-    // A largura será definida dinamicamente via props de estilo
-  },
-  gradeSpacer: {
-    width: 20,
-    flexShrink: 0, // Impede que o espaçador seja comprimido
-  },
-  // Estilos para o slider nativo
   sliderContainerNoBg: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2341,5 +1986,201 @@ const styles = StyleSheet.create({
      marginLeft: 10,
      backgroundColor: '#f0f0f0',
      borderRadius: 6,
+   },
+   // Color selector styles
+   colorSelectorButton: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     justifyContent: 'space-between',
+     backgroundColor: THEME_COLORS.background.input,
+     borderRadius: 8,
+     paddingHorizontal: 12,
+     paddingVertical: 10,
+     width: 80,
+     height: 50,
+   },
+   colorPreview: {
+     width: 30,
+     height: 30,
+     borderRadius: 14,
+     borderWidth: 2,
+     borderColor: '#e0e0e0',
+   },
+   colorDropdownIcon: {
+     marginLeft: 0,
+   },
+   // Dropdown styles
+   dropdownButton: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     justifyContent: 'space-between',
+     backgroundColor: THEME_COLORS.background.input,
+     borderRadius: 8,
+     paddingHorizontal: 12,
+     paddingVertical: 12,
+     minWidth: 120,
+     height: 50,
+   },
+   dropdownButtonText: {
+     fontSize: 16,
+     color: '#000000',
+     fontWeight: '500',
+   },
+   dropdownPlaceholderText: {
+     color: '#999',
+   },
+   dropdownIcon: {
+     marginLeft: 0,
+   },
+   // Color modal styles
+   colorModalOverlay: {
+     flex: 1,
+     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+     justifyContent: 'center',
+     alignItems: 'center',
+   },
+   colorModalContainer: {
+     backgroundColor: '#fff',
+     borderRadius: 12,
+     paddingVertical: 20,
+     paddingHorizontal: 20,
+     alignItems: 'center',
+     elevation: 8,
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 2 },
+     shadowOpacity: 0.25,
+     shadowRadius: 6,
+     zIndex: 1000,
+   },
+   colorGrid: {
+     alignItems: 'center',
+     justifyContent: 'center',
+   },
+   colorRow: {
+     flexDirection: 'row',
+     justifyContent: 'space-evenly',
+     alignItems: 'center',
+     marginBottom: 16,
+     width: 240,
+   },
+   colorRowLast: {
+     marginBottom: 0,
+   },
+   colorOption: {
+     width: 36,
+     height: 36,
+     borderRadius: 18,
+     justifyContent: 'center',
+     alignItems: 'center',
+     elevation: 2,
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 1 },
+     shadowOpacity: 0.2,
+     shadowRadius: 2,
+   },
+   colorOptionWhite: {
+     borderWidth: 1,
+     borderColor: '#e0e0e0',
+   },
+   colorOptionSelected: {
+     transform: [{ scale: 1.15 }],
+     elevation: 4,
+     shadowOpacity: 0.3,
+   },
+   colorCheckmark: {
+     position: 'absolute',
+     justifyContent: 'center',
+     alignItems: 'center',
+   },
+   colorCheckmarkText: {
+     fontSize: 14,
+     fontWeight: 'bold',
+   },
+   // Grade modal styles
+   gradeModalOverlay: {
+     flex: 1,
+     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+     justifyContent: 'center',
+     alignItems: 'center',
+   },
+   gradeModalContainer: {
+     backgroundColor: '#fff',
+     borderRadius: 16,
+     padding: 20,
+     marginHorizontal: 20,
+     width: '80%',
+     maxWidth: 300,
+     elevation: 8,
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 4 },
+     shadowOpacity: 0.3,
+     shadowRadius: 8,
+   },
+   gradeModalHeader: {
+     alignItems: 'center',
+     marginBottom: 15,
+   },
+   gradeModalTitle: {
+     fontSize: 18,
+     fontWeight: '600',
+     color: '#333',
+   },
+   gradeList: {
+     maxHeight: 350,
+   },
+   gradeOption: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     justifyContent: 'space-between',
+     padding: 15,
+     borderRadius: 8,
+     marginVertical: 2,
+   },
+   gradeOptionSelected: {
+     backgroundColor: '#f0f7ff',
+   },
+   gradeOptionText: {
+     fontSize: 16,
+     color: '#333',
+     fontWeight: '500',
+   },
+   gradeOptionTextSelected: {
+     color: THEME_COLORS.bluePrimary,
+   },
+   // Grade row styles
+   gradeRowContainer: {
+     flexDirection: 'row',
+     alignItems: 'flex-start',
+     justifyContent: 'space-between',
+     marginBottom: 15,
+     paddingHorizontal: 0,
+   },
+   gradeContainer: {
+     // Width will be set dynamically
+   },
+   gradeSpacer: {
+     width: 20,
+     flexShrink: 0,
+   },
+   // Shared row styles
+   sharedRowContainer: {
+     flexDirection: 'row',
+     alignItems: 'flex-start',
+     marginBottom: 15,
+   },
+   routeNameContainer: {
+     flex: 1,
+     marginRight: 15,
+   },
+   routeNameInput: {
+     height: 50,
+   },
+   routeColorContainer: {
+     alignItems: 'flex-end',
+   },
+   navButtonText: {
+     fontSize: 16,
+     fontWeight: '600',
+     color: '#333',
    },
  });  
