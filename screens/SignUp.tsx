@@ -259,74 +259,69 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin }:
                     <View style={styles.scrollContent}>
                         <Text style={styles.title}>Sign up</Text>
                         
-                                        {/* Name Input */}
+                        {/* Name Input */}
                 <View style={styles.inputContainer}>
-                    <View style={styles.labelContainer}>
-                        <FontAwesome6 name="user" size={16} color="#333" style={styles.labelIcon} />
-                        <Text style={styles.inputLabel}>Name</Text>
+                    <Text style={styles.inputLabel}>Name</Text>
+                    <View style={styles.inputWrapper}>
+                        <FontAwesome6 name="user" size={16} color={THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
+                        <TextInput
+                            style={styles.textInput}
+                            value={formData.name}
+                            onChangeText={(text) => handleInputChange('name', text)}
+                            placeholder="Your Name"
+                            placeholderTextColor="#999"
+                            autoCapitalize="words"
+                            autoCorrect={false}
+                        />
                     </View>
-                            <View style={styles.inputWrapper}>
-                                <TextInput
-                                    style={styles.textInput}
-                                    value={formData.name}
-                                    onChangeText={(text) => handleInputChange('name', text)}
-                                    placeholder=""
-                                    placeholderTextColor="#999"
-                                    autoCapitalize="words"
-                                    autoCorrect={false}
-                                />
-                            </View>
-                        </View>
+                </View>
 
-                                        {/* Email Input */}
+                        {/* Email Input */}
                 <View style={styles.inputContainer}>
-                    <View style={styles.labelContainer}>
-                        <FontAwesome6 name="envelope" size={16} color="#333" style={styles.labelIcon} />
-                        <Text style={styles.inputLabel}>Email</Text>
+                    <Text style={styles.inputLabel}>Email</Text>
+                    <View style={styles.inputWrapper}>
+                        <FontAwesome6 name="envelope" size={16} color={THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
+                        <TextInput
+                            style={styles.textInput}
+                            value={formData.email}
+                            onChangeText={(text) => handleInputChange('email', text)}
+                            placeholder="your@email.com"
+                            placeholderTextColor="#999"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                        />
                     </View>
-                            <View style={styles.inputWrapper}>
-                                <TextInput
-                                    style={styles.textInput}
-                                    value={formData.email}
-                                    onChangeText={(text) => handleInputChange('email', text)}
-                                    placeholder=""
-                                    placeholderTextColor="#999"
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                />
-                            </View>
-                        </View>
+                </View>
 
-                                        {/* Password Input */}
+                        {/* Password Input */}
                 <View style={styles.inputContainer}>
-                    <View style={styles.labelContainer}>
-                        <FontAwesome6 name="lock" size={16} color="#333" style={styles.labelIcon} />
-                        <Text style={styles.inputLabel}>Password</Text>
+                    <Text style={styles.inputLabel}>Password</Text>
+                    <View style={styles.inputWrapper}>
+                        <FontAwesome6 name="lock" size={16} color={THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
+                        <TextInput
+                            style={styles.textInput}
+                            value={formData.password}
+                            onChangeText={(text) => handleInputChange('password', text)}
+                            placeholder="Secret..."
+                            placeholderTextColor="#999"
+                            secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                        />
+                        <TouchableOpacity
+                            style={styles.eyeButton}
+                            onPress={() => setShowPassword(!showPassword)}
+                        >
+                            <FontAwesome6 
+                                name={showPassword ? "eye-slash" : "eye"} 
+                                size={16} 
+                                color={THEME_COLORS.bluePrimary} 
+                                solid
+                            />
+                        </TouchableOpacity>
                     </View>
-                            <View style={styles.inputWrapper}>
-                                <TextInput
-                                    style={styles.textInput}
-                                    value={formData.password}
-                                    onChangeText={(text) => handleInputChange('password', text)}
-                                    placeholder=""
-                                    placeholderTextColor="#999"
-                                    secureTextEntry={!showPassword}
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                />
-                                <TouchableOpacity
-                                    style={styles.eyeButton}
-                                    onPress={() => setShowPassword(!showPassword)}
-                                >
-                                    <FontAwesome6 
-                                        name={showPassword ? "eye-slash" : "eye"} 
-                                        size={16} 
-                                        color="#999" 
-                                    />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+                </View>
 
                         {/* Terms Checkbox */}
                         <TouchableOpacity
@@ -467,19 +462,6 @@ const styles = StyleSheet.create({
     inputContainer: {
         marginBottom: 20,
     },
-    labelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 6,
-    },
-    labelIcon: {
-        marginRight: 6,
-    },
-    inputLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#333',
-    },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -495,7 +477,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         color: '#000000',
-        fontWeight: '500',
+        fontWeight: '400',
     },
     eyeButton: {
         padding: 4,
@@ -635,5 +617,11 @@ const styles = StyleSheet.create({
         color: '#DC3545',
         textAlign: 'center',
         fontSize: 14,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#666',
+        marginBottom: 8,
     },
 }); 

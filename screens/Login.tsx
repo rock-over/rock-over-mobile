@@ -144,16 +144,14 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                 
                 {/* Email Input */}
                 <View style={styles.inputContainer}>
-                    <View style={styles.labelContainer}>
-                        <FontAwesome6 name="envelope" size={16} color="#333" style={styles.labelIcon} />
-                        <Text style={styles.inputLabel}>Email</Text>
-                    </View>
+                    <Text style={styles.inputLabel}>Email</Text>
                     <View style={styles.inputWrapper}>
+                        <FontAwesome6 name="envelope" size={16} color={THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
                         <TextInput
                             style={styles.textInput}
                             value={email}
                             onChangeText={setEmail}
-                            placeholder=""
+                            placeholder="your@email.com"
                             placeholderTextColor="#999"
                             keyboardType="email-address"
                             autoCapitalize="none"
@@ -164,16 +162,14 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
 
                 {/* Password Input */}
                 <View style={styles.inputContainer}>
-                    <View style={styles.labelContainer}>
-                        <FontAwesome6 name="lock" size={16} color="#333" style={styles.labelIcon} />
-                        <Text style={styles.inputLabel}>Password</Text>
-                    </View>
+                    <Text style={styles.inputLabel}>Password</Text>
                     <View style={styles.inputWrapper}>
+                        <FontAwesome6 name="lock" size={16} color={THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
                         <TextInput
                             style={styles.textInput}
                             value={password}
                             onChangeText={setPassword}
-                            placeholder=""
+                            placeholder="Secret..."
                             placeholderTextColor="#999"
                             secureTextEntry={!showPassword}
                             autoCapitalize="none"
@@ -186,7 +182,8 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                             <FontAwesome6 
                                 name={showPassword ? "eye-slash" : "eye"} 
                                 size={16} 
-                                color="#999" 
+                                color={THEME_COLORS.bluePrimary} 
+                                solid
                             />
                         </TouchableOpacity>
                     </View>
@@ -320,18 +317,11 @@ const styles = StyleSheet.create({
     inputContainer: {
         marginBottom: 20,
     },
-    labelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 6,
-    },
-    labelIcon: {
-        marginRight: 6,
-    },
     inputLabel: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
-        color: '#333',
+        color: '#666',
+        marginBottom: 8,
     },
     inputWrapper: {
         flexDirection: 'row',
@@ -348,7 +338,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         color: '#000000',
-        fontWeight: '500',
+        fontWeight: '400',
     },
     eyeButton: {
         padding: 4,
