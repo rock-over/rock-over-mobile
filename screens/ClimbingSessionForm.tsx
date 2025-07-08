@@ -36,7 +36,7 @@ interface ClimbingSessionFormProps {
 
 export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo }: ClimbingSessionFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 4;
+  const totalSteps = 5;
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showGradePicker, setShowGradePicker] = useState(false);
   const [showMovementModal, setShowMovementModal] = useState(false);
@@ -74,6 +74,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     // Campos condicionais
     climbingType: '',
     completion: '', // Novo campo para completed/attempt
+    image: null as string | null, // Novo campo para imagem
   });
 
   // Cores disponíveis para seleção (3 linhas de 5 cores cada)
@@ -323,6 +324,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
 
     return (
       <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
         <View style={styles.locationContainer}>
           <TouchableOpacity
             key={options[0].value}
@@ -431,8 +433,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       }
     };
 
+    // Retorna apenas o ScrollView; o contêiner externo é responsável pelo espaçamento
     return (
-      <View style={styles.fieldContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsContainer}>
           {options.map((option) => (
             <TouchableOpacity
@@ -452,7 +454,6 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
     );
   };
 
@@ -582,6 +583,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       comments: '',
       climbingType: '',
       completion: '',
+      image: null,
     });
     onClose();
   };
@@ -1070,7 +1072,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       }
     ];
 
-    return renderVisualSelectorCompact('Local', 'place', locationOptions);
+    return renderVisualSelectorCompact('Location', 'place', locationOptions);
   };
 
   const renderActivitySelector = () => {
@@ -1087,7 +1089,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       }
     ];
 
-    return renderVisualSelectorCompact('Atividade', 'activity', activityOptions);
+    return renderVisualSelectorCompact('Style', 'activity', activityOptions);
   };
 
   // Componente do slider nativo para dificuldade
@@ -1291,8 +1293,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             </Text>
             {renderDateTimePickerCompact('', 'when')}
             {renderLocationSelector()}
-            {/* Só mostra o seletor de atividade após selecionar Indoor/Outdoor */}
-            {formData.place && renderActivitySelector()}
+            {renderActivitySelector()}
           </View>
         );
 
@@ -1324,74 +1325,98 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
               </View>
               
               {/* Campo Grade - largura total */}
-              <View style={styles.fieldContainer}>
-                {renderDropdownPickerCompact('Grade', 'grade', filteredGradeOptions, showGradePicker, setShowGradePicker)}
-              </View>
-              
-              {/* Espaçamento após Grade */}
-              <View style={styles.sectionSpacer} />
+              {/* Usar apenas um fieldContainer (interno à função) para evitar espaçamento duplicado */}
+              {renderDropdownPickerCompact('Grade', 'grade', filteredGradeOptions, showGradePicker, setShowGradePicker)}
               
               {/* Campo Completion */}
+              {/* Label e opções em contêineres separados para manter apenas um fieldContainer */}
               <View style={styles.fieldContainer}>
                 <Text style={styles.label}>Completion</Text>
                 {renderPickerNoTitleCompact('completion', ['Completed', 'Attempt'])}
               </View>
               
-              {/* Campo Climbing Type - apenas para Climbing, não para Bouldering */}
-              {formData.activity === 'Climbing' && 
-                <View style={[styles.fieldContainer, { marginTop: 12 }]}>
-                  <Text style={styles.label}>Climbing Type</Text>
-                  {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
-                </View>
-              }
               
-              {/* Espaçamento menor antes da dificuldade */}
-              <View style={styles.smallSectionSpacer} />
-              
-              {/* Campos do antigo passo 3 */}
-              {renderDifficultySlider()}
-              {renderFallsCounter()}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Ascent Type</Text>
-                {renderPickerNoTitleCompact('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
-              </View>
+              {/* Route Rating */}
+              {renderStarRating('Route Rating', 'routeRating')}
             </View>
           </ScrollView>
         );
 
       case 3:
         return (
-          <View>
-            <Text style={styles.modalTitle}>Keep track of your moves 🧗‍♀️</Text>
-            <Text style={styles.modalSubtitle}>Select the moves on this route</Text>
-            {renderTagSelector('Movement', 'movement', movementOptions, showMovementModal, setShowMovementModal)}
-            {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
-            {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
-          </View>
+          <ScrollView style={styles.stepScrollView} showsVerticalScrollIndicator={false}>
+            <View>
+              <Text style={styles.modalTitle}>How did it go? 🎯</Text>
+              <Text style={styles.modalSubtitle}>Tell us about your climbing performance</Text>
+              
+              {/* Difficulty Slider */}
+              {renderDifficultySlider()}
+              
+              {/* How did it feel */}
+              {renderFeelingSelector()}
+              
+              {/* Falls Counter */}
+              {renderFallsCounter()}
+              
+              {/* Ascent Type */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Ascent Type</Text>
+                {renderPickerNoTitleCompact('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
+              </View>
+              
+              {/* Campo Climbing Type - apenas para Climbing, não para Bouldering */}
+              {formData.activity === 'Climbing' && 
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.label}>Top / Lead</Text>
+                  {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
+                </View>
+              }
+            </View>
+          </ScrollView>
         );
 
       case 4:
         return (
-          <View>
-            <Text style={styles.modalTitle}>How was your experience? ⭐</Text>
-            <Text style={styles.modalSubtitle}>Share your thoughts and save insights for your future climbs</Text>
-            
-            {renderStarRating('Route Rating', 'routeRating')}
-            {renderFeelingSelector()}
-            
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Comments/Tips</Text>
-              <TextInput
-                style={[styles.textInput, styles.textArea]}
-                value={formData.comments}
-                onChangeText={(value) => updateField('comments', value)}
-                placeholder="Add some notes or tips for your future self"
-                placeholderTextColor="#999"
-                multiline
-                numberOfLines={4}
-                selectionColor="#333"
-              />
+          <ScrollView style={styles.stepScrollView} showsVerticalScrollIndicator={false}>
+            <View>
+              <Text style={styles.modalTitle}>Capture the moment 📸</Text>
+              <Text style={styles.modalSubtitle}>Add a photo and your thoughts about this climb</Text>
+              
+              {/* Image Field - placeholder for now */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Image</Text>
+                <TouchableOpacity style={styles.imageUploadButton}>
+                  <FontAwesome6 name="camera" size={24} color="#666" />
+                  <Text style={styles.imageUploadText}>Add a photo</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {/* Comments/Tips */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Comments/Tips</Text>
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  value={formData.comments}
+                  onChangeText={(value) => updateField('comments', value)}
+                  placeholder="Add some notes or tips for your future self"
+                  placeholderTextColor="#999"
+                  multiline
+                  numberOfLines={4}
+                  selectionColor="#333"
+                />
+              </View>
             </View>
+          </ScrollView>
+        );
+
+      case 5:
+        return (
+          <View>
+            <Text style={styles.modalTitle}>Keep track of your moves 🧗‍♀️</Text>
+            <Text style={styles.modalSubtitle}>Select the moves you used on this route</Text>
+            {renderTagSelector('Movement', 'movement', movementOptions, showMovementModal, setShowMovementModal)}
+            {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
+            {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
           </View>
         );
 
@@ -1600,7 +1625,7 @@ const styles = StyleSheet.create({
   },
   locationContainer: {
     flexDirection: 'row',
-    marginTop: 15,
+    marginTop: 6,
   },
   buttonSpacer: {
     width: 16,
@@ -1638,7 +1663,7 @@ const styles = StyleSheet.create({
     color: THEME_COLORS.bluePrimary,
   },
   fieldContainer: {
-    marginBottom: 0,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
@@ -1691,7 +1716,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sliderContainerFullWidth: {
-    padding: 15,
+    paddingHorizontal: 15,
+    paddingVertical: 0,
   },
   sliderLabelsContainer: {
     flexDirection: 'row',
@@ -1728,7 +1754,7 @@ const styles = StyleSheet.create({
      alignItems: 'center',
      justifyContent: 'center',
      paddingHorizontal: 15,
-     paddingVertical: 12,
+     paddingVertical: 0,
    },
    counterButton: {
      width: 30,
@@ -1764,7 +1790,7 @@ const styles = StyleSheet.create({
      flexDirection: 'row',
      flexWrap: 'wrap',
      alignItems: 'center',
-     marginTop: 5,
+     marginTop: 0,
    },
    tagChip: {
      flexDirection: 'row',
@@ -1785,7 +1811,7 @@ const styles = StyleSheet.create({
      marginLeft: 6,
    },
    fieldContainerWithTags: {
-     marginBottom: 6,
+     marginBottom: 20,
    },
    addTagButton: {
      borderColor: THEME_COLORS.bluePrimary,
@@ -1876,8 +1902,6 @@ const styles = StyleSheet.create({
    starsContainer: {
      flexDirection: 'row',
      alignItems: 'center',
-     marginTop: 8,
-     marginBottom: 8,
    },
    starButton: {
      marginRight: 8,
@@ -1887,7 +1911,6 @@ const styles = StyleSheet.create({
    feelingsContainer: {
      flexDirection: 'row',
      justifyContent: 'space-between',
-     marginTop: 8,
    },
    feelingButton: {
      flex: 1,
@@ -2128,7 +2151,6 @@ const styles = StyleSheet.create({
    sharedRowContainer: {
      flexDirection: 'row',
      alignItems: 'flex-start',
-     marginBottom: 15,
    },
    routeNameContainer: {
      flex: 1,
@@ -2157,5 +2179,20 @@ const styles = StyleSheet.create({
    smallSectionSpacer: {
      height: 8,
      marginBottom: 5,
+   },
+   imageUploadButton: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     justifyContent: 'center',
+     backgroundColor: THEME_COLORS.background.input,
+     borderRadius: 12,
+     paddingVertical: 15,
+     marginTop: 0,
+   },
+   imageUploadText: {
+     color: THEME_COLORS.bluePrimary,
+     fontSize: 16,
+     fontWeight: '500',
+     marginLeft: 10,
    },
  });  
