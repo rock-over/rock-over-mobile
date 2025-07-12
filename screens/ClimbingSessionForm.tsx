@@ -108,6 +108,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   const availableWidth = screenWidth - (2 * horizontalPadding) - gradeSpacing;
   const gradeFieldWidth = availableWidth / 2;
 
+  // Main form state (declared early so it can be used by auto-advance logic below)
   const [formData, setFormData] = useState({
     place: '',
     when: new Date().toISOString(), // Data e hora atual (obrigatória)
@@ -124,10 +125,9 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     routeRating: 0,
     howItFelt: '',
     comments: '',
-    // Campos condicionais
     climbingType: '',
-    completion: '', // Novo campo para completed/attempt
-    image: null as string | null, // Novo campo para imagem
+    completion: '',
+    image: null as string | null,
   });
 
   // Cores disponíveis para seleção (3 linhas de 5 cores cada)
@@ -155,6 +155,23 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   const updateArrayField = (field: string, value: string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  // -------- Auto-advance logic --------
+  // Track previous validity by step to detect transitions from invalid ➜ valid
+  const stepValidityRef = useRef<Record<number, boolean>>({});
+
+  React.useEffect(() => {
+    const wasValid = stepValidityRef.current[currentStep] || false;
+    const isValidNow = isStepValid(currentStep);
+
+    // Store the latest validity status for this step
+    stepValidityRef.current[currentStep] = isValidNow;
+
+    // Auto-advance only when: (1) step is 1 or 2, (2) it has just become valid
+    if (currentStep <= 2 && !wasValid && isValidNow) {
+      handleNext();
+    }
+  }, [formData, currentStep]);
 
   // Function to filter grade options based on user's preferred grading system
   const getFilteredGradeOptions = (gradingSystem?: string): string[] => {
