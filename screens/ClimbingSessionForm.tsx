@@ -609,6 +609,39 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     onClose();
   };
 
+  /* Render navigation buttons inside each step */
+  const renderStepButtons = (step: number) => {
+    const isLast = step === totalSteps;
+    return (
+      <View style={styles.stepActionsContainer}>
+        {/* Previous */}
+        {step > 1 && (
+          <TouchableOpacity
+            style={styles.circleNavButton}
+            onPress={handlePrevious}
+          >
+            <FontAwesome6 name="arrow-up" size={18} color="#fff" />
+          </TouchableOpacity>
+        )}
+        {/* Spacer */}
+        {step > 1 && !isLast && <View style={{ width: 12 }} />}
+        {/* Next or Save */}
+        {!isLast ? (
+          <TouchableOpacity
+            style={styles.circleNavButton}
+            onPress={handleNext}
+          >
+            <FontAwesome6 name="arrow-down" size={18} color="#fff" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            <Text style={styles.saveButtonText}>Save</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
   const renderColorSelector = () => {
     return (
       <View style={styles.fieldContainer}>
@@ -1315,6 +1348,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             {renderDateTimePickerCompact('', 'when')}
             {renderLocationSelector()}
             {renderActivitySelector()}
+            {renderStepButtons(1)}
           </View>
         );
 
@@ -1359,6 +1393,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
               
               {/* Route Rating */}
               {renderStarRating('Route Rating', 'routeRating')}
+              {renderStepButtons(2)}
             </View>
           </ScrollView>
         );
@@ -1392,6 +1427,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
                   {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
                 </View>
               }
+              {renderStepButtons(3)}
             </View>
           </ScrollView>
         );
@@ -1426,6 +1462,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
                   selectionColor="#333"
                 />
               </View>
+              {renderStepButtons(4)}
             </View>
           </ScrollView>
         );
@@ -1438,6 +1475,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             {renderTagSelector('Movement', 'movement', movementOptions, showMovementModal, setShowMovementModal)}
             {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
             {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
+            {renderStepButtons(5)}
           </View>
         );
 
@@ -1455,7 +1493,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <FontAwesome6 name="chevron-left" size={20} color="#000" />
+              <FontAwesome6 name="xmark" size={22} color="#000" />
             </TouchableOpacity>
             <View style={styles.headerRight} />
           </View>
@@ -1486,35 +1524,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             </ScrollView>
           </View>
 
-          {/* Navigation */}
-          <View style={styles.navigationContainer}>
-            <TouchableOpacity 
-              style={[
-                styles.navButton, 
-                currentStep === 1 ? styles.cancelButton : styles.previousButton
-              ]}
-              onPress={currentStep === 1 ? handleClose : handlePrevious}
-            >
-              <Text style={[
-                styles.navButtonText, 
-                currentStep === 1 ? styles.cancelButtonText : styles.previousButtonText
-              ]}>
-                {currentStep === 1 ? 'Cancel' : 'Previous'}
-              </Text>
-            </TouchableOpacity>
 
-            <View style={styles.buttonSpacer} />
-
-            {currentStep < totalSteps ? (
-              <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-                <Text style={styles.nextButtonText}>Next</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-            )}
-          </View>
         </SafeAreaView>
       </Modal>
       
@@ -1568,46 +1578,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  navButton: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    minHeight: 44,
-  },
-  previousButton: {
-    backgroundColor: THEME_COLORS.softRed,
-    borderColor: THEME_COLORS.softRed,
-  },
-  previousButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  cancelButton: {
-    backgroundColor: THEME_COLORS.softRed,
-    borderColor: THEME_COLORS.softRed,
-  },
-  cancelButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  nextButton: {
-    flex: 1,
+  circleNavButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: THEME_COLORS.bluePrimary,
-    paddingVertical: 12,
-    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
   },
-  nextButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+  circleNavButtonDisabled: {
+    backgroundColor: '#e0e0e0',
   },
   saveButton: {
     flex: 1,
@@ -2235,4 +2215,10 @@ const styles = StyleSheet.create({
      fontWeight: '500',
      marginLeft: 10,
    },
+   stepActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 50,
+  },
  });  
