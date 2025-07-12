@@ -3,19 +3,19 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
 import React, { useRef, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { THEME_COLORS } from '../constants/Theme';
 
@@ -47,6 +47,48 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   const [tempMovementTags, setTempMovementTags] = useState<string[]>([]);
   const [tempGripTags, setTempGripTags] = useState<string[]>([]);
   const [tempFootworkTags, setTempFootworkTags] = useState<string[]>([]);
+
+  // Validation/error helpers
+  const [showErrorsStep1, setShowErrorsStep1] = useState(false);
+  const [showErrorsStep2, setShowErrorsStep2] = useState(false);
+
+  // Snackbar for error messages
+  const [snackMessage, setSnackMessage] = useState<string>('');
+  const [showSnack, setShowSnack] = useState(false);
+
+  const triggerSnack = (msg: string) => {
+    setSnackMessage(msg);
+    setShowSnack(true);
+    setTimeout(() => setShowSnack(false), 3000);
+  };
+
+  // Reset error flags when modal becomes visible
+  React.useEffect(() => {
+    if (visible) {
+      setShowErrorsStep1(false);
+      setShowErrorsStep2(false);
+    }
+  }, [visible]);
+
+  const isStepValid = (step: number): boolean => {
+    if (step === 1) {
+      return (
+        formData.when !== '' &&
+        formData.place.trim() !== '' &&
+        formData.activity.trim() !== ''
+      );
+    }
+    if (step === 2) {
+      return (
+        formData.routeNumber.trim() !== '' &&
+        formData.grade.trim() !== '' &&
+        formData.completion.trim() !== '' &&
+        formData.colour.trim() !== '' &&
+        formData.routeRating !== 0
+      );
+    }
+    return true; // Steps 3-5 are optional
+  };
 
   // Ref and height for animated step scrolling
   const scrollViewRef = useRef<ScrollView | null>(null);
@@ -170,37 +212,50 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   const filteredGradeOptions = getFilteredGradeOptions(userInfo?.gradingSystem);
 
   // Renderizar avaliação por estrelas
-  const renderStarRating = (title: string, field: string) => {
+  const renderStarRating = (title: string, field: string, showErrorFlag?: boolean) => {
     const rating = formData[field as keyof typeof formData] as number || 0;
     
     return (
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>{title}</Text>
         <View style={styles.starsContainer}>
-          {[1, 2, 3, 4, 5].map((star) => (
-            <TouchableOpacity
-              key={star}
-              onPress={() => updateNumericField(field, star)}
-              style={styles.starButton}
-            >
-              <FontAwesome6
-                name="star"
-                size={28}
-                color={star <= rating ? "#FFD700" : "#E0E0E0"}
-                solid={star <= rating}
-              />
-            </TouchableOpacity>
-          ))}
+          {[1, 2, 3, 4, 5].map((star) => {
+            const isError = showErrorFlag && rating === 0;
+            const filled = star <= rating;
+            return (
+              <TouchableOpacity
+                key={star}
+                onPress={() => updateNumericField(field, star)}
+                style={styles.starButton}
+              >
+                {isError ? (
+                  <FontAwesome6
+                    name="star"
+                    size={28}
+                    color="#ff0000"
+                  />
+                ) : (
+                  <FontAwesome6
+                    name="star"
+                    size={28}
+                    color={filled ? "#FFD700" : "#E0E0E0"}
+                    solid={filled}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
     );
   };
 
   // Versões compactas para passos 1 e 2
-  const renderDateTimePickerCompact = (title: string, field: string) => {
+  const renderDateTimePickerCompact = (title: string, field: string, showErrorFlag?: boolean) => {
     const fieldValue = formData[field as keyof typeof formData] as string;
     const currentDate = fieldValue ? new Date(fieldValue) : new Date();
     const isEmpty = !fieldValue || fieldValue === '';
+    const showError = showErrorFlag && isEmpty;
     
     const formatDateTime = (date: Date) => {
       const day = date.getDate().toString().padStart(2, '0');
@@ -248,7 +303,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       <View style={styles.fieldContainer}>
         <View style={styles.dateTimePickerContainer}>
           <TouchableOpacity
-            style={[styles.dateTimeButton, isEmpty && styles.dateTimeButtonError]}
+            style={[styles.dateTimeButton, showError && styles.dateTimeButtonError]}
             onPress={showDateTimePicker}
           >
             <FontAwesome6 
@@ -257,7 +312,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
               color={THEME_COLORS.bluePrimary}
               style={styles.dateIcon}
             />
-            <Text style={[styles.dateTimeButtonText, isEmpty && styles.dateTimeButtonTextError]}>
+            <Text style={[styles.dateTimeButtonText, showError && styles.dateTimeButtonTextError]}>
               {isEmpty ? 'Select date and time' : formatDateTime(currentDate)}
             </Text>
             <FontAwesome6 
@@ -268,7 +323,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
           </TouchableOpacity>
         </View>
         
-        {isEmpty && (
+        {showError && (
           <Text style={styles.errorText}>This field is required</Text>
         )}
         
@@ -323,7 +378,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   const renderVisualSelectorCompact = (
     title: string, 
     field: string, 
-    options: Array<{value: string, label: string, imageUrl: any}>
+    options: Array<{value: string, label: string, imageUrl: any}>,
+    showErrorFlag?: boolean
   ) => {
     const handleOptionPress = (value: string) => {
       if (formData[field as keyof typeof formData] === value) {
@@ -341,7 +397,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             key={options[0].value}
             style={[
               styles.locationButton,
-              formData[field as keyof typeof formData] === options[0].value && styles.locationButtonSelected
+              formData[field as keyof typeof formData] === options[0].value && styles.locationButtonSelected,
+              showErrorFlag && styles.locationButtonError
             ]}
             onPress={() => handleOptionPress(options[0].value)}
           >
@@ -367,7 +424,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             key={options[1].value}
             style={[
               styles.locationButton,
-              formData[field as keyof typeof formData] === options[1].value && styles.locationButtonSelected
+              formData[field as keyof typeof formData] === options[1].value && styles.locationButtonSelected,
+              showErrorFlag && styles.locationButtonError
             ]}
             onPress={() => handleOptionPress(options[1].value)}
           >
@@ -411,14 +469,14 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     );
   };
 
-  const renderDropdownPickerCompact = (title: string, field: string, options: string[], showPicker: boolean, setShowPicker: (show: boolean) => void) => {
+  const renderDropdownPickerCompact = (title: string, field: string, options: string[], showPicker: boolean, setShowPicker: (show: boolean) => void, showErrorFlag?: boolean) => {
     const selectedValue = formData[field as keyof typeof formData] || '';
     
     return (
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>{title}</Text>
         <TouchableOpacity
-          style={styles.dropdownButton}
+          style={[styles.dropdownButton, showErrorFlag && selectedValue==='' && styles.dropdownButtonError]}
           onPress={() => setShowPicker(true)}
         >
           <Text style={[styles.dropdownButtonText, !selectedValue && styles.dropdownPlaceholderText]}>
@@ -435,7 +493,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     );
   };
 
-  const renderPickerNoTitleCompact = (field: string, options: string[]) => {
+  const renderPickerNoTitleCompact = (field: string, options: string[], showErrorFlag?: boolean) => {
     const handleOptionPress = (value: string) => {
       if (formData[field as keyof typeof formData] === value) {
         updateField(field, '');
@@ -452,7 +510,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
               key={option}
               style={[
                 styles.optionButton,
-                formData[field as keyof typeof formData] === option && styles.optionButtonSelected
+                formData[field as keyof typeof formData] === option && styles.optionButtonSelected,
+                showErrorFlag && (formData[field as keyof typeof formData] as string)==='' && styles.optionButtonError
               ]}
               onPress={() => handleOptionPress(option)}
             >
@@ -586,6 +645,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   const handleClose = () => {
     // Reset form and close modal
     setCurrentStep(1);
+    setShowErrorsStep1(false);
+    setShowErrorsStep2(false);
     setFormData({
       place: '',
       when: new Date().toISOString(),
@@ -627,13 +688,26 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
         {step > 1 && !isLast && <View style={{ width: 12 }} />}
         {/* Next or Save */}
         {!isLast ? (
-          <TouchableOpacity
-            style={styles.circleNavButton}
-            onPress={handleNext}
-          >
-            <FontAwesome6 name="arrow-down" size={18} color="#fff" />
-          </TouchableOpacity>
-        ) : (
+          (()=>{
+            const enabled = isStepValid(step);
+            return (
+              <TouchableOpacity
+                style={[styles.circleNavButton, !enabled && styles.circleNavButtonDisabled]}
+                onPress={()=>{
+                  if(enabled){
+                    handleNext();
+                  }else{
+                    if(step===1) setShowErrorsStep1(true);
+                    if(step===2) setShowErrorsStep2(true);
+                    triggerSnack('Please fill in all required fields before continuing.');
+                  }
+                }}
+              >
+                <FontAwesome6 name="arrow-down" size={18} color={enabled? '#fff':'#999'} />
+              </TouchableOpacity>
+            );
+          })()
+            ) : (
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Text style={styles.saveButtonText}>Save</Text>
           </TouchableOpacity>
@@ -1126,7 +1200,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       }
     ];
 
-    return renderVisualSelectorCompact('Location', 'place', locationOptions);
+    const showErr = showErrorsStep1 && formData.place.trim()==='';
+    return renderVisualSelectorCompact('Location', 'place', locationOptions, showErr);
   };
 
   const renderActivitySelector = () => {
@@ -1143,7 +1218,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       }
     ];
 
-    return renderVisualSelectorCompact('Style', 'activity', activityOptions);
+    const showErr = showErrorsStep1 && formData.activity.trim()==='';
+    return renderVisualSelectorCompact('Style', 'activity', activityOptions, showErr);
   };
 
   // Componente do slider nativo para dificuldade
@@ -1345,7 +1421,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
             <Text style={styles.modalSubtitle}>
               Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
             </Text>
-            {renderDateTimePickerCompact('', 'when')}
+            {renderDateTimePickerCompact('', 'when', showErrorsStep1)}
             {renderLocationSelector()}
             {renderActivitySelector()}
             {renderStepButtons(1)}
@@ -1365,7 +1441,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
                   <View style={styles.fieldContainer}>
                     <Text style={styles.label}>Route number</Text>
                     <TextInput
-                      style={[styles.textInput, styles.routeNameInput]}
+                      style={[styles.textInput, styles.routeNameInput, showErrorsStep2 && formData.routeNumber.trim()==='' && styles.textInputError]}
                       value={formData.routeNumber}
                       onChangeText={(value) => updateField('routeNumber', value)}
                       placeholder="Add number"
@@ -1381,18 +1457,18 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
               
               {/* Campo Grade - largura total */}
               {/* Usar apenas um fieldContainer (interno à função) para evitar espaçamento duplicado */}
-              {renderDropdownPickerCompact('Grade', 'grade', filteredGradeOptions, showGradePicker, setShowGradePicker)}
+              {renderDropdownPickerCompact('Grade', 'grade', filteredGradeOptions, showGradePicker, setShowGradePicker, showErrorsStep2)}
               
               {/* Campo Completion */}
               {/* Label e opções em contêineres separados para manter apenas um fieldContainer */}
               <View style={styles.fieldContainer}>
                 <Text style={styles.label}>Completion</Text>
-                {renderPickerNoTitleCompact('completion', ['Completed', 'Attempt'])}
+                {renderPickerNoTitleCompact('completion', ['Completed', 'Attempt'], showErrorsStep2)}
               </View>
               
               
               {/* Route Rating */}
-              {renderStarRating('Route Rating', 'routeRating')}
+              {renderStarRating('Route Rating', 'routeRating', showErrorsStep2)}
               {renderStepButtons(2)}
             </View>
           </ScrollView>
@@ -1526,6 +1602,13 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
 
 
         </SafeAreaView>
+        {showSnack && (
+          <TouchableOpacity style={styles.snackbarContainer} activeOpacity={0.8} onPress={()=>setShowSnack(false)}>
+            <FontAwesome6 name="circle-exclamation" size={18} color="#ff4d4d" style={{marginRight:8}} />
+            <Text style={[styles.snackbarText,{flex:1}]}>{snackMessage}</Text>
+            <FontAwesome6 name="xmark" size={16} color="#fff" />
+          </TouchableOpacity>
+        )}
       </Modal>
       
       {/* Modal do Seletor de Cores */}
@@ -1693,6 +1776,8 @@ const styles = StyleSheet.create({
   },
   textInputError: {
     borderColor: '#ff0000',
+    backgroundColor: '#fff5f5',
+    borderWidth: 2,
   },
   errorText: {
     color: '#ff0000',
@@ -2037,6 +2122,11 @@ const styles = StyleSheet.create({
    dropdownIcon: {
      marginLeft: 0,
    },
+   errorTextGeneral: {
+    color: '#ff0000',
+    textAlign: 'right',
+    marginTop: 4,
+  },
    // Color modal styles
    colorModalOverlay: {
      flex: 1,
@@ -2220,5 +2310,43 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     marginTop: 50,
+  },
+  snackbarContainer:{
+    position:'absolute',
+    bottom:30,
+    left:20,
+    right:20,
+    backgroundColor:'#333',
+    paddingVertical:12,
+    paddingHorizontal:16,
+    borderRadius:8,
+    opacity:0.9,
+    flexDirection:'row',
+    alignItems:'center',
+  },
+  snackbarText:{
+    color:'#fff',
+    fontSize:14,
+    flexShrink:1,
+    flexWrap:'wrap',
+  },
+  locationButtonError:{
+    borderColor:'#ff0000',
+    backgroundColor:'#fff5f5',
+  },
+  dropdownButtonError:{
+    borderColor:'#ff0000',
+    backgroundColor:'#fff5f5',
+    borderWidth:2,
+  },
+  optionButtonError: {
+    borderColor: '#ff0000',
+    backgroundColor: '#fff5f5',
+    borderWidth: 2,
+  },
+  starIconAbsolute:{
+    position:'absolute',
+    top:0,
+    left:0,
   },
  });  
