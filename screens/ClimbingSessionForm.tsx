@@ -1,21 +1,21 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  Image,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Dimensions,
+    Image,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { THEME_COLORS } from '../constants/Theme';
 
@@ -47,6 +47,17 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   const [tempMovementTags, setTempMovementTags] = useState<string[]>([]);
   const [tempGripTags, setTempGripTags] = useState<string[]>([]);
   const [tempFootworkTags, setTempFootworkTags] = useState<string[]>([]);
+
+  // Ref and height for animated step scrolling
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  // Ensure correct offset once content height is measured
+  React.useEffect(() => {
+    if (contentHeight) {
+      scrollToStep(currentStep);
+    }
+  }, [contentHeight]);
 
   // Cálculo da largura dos campos Grade baseado na fórmula:
   // padding_esquerda + largura_campo + 20px + largura_campo + padding_direita = largura_total
@@ -529,15 +540,25 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     return lightColors.includes(backgroundColor) ? '#333' : '#fff';
   };
 
+  const scrollToStep = (step: number) => {
+    if (scrollViewRef.current && contentHeight) {
+      scrollViewRef.current.scrollTo({ y: (step - 1) * contentHeight, animated: true });
+    }
+  };
+
   const handleNext = () => {
     if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
+      const newStep = currentStep + 1;
+      setCurrentStep(newStep);
+      scrollToStep(newStep);
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      const newStep = currentStep - 1;
+      setCurrentStep(newStep);
+      scrollToStep(newStep);
     }
   };
 
@@ -1282,8 +1303,8 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     );
   };
 
-  const renderStep = () => {
-    switch (currentStep) {
+  const renderStepContent = (step: number) => {
+    switch (step) {
       case 1:
         return (
           <View>
@@ -1440,11 +1461,30 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
           </View>
 
           {/* Content */}
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            <View style={styles.contentContainer}>
-              {renderStep()}
-            </View>
-          </ScrollView>
+          <View
+            style={styles.content}
+            onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}
+          >
+            <ScrollView
+              ref={scrollViewRef}
+              showsVerticalScrollIndicator={false}
+              scrollEnabled={false}
+              pagingEnabled
+            >
+              {[1, 2, 3, 4, 5].map((step) => (
+                <View
+                  key={step}
+                  style={{
+                    width: '100%',
+                    height: contentHeight || 1,
+                    paddingHorizontal: 10,
+                  }}
+                >
+                  {renderStepContent(step)}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
 
           {/* Navigation */}
           <View style={styles.navigationContainer}>
