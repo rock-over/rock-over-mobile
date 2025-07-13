@@ -14,9 +14,10 @@ interface SignUpProps {
     onSignUpSuccess?: (user: any) => void;
     onGoBack?: () => void;
     onNavigateToLogin?: () => void;
+    onNavigateToVerify?: (data: { email: string; password: string; name: string; gradingSystem: string }) => void;
 }
 
-export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin }: SignUpProps) {
+export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, onNavigateToVerify }: SignUpProps) {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -141,25 +142,13 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin }:
                 return;
             }
 
-            const newUser = {
-                id: user.id,
-                name: formData.name,
-                email: user.email,
-                photo: null,
-                profilePhoto: 'illustration_1',
-                gradingSystem: formData.gradingSystem || 'yds'
-            };
-
-            Alert.alert(
-                'Success!',
-                'Account created successfully!',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => onSignUpSuccess?.(newUser)
-                    }
-                ]
-            );
+            // Pass data to verification flow so user can enter OTP code
+            onNavigateToVerify?.({
+                email: formData.email.trim(),
+                password: formData.password,
+                name: formData.name.trim(),
+                gradingSystem: formData.gradingSystem || 'yds',
+            });
 
         } catch (error) {
             console.error('[SignUp] Exception', error);

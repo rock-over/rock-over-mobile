@@ -3,9 +3,10 @@ import { BackHandler } from 'react-native';
 import Login from './Login';
 import ProfileSetup from './ProfileSetup';
 import SignUp from './SignUp';
+import VerifyEmail from './VerifyEmail';
 import Welcome from './Welcome';
 
-type AuthFlowScreen = 'welcome' | 'login' | 'signup' | 'profile';
+type AuthFlowScreen = 'welcome' | 'login' | 'signup' | 'verify' | 'profile';
 
 interface AuthFlowProps {
     onAuthSuccess?: (user: any) => void;
@@ -14,11 +15,12 @@ interface AuthFlowProps {
 export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
     const [currentScreen, setCurrentScreen] = useState<AuthFlowScreen>('welcome');
     const [tempUser, setTempUser] = useState<any>(null);
+    const [signUpInfo, setSignUpInfo] = useState<{ email: string; password: string; name: string; gradingSystem: string } | null>(null);
 
     // Handle native back button
     useEffect(() => {
         const backAction = () => {
-            if (currentScreen === 'login' || currentScreen === 'signup') {
+            if (currentScreen === 'login' || currentScreen === 'signup' || currentScreen === 'verify') {
                 setCurrentScreen('welcome');
                 return true; // Prevent default behavior (closing app)
             } else if (currentScreen === 'profile') {
@@ -66,6 +68,17 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
         setCurrentScreen('profile');
     };
 
+    const handleNavigateToVerify = (info: { email: string; password: string; name: string; gradingSystem: string }) => {
+        setSignUpInfo(info);
+        setCurrentScreen('verify');
+    };
+
+    const handleVerificationSuccess = (user: any) => {
+        // Após verificação bem-sucedida, seguir para profile
+        setTempUser(user);
+        setCurrentScreen('profile');
+    };
+
     const handleProfileComplete = (profileData: { photoUri: string; gradingSystem: string }) => {
         // Combinar dados do usuário temporário com dados do perfil
         const finalUser = {
@@ -109,6 +122,16 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
                 <SignUp
                     onSignUpSuccess={handleSignUpSuccess}
                     onNavigateToLogin={handleNavigateToLogin}
+                    onGoBack={handleGoBack}
+                    onNavigateToVerify={handleNavigateToVerify}
+                />
+            );
+        case 'verify':
+            // signUpInfo should be non-null here
+            return (
+                <VerifyEmail
+                    info={signUpInfo!}
+                    onSuccess={handleVerificationSuccess}
                     onGoBack={handleGoBack}
                 />
             );

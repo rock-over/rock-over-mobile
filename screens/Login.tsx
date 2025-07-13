@@ -45,7 +45,15 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
         try {
             const { success, user, error } = await signInEmail(email, password);
             if (!success || !user) {
-                Alert.alert('Error', error || 'Invalid email or password');
+                const lowerErr = (error || '').toLowerCase();
+                if (lowerErr.includes('confirm') || lowerErr.includes('verify')) {
+                    Alert.alert(
+                        'Email not verified',
+                        'Please check your inbox and click the confirmation link before logging in.',
+                    );
+                } else {
+                    Alert.alert('Error', error || 'Invalid email or password');
+                }
                 return;
             }
 
