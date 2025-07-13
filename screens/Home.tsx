@@ -1,11 +1,11 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, Image, Modal, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../constants/Theme';
 import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
-import ClimbingSessionForm from './ClimbingSessionForm';
 import SessionDetails from './SessionDetails';
 
 interface HomeProps {
@@ -20,7 +20,7 @@ interface HomeProps {
 
 export default function Home({ onLogout, userInfo }: HomeProps) {
   const [sessions, setSessions] = useState<ClimbingSession[]>([]);
-  const [showForm, setShowForm] = useState(false);
+  const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<ClimbingSession | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -70,7 +70,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
       const newSession = await climbingSessionService.createSession(sessionWithUser);
       setSessions(prev => [newSession, ...prev]);
-      setShowForm(false);
+      // form screen already closed via navigation.goBack()
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Erro ao salvar sessão:', error);
@@ -80,7 +80,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
   const handleAddAnotherLog = () => {
     setShowSuccessModal(false);
-    setShowForm(true);
+    navigation.navigate('ClimbingSessionForm', { userInfo, onSave: handleSaveSession });
   };
 
   const handleBackToHome = () => {
@@ -442,18 +442,12 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       {/* Floating Action Button */}
       <TouchableOpacity 
         style={styles.floatingButton} 
-        onPress={() => setShowForm(true)}
+        onPress={() => navigation.navigate('ClimbingSessionForm', { userInfo, onSave: handleSaveSession })}
       >
         <FontAwesome6 name="plus" size={20} color="#fff" />
       </TouchableOpacity>
 
-      {/* Formulário Modal */}
-      <ClimbingSessionForm
-        visible={showForm}
-        onClose={() => setShowForm(false)}
-        onSave={handleSaveSession}
-        userInfo={userInfo}
-      />
+      {/* Form screen is now navigated via React Navigation */}
 
       {/* Success Modal */}
       {renderSuccessModal()}

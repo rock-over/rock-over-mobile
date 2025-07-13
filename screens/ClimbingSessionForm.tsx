@@ -4,6 +4,7 @@ import Slider from '@react-native-community/slider';
 import React, { useRef, useState } from 'react';
 import {
   Alert,
+  BackHandler,
   Dimensions,
   Image,
   Modal,
@@ -22,19 +23,11 @@ import { THEME_COLORS } from '../constants/Theme';
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
 interface ClimbingSessionFormProps {
-  visible: boolean;
-  onClose: () => void;
-  onSave: (sessionData: any) => void;
-  userInfo?: {
-    name: string | null;
-    email: string;
-    photo: string | null;
-    profilePhoto?: string;
-    gradingSystem?: string;
-  } | null;
+  navigation: any;
+  route: any;
 }
 
-export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo }: ClimbingSessionFormProps) {
+export default function ClimbingSessionForm({ navigation, route }: ClimbingSessionFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -62,13 +55,11 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     setTimeout(() => setShowSnack(false), 3000);
   };
 
-  // Reset error flags when modal becomes visible
+  // Reset error flags on mount
   React.useEffect(() => {
-    if (visible) {
-      setShowErrorsStep1(false);
-      setShowErrorsStep2(false);
-    }
-  }, [visible]);
+    setShowErrorsStep1(false);
+    setShowErrorsStep2(false);
+  }, []);
 
   const isStepValid = (step: number): boolean => {
     if (step === 1) {
@@ -226,7 +217,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
   };
 
   // Get filtered grade options based on user's preference
-  const filteredGradeOptions = getFilteredGradeOptions(userInfo?.gradingSystem);
+  const filteredGradeOptions = getFilteredGradeOptions(route.params?.userInfo?.gradingSystem);
 
   // Renderizar avaliação por estrelas
   const renderStarRating = (title: string, field: string, showErrorFlag?: boolean) => {
@@ -654,13 +645,13 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       ])
     );
 
-    onSave(cleanData);
-    onClose();
+    if (onSave) onSave(cleanData);
+    navigation.goBack();
     setCurrentStep(1); // Reset para o primeiro passo
   };
 
   const handleClose = () => {
-    // Reset form and close modal
+    // Reset form and close screen
     setCurrentStep(1);
     setShowErrorsStep1(false);
     setShowErrorsStep2(false);
@@ -684,7 +675,7 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
       completion: '',
       image: null,
     });
-    onClose();
+    navigation.goBack();
   };
 
   /* Render navigation buttons inside each step */
@@ -1577,63 +1568,71 @@ export default function ClimbingSessionForm({ visible, onClose, onSave, userInfo
     }
   };
 
+  // Handle hardware back (Android) or swipe-back (iOS interactive back) to navigate steps
+  React.useEffect(() => {
+    const onBackPress = () => {
+      if (currentStep > 1) {
+        handlePrevious();
+        return true;
+      }
+      // currentStep === 1 : close screen
+      handleClose();
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [currentStep]);
+
+  // Params passed via navigation
+  const { onSave, userInfo } = route.params || {};
+
   return (
-    <>
-      <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
-        <SafeAreaView style={styles.container}>
-          <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
-          
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <FontAwesome6 name="xmark" size={22} color="#000" />
-            </TouchableOpacity>
-            <View style={styles.headerRight} />
-          </View>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+          <FontAwesome6 name="xmark" size={22} color="#000" />
+        </TouchableOpacity>
+        <View style={styles.headerRight} />
+      </View>
 
-          {/* Content */}
-          <View
-            style={styles.content}
-            onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}
-          >
-            <ScrollView
-              ref={scrollViewRef}
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={false}
-              pagingEnabled
+      {/* Content */}
+      <View
+        style={styles.content}
+        onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={false}
+          pagingEnabled
+        >
+          {[1, 2, 3, 4, 5].map((step) => (
+            <View
+              key={step}
+              style={{
+                width: '100%',
+                height: contentHeight || 1,
+                paddingHorizontal: 10,
+              }}
             >
-              {[1, 2, 3, 4, 5].map((step) => (
-                <View
-                  key={step}
-                  style={{
-                    width: '100%',
-                    height: contentHeight || 1,
-                    paddingHorizontal: 10,
-                  }}
-                >
-                  {renderStepContent(step)}
-                </View>
-              ))}
-            </ScrollView>
-          </View>
+              {renderStepContent(step)}
+            </View>
+          ))}
+        </ScrollView>
+      </View>
 
-
-        </SafeAreaView>
-        {showSnack && (
-          <TouchableOpacity style={styles.snackbarContainer} activeOpacity={0.8} onPress={()=>setShowSnack(false)}>
-            <FontAwesome6 name="circle-exclamation" size={18} color="#ff4d4d" style={{marginRight:8}} />
-            <Text style={[styles.snackbarText,{flex:1}]}>{snackMessage}</Text>
-            <FontAwesome6 name="xmark" size={16} color="#fff" />
-          </TouchableOpacity>
-        )}
-      </Modal>
-      
-      {/* Modal do Seletor de Cores */}
-      {renderColorPickerModal()}
-      
-      {/* Modal do Seletor de Grade */}
-      {renderGradePickerModal('grade', filteredGradeOptions, showGradePicker, () => setShowGradePicker(false))}
-    </>
+      {showSnack && (
+        <TouchableOpacity style={styles.snackbarContainer} activeOpacity={0.8} onPress={()=>setShowSnack(false)}>
+          <FontAwesome6 name="circle-exclamation" size={18} color="#ff4d4d" style={{marginRight:8}} />
+          <Text style={[styles.snackbarText,{flex:1}]}>{snackMessage}</Text>
+          <FontAwesome6 name="xmark" size={16} color="#fff" />
+        </TouchableOpacity>
+      )}
+    </SafeAreaView>
   );
 }
 

@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Importar as telas
 import AuthFlow from './screens/AuthFlow';
+import ClimbingSessionForm from './screens/ClimbingSessionForm';
 import Home from './screens/Home';
 
 const Stack = createStackNavigator();
@@ -70,9 +71,16 @@ function App() {
             </Stack.Screen>
           ) : (
             // Telas quando está logado
-            <Stack.Screen name="Home">
-              {(props) => <Home {...props} userInfo={userInfo} onLogout={() => updateLoginStatus(false, null)} />}
-            </Stack.Screen>
+            <>
+              <Stack.Screen name="Home">
+                {(props) => <Home {...props} userInfo={userInfo} onLogout={() => updateLoginStatus(false, null)} />}
+              </Stack.Screen>
+              <Stack.Screen
+                name="ClimbingSessionForm"
+                component={ClimbingSessionForm}
+                options={{ headerShown: false }}
+              />
+            </>
           )}
         </Stack.Navigator>
       </NavigationContainer>
