@@ -5,8 +5,8 @@ import {
     isSuccessResponse,
     statusCodes
 } from "@react-native-google-signin/google-signin";
-import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { THEME_COLORS } from '../constants/Theme';
 import { signUpEmail } from '../lib/supabase';
 
@@ -40,6 +40,11 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [message, setMessage] = useState("");
 
+    // Refs for navigating between inputs
+    const nameRef = useRef<TextInput>(null);
+    const emailRef = useRef<TextInput>(null);
+    const passwordRef = useRef<TextInput>(null);
+    
     // Email validation regex
     const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     
@@ -250,11 +255,16 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
 
             {/* Form Container with curved top */}
             <View style={styles.formContainer}>
-                <KeyboardAvoidingView 
+                <KeyboardAvoidingView
                     style={styles.keyboardContainer}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    behavior='padding'
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 40}
                 >
-                    <View style={styles.scrollContent}>
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                    >
                         <Text style={styles.title}>Sign up</Text>
                         
                         {/* Name Input */}
@@ -270,6 +280,10 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                             placeholderTextColor="#999"
                             autoCapitalize="words"
                             autoCorrect={false}
+                            ref={nameRef}
+                            returnKeyType="next"
+                            blurOnSubmit={false}
+                            onSubmitEditing={() => emailRef.current?.focus()}
                         />
                     </View>
                 </View>
@@ -288,6 +302,10 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                             keyboardType="email-address"
                             autoCapitalize="none"
                             autoCorrect={false}
+                            ref={emailRef}
+                            returnKeyType="next"
+                            blurOnSubmit={false}
+                            onSubmitEditing={() => passwordRef.current?.focus()}
                         />
                     </View>
                 </View>
@@ -306,6 +324,9 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                             secureTextEntry={!showPassword}
                             autoCapitalize="none"
                             autoCorrect={false}
+                            ref={passwordRef}
+                            returnKeyType="done"
+                            onSubmitEditing={() => {}}
                         />
                         <TouchableOpacity
                             style={styles.eyeButton}
@@ -379,7 +400,7 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                         {message ? (
                             <Text style={styles.message}>{message}</Text>
                         ) : null}
-                    </View>
+                    </ScrollView>
                 </KeyboardAvoidingView>
             </View>
         </View>

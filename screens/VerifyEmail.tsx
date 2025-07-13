@@ -1,6 +1,6 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { THEME_COLORS } from '../constants/Theme';
 import { signInEmail, verifyEmailSignup } from '../lib/supabase';
 
@@ -56,6 +56,9 @@ export default function VerifyEmail({ info, onSuccess, onGoBack }: VerifyEmailPr
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={onGoBack}>
+        <FontAwesome6 name="chevron-left" size={20} color="#000" />
+      </TouchableOpacity>
       <Text style={styles.title}>Confirm your email</Text>
       <Text style={styles.subtitle}>
         We have sent a 6-digit verification code to {info.email}. Please enter it below to confirm your account.
@@ -70,6 +73,7 @@ export default function VerifyEmail({ info, onSuccess, onGoBack }: VerifyEmailPr
           placeholder="123456"
           keyboardType="number-pad"
           maxLength={6}
+          placeholderTextColor="#999"
         />
       </View>
 
@@ -81,9 +85,7 @@ export default function VerifyEmail({ info, onSuccess, onGoBack }: VerifyEmailPr
         <Text style={styles.buttonText}>{isSubmitting ? 'Verifying…' : 'Verify'}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={onGoBack} style={{ marginTop: 16 }}>
-        <Text style={{ color: THEME_COLORS.bluePrimary }}>Back</Text>
-      </TouchableOpacity>
+      {/* Removed bottom back link */}
     </View>
   );
 }
@@ -92,11 +94,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    justifyContent: 'center',
+    paddingTop: Platform.OS === 'ios' ? 80 : 50,
+  },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 30,
+    left: 16,
+    padding: 8,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    marginTop: 32,
     marginBottom: 12,
     color: THEME_COLORS.bluePrimary,
   },

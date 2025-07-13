@@ -6,8 +6,8 @@ import {
     isSuccessResponse,
     statusCodes
 } from "@react-native-google-signin/google-signin";
-import React, { useState } from 'react';
-import { Alert, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { THEME_COLORS } from '../constants/Theme';
 import { signInEmail } from '../lib/supabase';
 
@@ -26,6 +26,10 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
     const [message, setMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);  
+
+    // Refs for navigating between inputs
+    const emailRef = useRef<TextInput>(null);
+    const passwordRef = useRef<TextInput>(null);
 
     const showMessage = (message: string) => {
         setMessage(message);
@@ -154,7 +158,16 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
 
             {/* Form Container with curved top */}
             <View style={styles.formContainer}>
-                                        <Text style={styles.title}>Login</Text>
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+                >
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        <Text style={styles.title}>Login</Text>
                 
                 {/* Email Input */}
                 <View style={styles.inputContainer}>
@@ -170,6 +183,10 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                             keyboardType="email-address"
                             autoCapitalize="none"
                             autoCorrect={false}
+                            ref={emailRef}
+                            returnKeyType="next"
+                            blurOnSubmit={false}
+                            onSubmitEditing={() => passwordRef.current?.focus()}
                         />
                     </View>
                 </View>
@@ -188,6 +205,9 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                             secureTextEntry={!showPassword}
                             autoCapitalize="none"
                             autoCorrect={false}
+                            ref={passwordRef}
+                            returnKeyType="done"
+                            onSubmitEditing={handleLogin}
                         />
                         <TouchableOpacity
                             style={styles.eyeButton}
@@ -261,6 +281,8 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                 {message ? (
                     <Text style={styles.message}>{message}</Text>
                 ) : null}
+                    </ScrollView>
+                </KeyboardAvoidingView>
             </View>
         </View>
     );
@@ -319,6 +341,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         paddingTop: 40,
         paddingBottom: 40,
+    },
+    scrollContent: {
+        flexGrow: 1,
     },
     title: {
         fontSize: 24,
