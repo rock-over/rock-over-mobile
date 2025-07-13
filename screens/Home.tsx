@@ -6,11 +6,13 @@ import { Alert, FlatList, Image, Modal, StatusBar, StyleSheet, Text, TouchableOp
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../constants/Theme';
 import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
+import { uploadImageAsync } from '../services/uploadImage';
 import SessionDetails from './SessionDetails';
 
 interface HomeProps {
   onLogout?: () => void;
   userInfo?: {
+    id: string;
     name: string | null;
     email: string;
     photo: string | null;
@@ -63,9 +65,19 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
     try {
       const { image, ...rest } = sessionData as any;
+      let imagePath: string | null = null;
+
+      if (image) {
+        try {
+          imagePath = await uploadImageAsync(image, userInfo.id);
+        } catch (uploadErr) {
+          console.error('Erro ao fazer upload da imagem:', uploadErr);
+        }
+      }
+
       const sessionWithUser = {
         ...rest,
-        images: image ? [image] : null,
+        images: imagePath ? [imagePath] : null,
         user_email: userInfo.email,
       };
 

@@ -20,6 +20,7 @@ export interface ClimbingSessionData {
   grip?: string | null;
   footwork?: string | null;
   comments?: string | null;
+  images?: string[] | null;
   user_email?: string;
 }
 

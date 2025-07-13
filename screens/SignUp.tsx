@@ -8,6 +8,7 @@ import {
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { THEME_COLORS } from '../constants/Theme';
+import { signUpEmail } from '../lib/supabase';
 
 interface SignUpProps {
     onSignUpSuccess?: (user: any) => void;
@@ -129,31 +130,39 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin }:
         }
 
         setIsSubmitting(true);
+        console.log('[SignUp] Submitting form', formData);
 
         try {
-            // Simple mock signup for now - just create a user object
-            const mockUser = {
-                id: Date.now().toString(),
+            const { success, user, error } = await signUpEmail(formData.email, formData.password, formData.name);
+            console.log('[SignUp] Result', { success, user, error });
+
+            if (!success || !user) {
+                Alert.alert('Error', error || 'Unable to create account');
+                return;
+            }
+
+            const newUser = {
+                id: user.id,
                 name: formData.name,
-                email: formData.email,
+                email: user.email,
                 photo: null,
-                profilePhoto: 'illustration_1', // Default profile photo
+                profilePhoto: 'illustration_1',
                 gradingSystem: formData.gradingSystem || 'yds'
             };
 
             Alert.alert(
-                'Success!', 
+                'Success!',
                 'Account created successfully!',
                 [
                     {
                         text: 'OK',
-                        onPress: () => onSignUpSuccess?.(mockUser)
+                        onPress: () => onSignUpSuccess?.(newUser)
                     }
                 ]
             );
 
         } catch (error) {
-            console.error('Sign up error:', error);
+            console.error('[SignUp] Exception', error);
             Alert.alert('Error', 'An unexpected error occurred. Please try again.');
         } finally {
             setIsSubmitting(false);

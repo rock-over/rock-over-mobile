@@ -9,6 +9,7 @@ import {
 import React, { useState } from 'react';
 import { Alert, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { THEME_COLORS } from '../constants/Theme';
+import { signInEmail } from '../lib/supabase';
 
 interface LoginProps {
     onLoginSuccess?: (user: any) => void;
@@ -42,18 +43,23 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
         setIsSubmitting(true);
         
         try {
-            // Simple mock login for now - just create a user object
-            const mockUser = {
-                id: Date.now().toString(),
-                name: email.split('@')[0], // Use email prefix as name
-                email: email,
+            const { success, user, error } = await signInEmail(email, password);
+            if (!success || !user) {
+                Alert.alert('Error', error || 'Invalid email or password');
+                return;
+            }
+
+            const authUser:any = user as any;
+            const userInfo = {
+                id: authUser.id,
+                name: authUser.user_metadata?.name || authUser.email.split('@')[0],
+                email: authUser.email,
                 photo: null,
-                profilePhoto: 'illustration_1' // Default profile photo
+                profilePhoto: 'illustration_1'
             };
-            
-            // Success - call the callback with user data
-            onLoginSuccess?.(mockUser);
-            
+
+            onLoginSuccess?.(userInfo);
+
         } catch (error) {
             console.error('Login error:', error);
             Alert.alert('Error', 'An unexpected error occurred. Please try again.');
