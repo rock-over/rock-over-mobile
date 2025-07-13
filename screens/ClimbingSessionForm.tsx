@@ -8,6 +8,8 @@ import {
   BackHandler,
   Dimensions,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -1539,25 +1541,14 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
       case 4:
         return (
-          <ScrollView style={styles.stepScrollView} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            ref={step === 4 ? step4ScrollRef : undefined}
+            style={styles.stepScrollView}
+            showsVerticalScrollIndicator={false}
+          >
             <View>
               <Text style={styles.modalTitle}>Capture the moment 📸</Text>
               <Text style={styles.modalSubtitle}>Add a photo and your thoughts about this climb</Text>
-              
-              {/* Image Field */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Image</Text>
-                <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
-                  {formData.image ? (
-                    <Image source={{ uri: formData.image }} style={styles.imagePreview} />
-                  ) : (
-                    <>
-                      <FontAwesome6 name="camera" size={24} color="#666" />
-                      <Text style={styles.imageUploadText}>Add a photo</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
               
               {/* Comments/Tips */}
               <View style={styles.fieldContainer}>
@@ -1571,7 +1562,26 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
                   multiline
                   numberOfLines={4}
                   selectionColor="#333"
+                  onBlur={() => {
+                    // Quando o teclado fechar, garanta que o scroll volte ao topo para evitar títulos escondidos
+                    step4ScrollRef.current?.scrollTo({ y: 0, animated: true });
+                  }}
                 />
+              </View>
+
+              {/* Image Field */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Image</Text>
+                <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
+                  {formData.image ? (
+                    <Image source={{ uri: formData.image }} style={styles.imagePreview} />
+                  ) : (
+                    <>
+                      <FontAwesome6 name="camera" size={24} color="#666" />
+                      <Text style={styles.imageUploadText}>Add a photo</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
               {renderStepButtons(4)}
             </View>
@@ -1614,6 +1624,19 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   // Params passed via navigation
   const { onSave, userInfo } = route.params || {};
 
+  // Ref específico para o ScrollView do passo 4 (comentários) — usado para resetar offset ao fechar o teclado
+  const step4ScrollRef = useRef<ScrollView | null>(null);
+
+  // Quando o teclado fechar, garanta que o passo 4 volte ao topo
+  React.useEffect(() => {
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      if (currentStep === 4) {
+        step4ScrollRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+    return () => hideSub.remove();
+  }, [currentStep]);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
@@ -1627,30 +1650,38 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       </View>
 
       {/* Content */}
-      <View
+      <KeyboardAvoidingView
         style={styles.content}
-        onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView
-          ref={scrollViewRef}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={false}
-          pagingEnabled
+        <View
+          style={{ flex: 1 }}
+          onLayout={(event) => {
+            const { height } = event.nativeEvent.layout;
+            setContentHeight(prev => (prev === 0 || height > prev ? height : prev));
+          }}
         >
-          {[1, 2, 3, 4, 5].map((step) => (
-            <View
-              key={step}
-              style={{
-                width: '100%',
-                height: contentHeight || 1,
-                paddingHorizontal: 10,
-              }}
-            >
-              {renderStepContent(step)}
-            </View>
-          ))}
-        </ScrollView>
-      </View>
+          <ScrollView
+            ref={scrollViewRef}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={false}
+            pagingEnabled
+          >
+            {[1, 2, 3, 4, 5].map((step) => (
+              <View
+                key={step}
+                style={{
+                  width: '100%',
+                  height: contentHeight || 1,
+                  paddingHorizontal: 10,
+                }}
+              >
+                {renderStepContent(step)}
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
 
       {showSnack && (
         <TouchableOpacity style={styles.snackbarContainer} activeOpacity={0.8} onPress={()=>setShowSnack(false)}>
