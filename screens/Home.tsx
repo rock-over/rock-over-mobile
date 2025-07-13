@@ -62,14 +62,22 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     }
 
     try {
-      // Adicionar email do usuário aos dados da sessão
+      const { image, ...rest } = sessionData as any;
       const sessionWithUser = {
-        ...sessionData,
+        ...rest,
+        images: image ? [image] : null,
         user_email: userInfo.email,
       };
 
       const newSession = await climbingSessionService.createSession(sessionWithUser);
-      setSessions(prev => [newSession, ...prev]);
+
+      // attach first image for local rendering convenience
+      const sessionForList = {
+        ...newSession,
+        image: image ?? null,
+      };
+
+      setSessions(prev => [sessionForList, ...prev]);
       // form screen already closed via navigation.goBack()
       setShowSuccessModal(true);
     } catch (error) {

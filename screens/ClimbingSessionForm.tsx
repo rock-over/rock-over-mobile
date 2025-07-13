@@ -1,6 +1,7 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useRef, useState } from 'react';
 import {
   Alert,
@@ -145,6 +146,26 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
   const updateArrayField = (field: string, value: string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  /* ------- Image Picker ------- */
+  const pickImage = async () => {
+    // Ask permission if not granted
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'We need media library permission to select a photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: true,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      updateField('image', result.assets[0].uri);
+    }
   };
 
   // -------- Auto-advance logic --------
@@ -1523,12 +1544,18 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               <Text style={styles.modalTitle}>Capture the moment 📸</Text>
               <Text style={styles.modalSubtitle}>Add a photo and your thoughts about this climb</Text>
               
-              {/* Image Field - placeholder for now */}
+              {/* Image Field */}
               <View style={styles.fieldContainer}>
                 <Text style={styles.label}>Image</Text>
-                <TouchableOpacity style={styles.imageUploadButton}>
-                  <FontAwesome6 name="camera" size={24} color="#666" />
-                  <Text style={styles.imageUploadText}>Add a photo</Text>
+                <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
+                  {formData.image ? (
+                    <Image source={{ uri: formData.image }} style={styles.imagePreview} />
+                  ) : (
+                    <>
+                      <FontAwesome6 name="camera" size={24} color="#666" />
+                      <Text style={styles.imageUploadText}>Add a photo</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
               
@@ -1632,6 +1659,12 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
           <FontAwesome6 name="xmark" size={16} color="#fff" />
         </TouchableOpacity>
       )}
+
+      {/* Color Picker Modal */}
+      {renderColorPickerModal()}
+
+      {/* Grade Picker Modal */}
+      {renderGradePickerModal('grade', filteredGradeOptions, showGradePicker, () => setShowGradePicker(false))}
     </SafeAreaView>
   );
 }
@@ -2306,22 +2339,25 @@ const styles = StyleSheet.create({
      height: 8,
      marginBottom: 5,
    },
-   imageUploadButton: {
-     flexDirection: 'row',
-     alignItems: 'center',
-     justifyContent: 'center',
-     backgroundColor: THEME_COLORS.background.input,
-     borderRadius: 12,
-     paddingVertical: 15,
-     marginTop: 0,
-   },
-   imageUploadText: {
-     color: THEME_COLORS.bluePrimary,
-     fontSize: 16,
-     fontWeight: '500',
-     marginLeft: 10,
-   },
-   stepActionsContainer: {
+  imageUploadButton: {
+    height: 150,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+  },
+  imageUploadText: {
+    marginTop: 8,
+    color: '#666',
+  },
+  stepActionsContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
