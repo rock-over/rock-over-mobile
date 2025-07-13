@@ -22,7 +22,6 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
         name: '',
         email: '',
         password: '',
-        confirmPassword: '',
         gradingSystem: ''
     });
 
@@ -30,13 +29,11 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
         name: '',
         email: '',
         password: '',
-        confirmPassword: '',
         gradingSystem: ''
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [message, setMessage] = useState("");
 
@@ -49,7 +46,8 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
     const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     
     // Password validation regex - at least 8 chars, 1 uppercase, 1 lowercase, 1 number
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
+    // Allows letters, numbers, and common special characters
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&#+\-_.,:;(){}[\]<>=~^|\\/"'`]{8,}$/;
 
     const validateField = (field: string, value: string) => {
         let error = '';
@@ -83,14 +81,6 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                 }
                 break;
 
-            case 'confirmPassword':
-                if (!value) {
-                    error = 'Please confirm your password';
-                } else if (value !== formData.password) {
-                    error = 'Passwords do not match';
-                }
-                break;
-
             case 'gradingSystem':
                 if (!value) {
                     error = 'Please select a grading system';
@@ -109,16 +99,10 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
         if (errors[field as keyof typeof errors]) {
             setErrors(prev => ({ ...prev, [field]: '' }));
         }
+    };
 
-        // Real-time validation for email and password
-        if (field === 'email' || field === 'password') {
-            setTimeout(() => validateField(field, value), 500);
-        }
-
-        // Real-time validation for confirm password
-        if (field === 'confirmPassword') {
-            setTimeout(() => validateField(field, value), 300);
-        }
+    const handleFieldBlur = (field: string) => {
+        validateField(field, formData[field as keyof typeof formData]);
     };
 
     const validateForm = () => {
@@ -162,6 +146,7 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
             setIsSubmitting(false);
         }
     };
+
 
     const handleGoogleSignIn = async () => {
         try {
@@ -270,12 +255,13 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                         {/* Name Input */}
                 <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Name</Text>
-                    <View style={styles.inputWrapper}>
-                        <FontAwesome6 name="user" size={16} color={THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
+                    <View style={[styles.inputWrapper, errors.name && styles.inputWrapperError]}>
+                        <FontAwesome6 name="user" size={16} color={errors.name ? '#ff0000' : THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
                         <TextInput
                             style={styles.textInput}
                             value={formData.name}
                             onChangeText={(text) => handleInputChange('name', text)}
+                            onBlur={() => handleFieldBlur('name')}
                             placeholder="Your Name"
                             placeholderTextColor="#999"
                             autoCapitalize="words"
@@ -283,20 +269,25 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                             ref={nameRef}
                             returnKeyType="next"
                             blurOnSubmit={false}
-                            onSubmitEditing={() => emailRef.current?.focus()}
+                            onSubmitEditing={() => {
+                                handleFieldBlur('name');
+                                emailRef.current?.focus();
+                            }}
                         />
                     </View>
+                    {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
                 </View>
 
                         {/* Email Input */}
                 <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Email</Text>
-                    <View style={styles.inputWrapper}>
-                        <FontAwesome6 name="envelope" size={16} color={THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
+                    <View style={[styles.inputWrapper, errors.email && styles.inputWrapperError]}>
+                        <FontAwesome6 name="envelope" size={16} color={errors.email ? '#ff0000' : THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
                         <TextInput
                             style={styles.textInput}
                             value={formData.email}
                             onChangeText={(text) => handleInputChange('email', text)}
+                            onBlur={() => handleFieldBlur('email')}
                             placeholder="your@email.com"
                             placeholderTextColor="#999"
                             keyboardType="email-address"
@@ -305,20 +296,25 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                             ref={emailRef}
                             returnKeyType="next"
                             blurOnSubmit={false}
-                            onSubmitEditing={() => passwordRef.current?.focus()}
+                            onSubmitEditing={() => {
+                                handleFieldBlur('email');
+                                passwordRef.current?.focus();
+                            }}
                         />
                     </View>
+                    {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
                 </View>
 
-                        {/* Password Input */}
+                                                {/* Password Input */}
                 <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Password</Text>
-                    <View style={styles.inputWrapper}>
-                        <FontAwesome6 name="lock" size={16} color={THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
+                    <View style={[styles.inputWrapper, errors.password && styles.inputWrapperError]}>
+                        <FontAwesome6 name="lock" size={16} color={errors.password ? '#ff0000' : THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
                         <TextInput
                             style={styles.textInput}
                             value={formData.password}
                             onChangeText={(text) => handleInputChange('password', text)}
+                            onBlur={() => handleFieldBlur('password')}
                             placeholder="Secret..."
                             placeholderTextColor="#999"
                             secureTextEntry={!showPassword}
@@ -326,7 +322,9 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                             autoCorrect={false}
                             ref={passwordRef}
                             returnKeyType="done"
-                            onSubmitEditing={() => {}}
+                            onSubmitEditing={() => {
+                                handleFieldBlur('password');
+                            }}
                         />
                         <TouchableOpacity
                             style={styles.eyeButton}
@@ -335,11 +333,12 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                             <FontAwesome6 
                                 name={showPassword ? "eye-slash" : "eye"} 
                                 size={16} 
-                                color={THEME_COLORS.bluePrimary} 
+                                color={errors.password ? '#ff0000' : THEME_COLORS.bluePrimary} 
                                 solid
                             />
                         </TouchableOpacity>
                     </View>
+                    {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
                 </View>
 
                         {/* Terms Checkbox */}
@@ -489,6 +488,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingVertical: 0,
     },
+    inputWrapperError: {
+        borderColor: '#ff0000',
+        borderWidth: 1,
+    },
     inputIcon: {
         marginRight: 12,
     },
@@ -502,7 +505,7 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     errorText: {
-        color: '#DC3545',
+        color: '#ff0000',
         fontSize: 12,
         marginTop: 4,
     },

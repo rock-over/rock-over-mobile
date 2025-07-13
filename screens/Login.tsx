@@ -25,11 +25,69 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
     const [password, setPassword] = useState("");
     const [message, setMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);  
+    const [showPassword, setShowPassword] = useState(false);
+    
+    // Field errors
+    const [errors, setErrors] = useState({
+        email: '',
+        password: ''
+    });
 
     // Refs for navigating between inputs
     const emailRef = useRef<TextInput>(null);
     const passwordRef = useRef<TextInput>(null);
+
+    // Email validation regex
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+    const validateField = (field: string, value: string) => {
+        let error = '';
+
+        switch (field) {
+            case 'email':
+                if (!value.trim()) {
+                    error = 'Email is required';
+                } else if (!emailRegex.test(value.trim())) {
+                    error = 'Please enter a valid email address';
+                }
+                break;
+
+            case 'password':
+                if (!value) {
+                    error = 'Password is required';
+                } else if (value.length < 6) {
+                    error = 'Password must be at least 6 characters';
+                }
+                break;
+        }
+
+        setErrors(prev => ({ ...prev, [field]: error }));
+        return error === '';
+    };
+
+    const handleEmailChange = (text: string) => {
+        setEmail(text);
+        // Clear error when user starts typing
+        if (errors.email) {
+            setErrors(prev => ({ ...prev, email: '' }));
+        }
+    };
+
+    const handlePasswordChange = (text: string) => {
+        setPassword(text);
+        // Clear error when user starts typing
+        if (errors.password) {
+            setErrors(prev => ({ ...prev, password: '' }));
+        }
+    };
+
+    const handleEmailBlur = () => {
+        validateField('email', email);
+    };
+
+    const handlePasswordBlur = () => {
+        validateField('password', password);
+    };
 
     const showMessage = (message: string) => {
         setMessage(message);
@@ -39,8 +97,11 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
     }
 
     const handleLogin = async () => {
-        if (!email.trim() || !password.trim()) {
-            Alert.alert('Error', 'Please enter both email and password');
+        // Validate all fields before submitting
+        const emailValid = validateField('email', email);
+        const passwordValid = validateField('password', password);
+
+        if (!emailValid || !passwordValid) {
             return;
         }
 
@@ -55,6 +116,12 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                         'Email not verified',
                         'Please check your inbox and click the confirmation link before logging in.',
                     );
+                } else if (lowerErr.includes('invalid') || lowerErr.includes('credentials')) {
+                    // Show error on both fields since we don't know which one is wrong
+                    setErrors(prev => ({ 
+                        email: 'Invalid email or password', 
+                        password: 'Invalid email or password' 
+                    }));
                 } else {
                     Alert.alert('Error', error || 'Invalid email or password');
                 }
@@ -172,12 +239,13 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                 {/* Email Input */}
                 <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Email</Text>
-                    <View style={styles.inputWrapper}>
-                        <FontAwesome6 name="envelope" size={16} color={THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
+                    <View style={[styles.inputWrapper, errors.email && styles.inputWrapperError]}>
+                        <FontAwesome6 name="envelope" size={16} color={errors.email ? '#ff0000' : THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
                         <TextInput
                             style={styles.textInput}
                             value={email}
-                            onChangeText={setEmail}
+                            onChangeText={handleEmailChange}
+                            onBlur={handleEmailBlur}
                             placeholder="your@email.com"
                             placeholderTextColor="#999"
                             keyboardType="email-address"
@@ -186,20 +254,25 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                             ref={emailRef}
                             returnKeyType="next"
                             blurOnSubmit={false}
-                            onSubmitEditing={() => passwordRef.current?.focus()}
+                            onSubmitEditing={() => {
+                                handleEmailBlur();
+                                passwordRef.current?.focus();
+                            }}
                         />
                     </View>
+                    {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
                 </View>
 
                 {/* Password Input */}
                 <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Password</Text>
-                    <View style={styles.inputWrapper}>
-                        <FontAwesome6 name="lock" size={16} color={THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
+                    <View style={[styles.inputWrapper, errors.password && styles.inputWrapperError]}>
+                        <FontAwesome6 name="lock" size={16} color={errors.password ? '#ff0000' : THEME_COLORS.bluePrimary} style={styles.inputIcon} solid />
                         <TextInput
                             style={styles.textInput}
                             value={password}
-                            onChangeText={setPassword}
+                            onChangeText={handlePasswordChange}
+                            onBlur={handlePasswordBlur}
                             placeholder="Secret..."
                             placeholderTextColor="#999"
                             secureTextEntry={!showPassword}
@@ -207,7 +280,10 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                             autoCorrect={false}
                             ref={passwordRef}
                             returnKeyType="done"
-                            onSubmitEditing={handleLogin}
+                            onSubmitEditing={() => {
+                                handlePasswordBlur();
+                                handleLogin();
+                            }}
                         />
                         <TouchableOpacity
                             style={styles.eyeButton}
@@ -216,11 +292,12 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                             <FontAwesome6 
                                 name={showPassword ? "eye-slash" : "eye"} 
                                 size={16} 
-                                color={THEME_COLORS.bluePrimary} 
+                                color={errors.password ? '#ff0000' : THEME_COLORS.bluePrimary} 
                                 solid
                             />
                         </TouchableOpacity>
                     </View>
+                    {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
                 </View>
 
                 {/* Forgot Password Link */}
@@ -370,6 +447,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingVertical: 0,
     },
+    inputWrapperError: {
+        borderColor: '#ff0000',
+        borderWidth: 1,
+    },
     inputIcon: {
         marginRight: 12,
     },
@@ -462,6 +543,11 @@ const styles = StyleSheet.create({
         color: '#DC3545',
         textAlign: 'center',
         fontSize: 14,
+    },
+    errorText: {
+        color: '#ff0000',
+        fontSize: 12,
+        marginTop: 4,
     },
 });
 

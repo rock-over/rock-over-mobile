@@ -1,6 +1,6 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { THEME_COLORS } from '../constants/Theme';
 import { signInEmail, verifyEmailSignup } from '../lib/supabase';
 
@@ -13,17 +13,50 @@ interface VerifyEmailProps {
 export default function VerifyEmail({ info, onSuccess, onGoBack }: VerifyEmailProps) {
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const validateCode = (value: string) => {
+    let errorMessage = '';
+    
+    if (!value.trim()) {
+      errorMessage = 'Verification code is required';
+    } else if (!/^\d{6}$/.test(value.trim())) {
+      errorMessage = 'Please enter a valid 6-digit code';
+    }
+    
+    setError(errorMessage);
+    return errorMessage === '';
+  };
+
+  const handleCodeChange = (text: string) => {
+    // Only allow digits and limit to 6 characters
+    const numericText = text.replace(/[^0-9]/g, '').slice(0, 6);
+    setCode(numericText);
+    
+    // Clear error when user starts typing
+    if (error) {
+      setError('');
+    }
+  };
+
+  const handleCodeBlur = () => {
+    validateCode(code);
+  };
 
   const handleVerify = async () => {
-    if (!code.trim()) {
-      Alert.alert('Error', 'Please enter the verification code');
+    if (!validateCode(code)) {
       return;
     }
+
     setIsSubmitting(true);
     try {
-      const { success, user, error } = await verifyEmailSignup(info.email, code.trim());
+      const { success, user, error: verifyError } = await verifyEmailSignup(info.email, code.trim());
       if (!success || !user) {
-        Alert.alert('Error', error || 'Unable to verify code');
+        if (verifyError?.toLowerCase().includes('invalid') || verifyError?.toLowerCase().includes('expired')) {
+          setError('Invalid or expired verification code');
+        } else {
+          setError(verifyError || 'Unable to verify code');
+        }
         return;
       }
 
@@ -48,7 +81,7 @@ export default function VerifyEmail({ info, onSuccess, onGoBack }: VerifyEmailPr
       onSuccess(finalUser);
     } catch (e) {
       console.error('verifyEmail error', e);
-      Alert.alert('Error', 'Unexpected error while verifying email');
+      setError('Unexpected error while verifying email');
     } finally {
       setIsSubmitting(false);
     }
@@ -64,18 +97,25 @@ export default function VerifyEmail({ info, onSuccess, onGoBack }: VerifyEmailPr
         We have sent a 6-digit verification code to {info.email}. Please enter it below to confirm your account.
       </Text>
 
-      <View style={styles.inputWrapper}>
-        <FontAwesome6 name="key" size={16} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
+      <View style={[styles.inputWrapper, error && styles.inputWrapperError]}>
+        <FontAwesome6 name="key" size={16} color={error ? '#ff0000' : THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
         <TextInput
           style={styles.textInput}
           value={code}
-          onChangeText={setCode}
+          onChangeText={handleCodeChange}
+          onBlur={handleCodeBlur}
           placeholder="123456"
           keyboardType="number-pad"
           maxLength={6}
           placeholderTextColor="#999"
+          returnKeyType="done"
+          onSubmitEditing={() => {
+            handleCodeBlur();
+            handleVerify();
+          }}
         />
       </View>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <TouchableOpacity
         style={[styles.button, isSubmitting && styles.buttonDisabled]}
@@ -122,6 +162,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 24,
   },
+  inputWrapperError: {
+    borderColor: '#ff0000',
+    borderWidth: 2,
+  },
   textInput: {
     flex: 1,
     fontSize: 18,
@@ -140,5 +184,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  errorText: {
+    color: '#ff0000',
+    fontSize: 14,
+    marginTop: -10, // Adjust as needed to position it correctly
+    marginBottom: 15,
   },
 }); 
