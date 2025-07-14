@@ -51,10 +51,41 @@ Join our community of developers creating universal apps.
 
 ## To Do
 
-- [ ] Adicionar componente de date picker
-- [ ] Possibilitar a adição de movimentos customizados
-- [ ] Criar tabela de usuarios e utiliza-la
-- [ ] Passo 3: consertar scroll
-- [ ] Passo 3: ajustar altura do componente ao deletar tags
-- [ ] Adicionar grade no perfil
-- [ ] Fazer o fluxo de validação de email
+- [X] Adicionar componente de date picker
+- [X] Criar tabela de usuarios e utiliza-la
+- [X] Passo 3: consertar scroll
+- [X] Passo 3: ajustar altura do componente ao deletar tags
+- [X] Adicionar grade no perfil
+- [X] Consertar swipe back do fluxo do forms
+- [X] Fazer o fluxo de validação de email
+- [X] Nome
+- [X] Mostrar erros de senha
+- [X] consertar inputs de texto com teclado aberto
+- [ ] melhorar layout do card
+- [ ] Login do facebook funcionando com supabase
+- [ ] Login do google funcionando com supabase
+- [ ] trocar imagens (auth, forms)
+- [ ] modal de sucesso do forms
+- [ ] tela de perfil (trocar grading / nome / foto / senha, logout)
+- [ ] Splash screen
+
+- [ ] Recuperação de senha
+- [ ] subir imagem do profile na nuvem
+
+- [ ] auto layout
+- [ ] erro de conexão
+- [ ] loading
+- [ ] limpar banco de dados
+- [ ] testes unitarios
+- [ ] arquitetura e boas praticas
+- [ ] segurança
+- [ ] adicionar opção de salvar antes ??
+
+
+### Bugs
+- [ ] slider vai e volta
+
+### Pivot
+- Possibilitar a adição de movimentos customizados
+- Copiar do ultimo log
+

@@ -1,28 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { BackHandler } from 'react-native';
+import ForgotPassword from './ForgotPassword';
 import Login from './Login';
 import ProfileSetup from './ProfileSetup';
+import ResetPassword from './ResetPassword';
 import SignUp from './SignUp';
 import VerifyEmail from './VerifyEmail';
 import Welcome from './Welcome';
 
-type AuthFlowScreen = 'welcome' | 'login' | 'signup' | 'verify' | 'profile';
+type AuthFlowScreen = 'welcome' | 'login' | 'signup' | 'verify' | 'profile' | 'forgot-password' | 'reset-password';
 
 interface AuthFlowProps {
     onAuthSuccess?: (user: any) => void;
+    initialScreen?: AuthFlowScreen;
+    resetTokens?: { accessToken: string; refreshToken: string };
 }
 
-export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
-    const [currentScreen, setCurrentScreen] = useState<AuthFlowScreen>('welcome');
+export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', resetTokens }: AuthFlowProps) {
+    const [currentScreen, setCurrentScreen] = useState<AuthFlowScreen>(initialScreen);
     const [tempUser, setTempUser] = useState<any>(null);
     const [signUpInfo, setSignUpInfo] = useState<{ email: string; password: string; name: string; gradingSystem: string } | null>(null);
+    const [passwordResetTokens, setPasswordResetTokens] = useState<{ accessToken: string; refreshToken: string } | null>(resetTokens || null);
 
     // Handle native back button
     useEffect(() => {
         const backAction = () => {
-            if (currentScreen === 'login' || currentScreen === 'signup' || currentScreen === 'verify') {
+            if (currentScreen === 'login' || currentScreen === 'signup' || currentScreen === 'verify' || currentScreen === 'forgot-password') {
                 setCurrentScreen('welcome');
                 return true; // Prevent default behavior (closing app)
+            } else if (currentScreen === 'reset-password') {
+                setCurrentScreen('forgot-password');
+                return true;
             } else if (currentScreen === 'profile') {
                 // On profile screen, complete with temp user and default profile photo
                 const userWithDefaults = {
@@ -49,8 +57,16 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
         setCurrentScreen('signup');
     };
 
+    const handleNavigateToForgotPassword = () => {
+        setCurrentScreen('forgot-password');
+    };
+
     const handleGoBack = () => {
-        setCurrentScreen('welcome');
+        if (currentScreen === 'reset-password') {
+            setCurrentScreen('forgot-password');
+        } else {
+            setCurrentScreen('welcome');
+        }
     };
 
     const handleLoginSuccess = (user: any) => {
@@ -77,6 +93,16 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
         // Após verificação bem-sucedida, seguir para profile
         setTempUser(user);
         setCurrentScreen('profile');
+    };
+
+    const handleResetEmailSent = (email: string) => {
+        // After reset email is sent, go back to login
+        setCurrentScreen('login');
+    };
+
+    const handlePasswordResetSuccess = () => {
+        // After password reset is successful, go back to login
+        setCurrentScreen('login');
     };
 
     const handleProfileComplete = (profileData: { photoUri: string; gradingSystem: string }) => {
@@ -114,6 +140,7 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
                 <Login
                     onLoginSuccess={handleLoginSuccess}
                     onNavigateToSignUp={handleNavigateToSignUp}
+                    onNavigateToForgotPassword={handleNavigateToForgotPassword}
                     onGoBack={handleGoBack}
                 />
             );
@@ -132,6 +159,22 @@ export default function AuthFlow({ onAuthSuccess }: AuthFlowProps) {
                 <VerifyEmail
                     info={signUpInfo!}
                     onSuccess={handleVerificationSuccess}
+                    onGoBack={handleGoBack}
+                />
+            );
+        case 'forgot-password':
+            return (
+                <ForgotPassword
+                    onGoBack={handleGoBack}
+                    onResetEmailSent={handleResetEmailSent}
+                />
+            );
+        case 'reset-password':
+            return (
+                <ResetPassword
+                    accessToken={passwordResetTokens?.accessToken || ''}
+                    refreshToken={passwordResetTokens?.refreshToken || ''}
+                    onPasswordResetSuccess={handlePasswordResetSuccess}
                     onGoBack={handleGoBack}
                 />
             );
