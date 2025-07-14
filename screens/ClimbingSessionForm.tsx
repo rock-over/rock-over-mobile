@@ -4,21 +4,21 @@ import Slider from '@react-native-community/slider';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useRef, useState } from 'react';
 import {
-  Alert,
-  BackHandler,
-  Dimensions,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    BackHandler,
+    Dimensions,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../constants/Theme';
@@ -107,7 +107,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     place: '',
     when: new Date().toISOString(), // Data e hora atual (obrigatória)
     activity: '',
-    colour: '#ffffff', // Cor inicial branca
+    colour: THEME_COLORS.bluePrimary, // Cor inicial azul
     routeNumber: '',
     grade: '',
     difficulty: 5, // Mudado para 5 (meio do slider)
@@ -682,7 +682,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       place: '',
       when: new Date().toISOString(),
       activity: '',
-      colour: '#ffffff',
+      colour: THEME_COLORS.bluePrimary,
       routeNumber: '',
       grade: '',
       difficulty: 5,

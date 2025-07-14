@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, Image, Modal, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import SessionCard from '../components/SessionCard'; // Importar o novo card
 import { THEME_COLORS } from '../constants/Theme';
 import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
 import { uploadImageAsync } from '../services/uploadImage';
@@ -111,41 +112,6 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     setSelectedSession(session);
   };
 
-  const getCardColor = (session: ClimbingSession) => {
-    // Use the color from session if available, otherwise default colors based on activity
-    if (session.colour) {
-      return session.colour;
-    }
-    
-    // Default colors based on activity type
-    switch (session.activity?.toLowerCase()) {
-      case 'bouldering':
-        return '#FF6B6B'; // Red
-      case 'sport climbing':
-        return '#4ECDC4'; // Teal
-      case 'traditional':
-        return '#45B7D1'; // Blue
-      case 'indoor':
-        return '#96CEB4'; // Green
-      default:
-        return '#FFA07A'; // Orange
-    }
-  };
-
-  const formatTime = (timeString: string) => {
-    try {
-      const date = new Date(timeString);
-      return date.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return timeString;
-    }
-  };
-
   const capitalizeWords = (str: string | null) => {
     if (!str) return '';
     return str.split(' ').map(word => 
@@ -153,157 +119,12 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     ).join(' ');
   };
 
-  const getClimbingTypeSubtitle = (session: ClimbingSession) => {
-    const location = session.climbingType === 'Indoor' ? 'Indoor' : 'Outdoor';
-    const activity = session.activity === 'Bouldering' ? 'Bouldering' : 'Climbing';
-    return `${location} ${activity}`;
-  };
-
-  const renderTags = (session: ClimbingSession): string[] => {
-    const tags: string[] = [];
-    
-    // Helper function to process tag values
-    const processTagValue = (value: any) => {
-      if (!value) return [];
-      
-      // If it's a string, try to parse it as JSON array first
-      if (typeof value === 'string') {
-        try {
-          // Try to parse as JSON array (e.g., '["Dynamic", "Static"]')
-          const parsed = JSON.parse(value);
-          if (Array.isArray(parsed)) {
-            return parsed.filter(item => item && typeof item === 'string' && item.trim());
-          }
-        } catch {
-          // If not JSON, treat as regular string
-          return value.trim() ? [value.trim()] : [];
-        }
-      }
-      
-      // If it's already an array
-      if (Array.isArray(value)) {
-        return value.filter(item => item && typeof item === 'string' && item.trim()).map(item => item.trim());
-      }
-      
-      // If it's any other type, convert to string
-      const stringValue = String(value).trim();
-      return stringValue ? [stringValue] : [];
-    };
-    
-    // Process movement tags
-    if (session.movement) {
-      const movements = processTagValue(session.movement);
-      tags.push(...movements);
-    }
-    
-    // Process grip tags
-    if (session.grip) {
-      const grips = processTagValue(session.grip);
-      tags.push(...grips);
-    }
-    
-    // Process footwork tags
-    if (session.footwork) {
-      const footworks = processTagValue(session.footwork);
-      tags.push(...footworks);
-    }
-    
-    // Remove duplicates and empty values
-    return [...new Set(tags.filter(tag => tag && tag.trim()))];
-  };
-
-  const renderTagsForCard = (session: ClimbingSession, cardColor: string) => {
-    const tags: string[] = renderTags(session);
-    
-    if (tags.length === 0) return null;
-    
-    // Estimate how many tags fit in one line (approximate calculation)
-    // Assuming average tag width of ~80px and container width of ~250px
-    const maxTagsInLine = 3;
-    
-    if (tags.length <= maxTagsInLine) {
-      // Show all tags if they fit
-      return (
-        <View style={styles.tagsContainer}>
-          {tags.map((tag, index) => (
-            <View key={index} style={[styles.tag, { backgroundColor: cardColor }]}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-        </View>
-      );
-    } else {
-      // Show first tags and "+x skills" in the last position
-      const visibleTags = tags.slice(0, maxTagsInLine - 1);
-      const remainingCount = tags.length - visibleTags.length;
-      
-      return (
-        <View style={styles.tagsContainer}>
-          {visibleTags.map((tag, index) => (
-            <View key={index} style={[styles.tag, { backgroundColor: cardColor }]}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-          <View style={[styles.tag, { backgroundColor: cardColor }]}>
-            <Text style={styles.tagText}>+{remainingCount} skills</Text>
-          </View>
-        </View>
-      );
-    }
-  };
-
   const renderSessionCard = ({ item }: { item: ClimbingSession }) => {
-    const cardColor = getCardColor(item);
-    
     return (
-      <TouchableOpacity 
-        style={[styles.card]} 
+      <SessionCard
+        session={item}
         onPress={() => handleCardPress(item)}
-      >
-        <View style={styles.cardMainContent}>
-          {/* Left section with grade/icon */}
-          <View style={[styles.gradeSection, { backgroundColor: cardColor }]}>
-            <Text style={styles.gradeText}>
-              {item.grade || 'V?'}
-            </Text>
-          </View>
-          
-          <View style={styles.cardRightContent}>
-            {/* Header with title, subtitle and time */}
-            <View style={styles.cardHeader}>
-              <View style={styles.titleSection}>
-                <Text style={styles.cardTitle} numberOfLines={1}>
-                  {item.routeNumber || item.place || 'Nome da rota'}
-                </Text>
-                {/* Subtitle with climbing type */}
-                <Text style={styles.cardSubtitle} numberOfLines={1}>
-                  {getClimbingTypeSubtitle(item)}
-                </Text>
-              </View>
-              <Text style={styles.cardTime}>
-                {formatTime(item.when)}
-              </Text>
-            </View>
-
-            {/* Additional info */}
-            <View style={styles.additionalInfo}>
-              {item.routeRating && (
-                <Text style={styles.infoText} numberOfLines={1}>
-                  ⭐ Route rating: {item.routeRating}
-                </Text>
-              )}
-              {item.howItFelt && (
-                <Text style={styles.infoText} numberOfLines={1}>
-                  😊 How it feel: {item.howItFelt}
-                </Text>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {/* Tags below everything */}
-        {renderTagsForCard(item, cardColor)}
-      </TouchableOpacity>
+      />
     );
   };
 
@@ -542,7 +363,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   listContainer: {
-    paddingHorizontal: 20,
     paddingBottom: 100,
   },
   card: {
