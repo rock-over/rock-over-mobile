@@ -144,49 +144,56 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
         transparent={true}
         statusBarTranslucent={true}
         onRequestClose={handleBackToHome}
+        animationType="slide"
       >
         <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
         
-        {/* Full screen overlay */}
-        <View style={successStyles.fullScreenOverlay}>
-          {/* Modal container */}
-          <View style={successStyles.modalContainer}>
+        {/* Full screen overlay - clickable to close */}
+        <TouchableOpacity 
+          style={successStyles.fullScreenOverlay}
+          activeOpacity={1}
+          onPress={handleBackToHome}
+        >
+          {/* Modal container - prevent close when touching inside */}
+          <TouchableOpacity 
+            style={successStyles.modalContainer}
+            activeOpacity={1}
+            onPress={() => {}} // Prevent event bubbling
+          >
             {/* Content */}
             <View style={successStyles.content}>
               {/* Success Icon */}
               <View style={successStyles.iconContainer}>
-                <FontAwesome6 name="trophy" size={80} color={THEME_COLORS.bluePrimary} />
+                <Image 
+                  source={require('../assets/images/log-session-completed.png')} 
+                  style={successStyles.successImage}
+                  resizeMode="contain"
+                />
               </View>
               
               {/* Success Message */}
-              <Text style={successStyles.title}>Parabéns!</Text>
-              <Text style={successStyles.subtitle}>Sua sessão foi salva com sucesso!</Text>
+              <Text style={successStyles.title}>Congratulations!</Text>
+              <Text style={successStyles.subtitle}>Your climbing session has been saved successfully!</Text>
             </View>
 
-            {/* Navigation Bar */}
-            <View style={successStyles.navigationBar}>
-              <TouchableOpacity 
-                style={[successStyles.button, successStyles.secondaryButton]} 
-                onPress={handleAddAnotherLog}
-              >
-                <View style={successStyles.buttonContent}>
-                  <FontAwesome6 name="plus" size={16} color={THEME_COLORS.bluePrimary} />
-                  <Text style={[successStyles.buttonText, successStyles.secondaryButtonText]}>Adicionar outro log</Text>
-                </View>
-              </TouchableOpacity>
-              
+            {/* Button Stack */}
+            <View style={successStyles.buttonStack}>
               <TouchableOpacity 
                 style={[successStyles.button, successStyles.primaryButton]} 
                 onPress={handleBackToHome}
               >
-                <View style={successStyles.buttonContent}>
-                  <FontAwesome6 name="home" size={16} color="#fff" />
-                  <Text style={[successStyles.buttonText, successStyles.primaryButtonText]}>Voltar para home</Text>
-                </View>
+                <Text style={[successStyles.buttonText, successStyles.primaryButtonText]}>Back to Home</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[successStyles.button, successStyles.secondaryButton]} 
+                onPress={handleAddAnotherLog}
+              >
+                <Text style={[successStyles.buttonText, successStyles.secondaryButtonText]}>Add another session</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     );
   };
@@ -520,11 +527,13 @@ const successStyles = StyleSheet.create({
   iconContainer: {
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F0F8FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
+  },
+  successImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     fontSize: 28,
@@ -538,43 +547,36 @@ const successStyles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  navigationBar: {
-    height: 85,
-    minHeight: 85,
-    maxHeight: 85,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+  buttonStack: {
+    flexDirection: 'column',
     gap: 12,
     paddingHorizontal: 0,
+    paddingTop: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
   },
   button: {
-    flex: 1,
-    minHeight: 44,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: THEME_COLORS.bluePrimary,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    minHeight: 50,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     justifyContent: 'center',
-    gap: 8,
+    alignItems: 'center',
   },
   secondaryButton: {
     backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: THEME_COLORS.bluePrimary,
   },
   primaryButton: {
     backgroundColor: THEME_COLORS.bluePrimary,
+    borderWidth: 2,
+    borderColor: THEME_COLORS.bluePrimary,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: THEME_COLORS.bluePrimary,
+    textAlign: 'center',
   },
   secondaryButtonText: {
     color: THEME_COLORS.bluePrimary,
