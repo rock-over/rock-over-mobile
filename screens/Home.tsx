@@ -51,10 +51,17 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
   const handleLogout = async () => {
     try {
+      // Sign out from Google
       await GoogleSignin.signOut();
+      
+      // Clear any cached Google account selection
+      await GoogleSignin.revokeAccess();
+      
       onLogout?.();
     } catch (error) {
       console.log('Error signing out:', error);
+      // Call logout anyway to clear local state
+      onLogout?.();
     }
   };
 

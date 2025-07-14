@@ -9,7 +9,7 @@ import {
 import React, { useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { THEME_COLORS } from '../constants/Theme';
-import { signInEmail } from '../lib/supabase';
+import { signInEmail, signInWithGoogle } from '../lib/supabase';
 
 interface LoginProps {
     onLoginSuccess?: (user: any) => void;
@@ -90,23 +90,48 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
            setIsSubmitting(true);
     
            await GoogleSignin.hasPlayServices();
+           
+           // Force account selection every time by signing out first
+           try {
+               await GoogleSignin.signOut();
+           } catch (signOutError) {
+               // Ignore signOut errors (user might not be signed in)
+               console.log('SignOut error (can be ignored):', signOutError);
+           }
+           
            const result = await GoogleSignin.signIn();
     
            if (isSuccessResponse(result)) {
-            const { user } = result.data;
+            const { user, idToken } = result.data;
             const { id, name, email, photo } = user;
             
-            // Create user object with Google data
-            const googleUser = {
-                id: id,
-                name: name || 'Unknown User',
-                email: email,
-                photo: photo,
-                profilePhoto: 'illustration_1' // Default profile photo (not using Google photo)
-            };
+            console.log('Google Sign-In successful:', { id, name, email, hasIdToken: !!idToken });
             
-            // Success - call the callback with user data
-            onLoginSuccess?.(googleUser);
+            // Get tokens from Google Sign-In result
+            const tokens = await GoogleSignin.getTokens();
+            console.log('Google tokens:', { hasAccessToken: !!tokens.accessToken, hasIdToken: !!tokens.idToken });
+            
+            // Use Supabase Google OAuth
+            const authResult = await signInWithGoogle(idToken || '', tokens.accessToken || '');
+            console.log('Supabase auth result:', authResult);
+            
+            if (authResult.success && authResult.user) {
+                // Create user object with Supabase user data
+                const userInfo = {
+                    id: authResult.user.id,
+                    name: authResult.user.user_metadata?.name || name || 'Unknown User',
+                    email: authResult.user.email || email,
+                    photo: authResult.user.user_metadata?.avatar_url || photo,
+                    profilePhoto: authResult.user.user_metadata?.profilePhoto || 'illustration_1'
+                };
+                
+                console.log('Final user info:', userInfo);
+                
+                // Success - call the callback with user data
+                onLoginSuccess?.(userInfo);
+            } else {
+                showMessage(authResult.error || "Google Sign-In failed");
+            }
             
            } else {
             showMessage("Google Signin was cancelled");

@@ -105,6 +105,7 @@ function AppContent() {
       webClientId: "783345722479-f0cgob9p7fln5jieph78urp648ursjbh.apps.googleusercontent.com",
       iosClientId: "783345722479-m8mlc36nshvu46svuvjld0m234ec61kq.apps.googleusercontent.com",
       profileImageSize: 150,
+      forceCodeForRefreshToken: true,
     });
 
     // Lógica para deep links de redefinição de senha
@@ -146,6 +147,12 @@ function AppContent() {
     }
   };
 
+  const handleAuthSuccess = async (user: any) => {
+    console.log('Auth success with user:', user);
+    // The Supabase session should already be created by the signInWithGoogle function
+    // No additional action needed here
+  };
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -167,7 +174,7 @@ function AppContent() {
                 {...props}
                 initialScreen={authFlowState.initialScreen}
                 resetTokens={authFlowState.resetTokens}
-                onAuthSuccess={() => {}} // onAuthSuccess não é mais necessário aqui
+                onAuthSuccess={handleAuthSuccess}
               />
             )}
           </Stack.Screen>
