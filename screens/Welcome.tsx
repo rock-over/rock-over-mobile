@@ -1,7 +1,12 @@
-import { FontAwesome6 } from '@expo/vector-icons';
 import React from 'react';
-import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { THEME_COLORS } from '../constants/Theme';
+import {
+    ImageBackground,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 
 interface WelcomeProps {
     onNavigateToLogin?: () => void;
@@ -11,40 +16,22 @@ interface WelcomeProps {
 export default function Welcome({ onNavigateToLogin, onNavigateToSignUp }: WelcomeProps) {
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
-            
-            {/* Main Content Area with curved background */}
-            <View style={styles.mainContent}>
-                {/* Logo Area */}
-                <View style={styles.logoContainer}>
-                    <View style={styles.logoCircle}>
-                        <Text style={styles.logoText}>RV</Text>
-                    </View>
-                    <Text style={styles.brandText}>Rock Over</Text>
-                </View>
-
-                {/* Mascot/Character Illustration */}
-                <View style={styles.illustrationContainer}>
-                    <View style={styles.mountainContainer}>
-                        <FontAwesome6 name="mountain" size={80} color="#FF6B6B" />
-                        <View style={styles.climberContainer}>
-                            <FontAwesome6 name="person-hiking" size={40} color="#FFF" />
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* Curved Bottom Section */}
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+            <ImageBackground
+                source={require('../assets/images/welcome-screen.png')}
+                style={styles.image}
+                resizeMode="cover"
+            />
             <View style={styles.bottomSection}>
                 <View style={styles.buttonContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.loginButton}
                         onPress={onNavigateToLogin}
                     >
                         <Text style={styles.loginButtonText}>Already have an account</Text>
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                         style={styles.getStartedButton}
                         onPress={onNavigateToSignUp}
                     >
@@ -59,60 +46,11 @@ export default function Welcome({ onNavigateToLogin, onNavigateToSignUp }: Welco
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: THEME_COLORS.bluePrimary,
+        backgroundColor: '#FFF',
     },
-    mainContent: {
+    image: {
         flex: 1,
-        alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 40,
-        paddingTop: 60,
-    },
-    logoContainer: {
-        alignItems: 'center',
-        marginBottom: 80,
-    },
-    logoCircle: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-        borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
-    },
-    logoText: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#FFF',
-    },
-    brandText: {
-        fontSize: 24,
-        fontWeight: '600',
-        color: '#FFF',
-        letterSpacing: 1,
-    },
-    illustrationContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 40,
-    },
-    mountainContainer: {
-        position: 'relative',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    climberContainer: {
-        position: 'absolute',
-        top: -10,
-        right: -20,
-        backgroundColor: THEME_COLORS.bluePrimary,
-        borderRadius: 20,
-        padding: 8,
-        borderWidth: 2,
-        borderColor: '#FFF',
     },
     bottomSection: {
         backgroundColor: '#FFF',
@@ -122,6 +60,7 @@ const styles = StyleSheet.create({
         paddingTop: 40,
         paddingBottom: 40,
         minHeight: 200,
+        marginTop: -40, // Creates the overlap
     },
     buttonContainer: {
         gap: 16,
@@ -129,7 +68,7 @@ const styles = StyleSheet.create({
     loginButton: {
         backgroundColor: 'transparent',
         borderWidth: 2,
-        borderColor: THEME_COLORS.bluePrimary,
+        borderColor: '#0077FB',
         borderRadius: 8,
         paddingVertical: 8,
         alignItems: 'center',
@@ -137,13 +76,13 @@ const styles = StyleSheet.create({
         minHeight: 40,
     },
     loginButtonText: {
-        color: THEME_COLORS.bluePrimary,
+        color: '#0077FB',
         fontSize: 16,
         fontWeight: '600',
         letterSpacing: 0.5,
     },
     getStartedButton: {
-        backgroundColor: THEME_COLORS.bluePrimary,
+        backgroundColor: '#0077FB',
         borderRadius: 8,
         paddingVertical: 8,
         alignItems: 'center',

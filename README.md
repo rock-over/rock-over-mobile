@@ -61,16 +61,20 @@ Join our community of developers creating universal apps.
 - [X] Nome
 - [X] Mostrar erros de senha
 - [X] consertar inputs de texto com teclado aberto
-- [ ] melhorar layout do card
+- [X] melhorar layout do card
+- [X] Login do google funcionando com supabase
+- [X] modal de sucesso do forms
 - [ ] Login do facebook funcionando com supabase
-- [ ] Login do google funcionando com supabase
-- [ ] trocar imagens (auth, forms)
-- [ ] modal de sucesso do forms
-- [ ] tela de perfil (trocar grading / nome / foto / senha, logout)
 - [ ] Splash screen
+- [ ] trocar imagens (auth, forms)
+- [ ] tela de perfil (trocar grading / nome / foto / senha, logout)
 
+
+- [ ] Deletar/Editar sessão
 - [ ] Recuperação de senha
 - [ ] subir imagem do profile na nuvem
+- [ ] melhorar componente de selecionar imagem
+- [ ] Melhorar card de sessão (cada ascent type pode ser um badge // Adicionar o how it feel // Adicionar imagem // Adicionar o difficulty?)
 
 - [ ] auto layout
 - [ ] erro de conexão
@@ -84,6 +88,7 @@ Join our community of developers creating universal apps.
 
 ### Bugs
 - [ ] slider vai e volta
+- [ ] data da session é salva errada
 
 ### Pivot
 - Possibilitar a adição de movimentos customizados
