@@ -126,6 +126,11 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     ).join(' ');
   };
 
+  const getFirstName = (str: string | null | undefined) => {
+    if (!str) return 'Climber';
+    return str.split(' ')[0].charAt(0).toUpperCase() + str.split(' ')[0].slice(1).toLowerCase();
+  };
+
   const renderSessionCard = ({ item }: { item: ClimbingSession }) => {
     return (
       <SessionCard
@@ -255,16 +260,19 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       {/* Blue Header */}
       <View style={styles.header}>
         <View style={styles.profileSection}>
-          <TouchableOpacity onPress={handleLogout} style={styles.profileImageContainer}>
+          <TouchableOpacity style={styles.profileImageContainer}>
             <Image source={getProfileImageSource()} style={styles.profileImage} />
           </TouchableOpacity>
           
           <View style={styles.welcomeSection}>
             <Text style={styles.welcomeText} numberOfLines={1}>
-              Welcome, {capitalizeWords(userInfo?.name || null) || 'Climber'}
+              Welcome, {getFirstName(userInfo?.name)}
             </Text>
-            <Text style={styles.subtitleText}>Let's rock</Text>
           </View>
+          
+          <TouchableOpacity onPress={handleLogout} style={styles.profileButton}>
+            <FontAwesome6 name="user" size={20} color="#fff" solid />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -332,21 +340,22 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: THEME_COLORS.bluePrimary,
     paddingHorizontal: 20,
-    paddingVertical: 24,
-    paddingBottom: 32,
+    paddingVertical: 16,
+    paddingBottom: 20,
   },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   profileImageContainer: {
-    marginRight: 16,
+    // Remover marginRight
   },
   profileImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 3,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   defaultProfileImage: {
@@ -361,16 +370,24 @@ const styles = StyleSheet.create({
   },
   welcomeSection: {
     flex: 1,
+    marginLeft: 12,
   },
   welcomeText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 4,
   },
   subtitleText: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.8)',
+  },
+  profileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,

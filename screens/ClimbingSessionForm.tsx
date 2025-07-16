@@ -2133,7 +2133,7 @@ const styles = StyleSheet.create({
    },
    feelingTextSelected: {
      color: THEME_COLORS.bluePrimary,
-     fontWeight: '500',
+     fontWeight: '700',
    },
    // Estilos para o novo seletor de data e hora
    dateTimePickerContainer: {
