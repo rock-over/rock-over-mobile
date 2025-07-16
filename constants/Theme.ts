@@ -1,5 +1,5 @@
 export const THEME_COLORS = {
-  bluePrimary: '#0077FB',
+  bluePrimary: '#1777E5',
   orange: '#ff5b30',
   green: '#14A651',
   blueSecondary: '#19b6ff',

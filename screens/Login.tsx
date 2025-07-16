@@ -7,7 +7,7 @@ import {
     statusCodes
 } from "@react-native-google-signin/google-signin";
 import React, { useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { THEME_COLORS } from '../constants/Theme';
 import { signInEmail, signInWithGoogle } from '../lib/supabase';
 
@@ -173,11 +173,11 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                 >
                     <FontAwesome6 name="arrow-left" size={20} color="#FFF" />
                 </TouchableOpacity>
-                
                 <View style={styles.headerContent}>
-                    <View style={styles.logoContainer}>
-                        <Text style={styles.logoText}>RV</Text>
-                    </View>
+                    <Image
+                        source={require('../assets/images/rock-over-white-letter.png')}
+                        style={{ width: 170, height: 56, resizeMode: 'contain', alignSelf: 'center' }}
+                    />
                 </View>
             </View>
 
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
         backgroundColor: THEME_COLORS.bluePrimary,
     },
     header: {
-        paddingTop: 50,
+        paddingTop: 45,
         paddingHorizontal: 20,
         paddingBottom: 20,
         position: 'relative',
@@ -341,6 +341,7 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
+        position: 'relative',
     },
     logoContainer: {
         width: 60,

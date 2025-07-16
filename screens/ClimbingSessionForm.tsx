@@ -704,47 +704,52 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   /* Render navigation buttons inside each step */
   const renderStepButtons = (step: number) => {
     const isLast = step === totalSteps;
-    return (
-      <View style={styles.stepActionsContainer}>
-        {/* Previous */}
-        {step > 1 && (
+    if (!isLast) {
+      return (
+        <View style={styles.stepActionsContainer}>
+          {step > 1 && (
+            <TouchableOpacity
+              style={styles.circleNavButton}
+              onPress={handlePrevious}
+            >
+              <FontAwesome6 name="arrow-up" size={18} color="#fff" />
+            </TouchableOpacity>
+          )}
+          {step > 1 && <View style={{ width: 12 }} />}
+          {(() => {
+            const enabled = isStepValid(step);
+            return (
+              <TouchableOpacity
+                style={[styles.circleNavButton, !enabled && styles.circleNavButtonDisabled]}
+                onPress={() => {
+                  if (enabled) {
+                    handleNext();
+                  } else {
+                    if (step === 1) setShowErrorsStep1(true);
+                    if (step === 2) setShowErrorsStep2(true);
+                    triggerSnack('Please fill in all required fields before continuing.');
+                  }
+                }}
+              >
+                <FontAwesome6 name="arrow-down" size={18} color={enabled ? '#fff' : '#999'} />
+              </TouchableOpacity>
+            );
+          })()}
+        </View>
+      );
+    } else {
+      // Último step: só botão circular de voltar, alinhado à direita
+      return (
+        <View style={[styles.stepActionsContainer, { justifyContent: 'flex-end' }]}> 
           <TouchableOpacity
             style={styles.circleNavButton}
             onPress={handlePrevious}
           >
             <FontAwesome6 name="arrow-up" size={18} color="#fff" />
           </TouchableOpacity>
-        )}
-        {/* Spacer */}
-        {step > 1 && !isLast && <View style={{ width: 12 }} />}
-        {/* Next or Save */}
-        {!isLast ? (
-          (()=>{
-            const enabled = isStepValid(step);
-            return (
-              <TouchableOpacity
-                style={[styles.circleNavButton, !enabled && styles.circleNavButtonDisabled]}
-                onPress={()=>{
-                  if(enabled){
-                    handleNext();
-                  }else{
-                    if(step===1) setShowErrorsStep1(true);
-                    if(step===2) setShowErrorsStep2(true);
-                    triggerSnack('Please fill in all required fields before continuing.');
-                  }
-                }}
-              >
-                <FontAwesome6 name="arrow-down" size={18} color={enabled? '#fff':'#999'} />
-              </TouchableOpacity>
-            );
-          })()
-            ) : (
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Save</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
+        </View>
+      );
+    }
   };
 
   const renderColorSelector = () => {
@@ -1637,6 +1642,8 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     return () => hideSub.remove();
   }, [currentStep]);
 
+  const [showFixedSave, setShowFixedSave] = useState(false);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
@@ -1696,6 +1703,14 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
       {/* Grade Picker Modal */}
       {renderGradePickerModal('grade', filteredGradeOptions, showGradePicker, () => setShowGradePicker(false))}
+
+      {currentStep === totalSteps && (
+        <View style={styles.fixedSaveButtonContainer}>
+          <TouchableOpacity style={styles.fixedSaveButton} onPress={handleSave}>
+            <Text style={styles.saveButtonText}>Salvar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -2431,5 +2446,22 @@ const styles = StyleSheet.create({
     position:'absolute',
     top:0,
     left:0,
+  },
+  fixedSaveButtonContainer: {
+    position: 'absolute',
+    bottom: 24,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  fixedSaveButton: {
+    width: '90%',
+    backgroundColor: THEME_COLORS.bluePrimary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
   },
  });  

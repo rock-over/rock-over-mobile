@@ -75,6 +75,8 @@ Join our community of developers creating universal apps.
 - [ ] subir imagem do profile na nuvem
 - [ ] melhorar componente de selecionar imagem
 - [ ] Melhorar card de sessão (cada ascent type pode ser um badge // Adicionar o how it feel // Adicionar imagem // Adicionar o difficulty?)
+- [ ] Scroll gesture on the forms to pass between steps
+- [ ] Download spread sheet
 
 - [ ] auto layout
 - [ ] erro de conexão
