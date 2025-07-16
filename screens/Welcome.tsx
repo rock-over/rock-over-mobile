@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { THEME_COLORS } from '../constants/Theme';
 
 interface WelcomeProps {
     onNavigateToLogin?: () => void;
@@ -68,7 +69,7 @@ const styles = StyleSheet.create({
     loginButton: {
         backgroundColor: 'transparent',
         borderWidth: 2,
-        borderColor: '#0077FB',
+        borderColor: THEME_COLORS.bluePrimary,
         borderRadius: 8,
         paddingVertical: 8,
         alignItems: 'center',
@@ -76,13 +77,13 @@ const styles = StyleSheet.create({
         minHeight: 40,
     },
     loginButtonText: {
-        color: '#0077FB',
+        color: THEME_COLORS.bluePrimary,
         fontSize: 16,
         fontWeight: '600',
         letterSpacing: 0.5,
     },
     getStartedButton: {
-        backgroundColor: '#0077FB',
+        backgroundColor: THEME_COLORS.bluePrimary,
         borderRadius: 8,
         paddingVertical: 8,
         alignItems: 'center',
