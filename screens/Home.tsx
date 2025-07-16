@@ -1,8 +1,8 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, Image, Modal, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, AppState, FlatList, Image, Modal, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SessionCard from '../components/SessionCard'; // Importar o novo card
 import { THEME_COLORS } from '../constants/Theme';
@@ -33,6 +33,30 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       loadSessions();
     }
   }, [userInfo?.email]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      // Garantir que a StatusBar seja sempre configurada corretamente quando a tela for focada
+      StatusBar.setBarStyle('light-content');
+      StatusBar.setBackgroundColor(THEME_COLORS.bluePrimary);
+    }, [])
+  );
+
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        // App voltou do background, forçar configuração da StatusBar
+        StatusBar.setBarStyle('light-content');
+        StatusBar.setBackgroundColor(THEME_COLORS.bluePrimary);
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
 
   const loadSessions = async () => {
     if (!userInfo?.email) return;
