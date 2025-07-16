@@ -2,23 +2,23 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    BackHandler,
-    Dimensions,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  BackHandler,
+  Dimensions,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../constants/Theme';
@@ -59,7 +59,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   };
 
   // Reset error flags on mount
-  React.useEffect(() => {
+  useEffect(() => {
     setShowErrorsStep1(false);
     setShowErrorsStep2(false);
   }, []);
@@ -89,7 +89,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   const [contentHeight, setContentHeight] = useState(0);
 
   // Ensure correct offset once content height is measured
-  React.useEffect(() => {
+  useEffect(() => {
     if (contentHeight) {
       scrollToStep(currentStep);
     }
@@ -174,7 +174,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   // Track previous validity by step to detect transitions from invalid ➜ valid
   const stepValidityRef = useRef<Record<number, boolean>>({});
 
-  React.useEffect(() => {
+  useEffect(() => {
     const wasValid = stepValidityRef.current[currentStep] || false;
     const isValidNow = isStepValid(currentStep);
 
@@ -1452,16 +1452,18 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     switch (step) {
       case 1:
         return (
-          <View>
-            <Text style={styles.modalTitle}>Log your climbing session ✨</Text>
-            <Text style={styles.modalSubtitle}>
-              Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
-            </Text>
-            {renderDateTimePickerCompact('', 'when', showErrorsStep1)}
-            {renderLocationSelector()}
-            {renderActivitySelector()}
-            {renderStepButtons(1)}
-          </View>
+          <ScrollView style={styles.stepScrollView} showsVerticalScrollIndicator={false}>
+            <View>
+              <Text style={styles.modalTitle}>Log your climbing session ✨</Text>
+              <Text style={styles.modalSubtitle}>
+                Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
+              </Text>
+              {renderDateTimePickerCompact('', 'when', showErrorsStep1)}
+              {renderLocationSelector()}
+              {renderActivitySelector()}
+              {renderStepButtons(1)}
+            </View>
+          </ScrollView>
         );
 
       case 2:
@@ -1492,16 +1494,13 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               </View>
               
               {/* Campo Grade - largura total */}
-              {/* Usar apenas um fieldContainer (interno à função) para evitar espaçamento duplicado */}
               {renderDropdownPickerCompact('Grade', 'grade', filteredGradeOptions, showGradePicker, setShowGradePicker, showErrorsStep2)}
               
               {/* Campo Completion */}
-              {/* Label e opções em contêineres separados para manter apenas um fieldContainer */}
               <View style={styles.fieldContainer}>
                 <Text style={styles.label}>Completion</Text>
                 {renderPickerNoTitleCompact('completion', ['Completed', 'Attempt'], showErrorsStep2)}
               </View>
-              
               
               {/* Route Rating */}
               {renderStarRating('Route Rating', 'routeRating', showErrorsStep2)}
@@ -1568,7 +1567,6 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
                   numberOfLines={4}
                   selectionColor="#333"
                   onBlur={() => {
-                    // Quando o teclado fechar, garanta que o scroll volte ao topo para evitar títulos escondidos
                     step4ScrollRef.current?.scrollTo({ y: 0, animated: true });
                   }}
                 />
@@ -1595,14 +1593,16 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
       case 5:
         return (
-          <View>
-            <Text style={styles.modalTitle}>Keep track of your moves 🧗‍♀️</Text>
-            <Text style={styles.modalSubtitle}>Select the moves you used on this route</Text>
-            {renderTagSelector('Movement', 'movement', movementOptions, showMovementModal, setShowMovementModal)}
-            {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
-            {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
-            {renderStepButtons(5)}
-          </View>
+          <ScrollView style={styles.stepScrollView} showsVerticalScrollIndicator={false}>
+            <View>
+              <Text style={styles.modalTitle}>Keep track of your moves 🧗‍♀️</Text>
+              <Text style={styles.modalSubtitle}>Select the moves you used on this route</Text>
+              {renderTagSelector('Movement', 'movement', movementOptions, showMovementModal, setShowMovementModal)}
+              {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
+              {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
+              {renderStepButtons(5)}
+            </View>
+          </ScrollView>
         );
 
       default:
@@ -1611,7 +1611,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   };
 
   // Handle hardware back (Android) or swipe-back (iOS interactive back) to navigate steps
-  React.useEffect(() => {
+  useEffect(() => {
     const onBackPress = () => {
       if (currentStep > 1) {
         handlePrevious();
@@ -1633,7 +1633,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   const step4ScrollRef = useRef<ScrollView | null>(null);
 
   // Quando o teclado fechar, garanta que o passo 4 volte ao topo
-  React.useEffect(() => {
+  useEffect(() => {
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       if (currentStep === 4) {
         step4ScrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -1643,6 +1643,68 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   }, [currentStep]);
 
   const [showFixedSave, setShowFixedSave] = useState(false);
+
+  const [isScrollEnabled, setIsScrollEnabled] = useState(true);
+  const [isScrollingToInvalid, setIsScrollingToInvalid] = useState(false);
+
+
+  // Adicionar após as outras funções de navegação:
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const stepHeight = contentHeight;
+    
+    if (stepHeight > 0 && !isScrollingToInvalid) {
+      const currentStepFromScroll = Math.round(offsetY / stepHeight) + 1;
+      
+      // Se está tentando ir para um step maior que o atual
+      if (currentStepFromScroll > currentStep) {
+        // Verificar se pode avançar
+        if (!isStepValid(currentStep)) {
+          setIsScrollingToInvalid(true);
+          
+          scrollToStep(currentStep);
+          
+          // Mostrar erros
+          if (currentStep === 1) setShowErrorsStep1(true);
+          if (currentStep === 2) setShowErrorsStep2(true);
+          triggerSnack('Please fill in all required fields before continuing.');
+
+                    
+          // Resetar flag após um delay
+          setTimeout(() => {
+            setIsScrollingToInvalid(false);
+          }, 500);
+
+        }
+      }
+    }
+  };
+
+  const handleScrollEnd = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const stepHeight = contentHeight;
+    
+    if (stepHeight > 0) {
+      const newStep = Math.round(offsetY / stepHeight) + 1;
+      
+      // Verificar se está tentando avançar para o próximo step
+      if (newStep > currentStep && newStep <= totalSteps) {
+        // Verificar se o step atual é válido antes de permitir avançar
+        if (isStepValid(currentStep)) {
+          setCurrentStep(newStep);
+        } else {
+          // Se não for válido, voltar para o step atual e mostrar erros
+          scrollToStep(currentStep);
+          if (currentStep === 1) setShowErrorsStep1(true);
+          if (currentStep === 2) setShowErrorsStep2(true);
+          triggerSnack('Please fill in all required fields before continuing.');
+        }
+      } else if (newStep < currentStep && newStep >= 1) {
+        // Permitir voltar para steps anteriores sem validação
+        setCurrentStep(newStep);
+      }
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1671,15 +1733,20 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
-            scrollEnabled={false}
+            scrollEnabled={isScrollEnabled}
             pagingEnabled
+            onScroll={handleScroll}
+            onMomentumScrollEnd={handleScrollEnd}
+            onScrollEndDrag={handleScrollEnd}
+            bounces={true}
+            bouncesZoom={false}
           >
             {[1, 2, 3, 4, 5].map((step) => (
               <View
                 key={step}
                 style={{
                   width: '100%',
-                  height: contentHeight || 1,
+                  height: contentHeight || Dimensions.get('window').height * 0.7,
                   paddingHorizontal: 10,
                 }}
               >
