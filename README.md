@@ -64,19 +64,22 @@ Join our community of developers creating universal apps.
 - [X] melhorar layout do card
 - [X] Login do google funcionando com supabase
 - [X] modal de sucesso do forms
-- [ ] Login do facebook funcionando com supabase
+- [X] trocar imagens (auth, forms)
+- [X] Scroll gesture on the forms to pass between steps
+- [ ] Download spread sheet
 - [ ] Splash screen
-- [ ] trocar imagens (auth, forms)
-- [ ] tela de perfil (trocar grading / nome / foto / senha, logout)
+
 
 
 - [ ] Deletar/Editar sessão
 - [ ] Recuperação de senha
 - [ ] subir imagem do profile na nuvem
 - [ ] melhorar componente de selecionar imagem
+- [ ] Login do facebook funcionando com supabase
 - [ ] Melhorar card de sessão (cada ascent type pode ser um badge // Adicionar o how it feel // Adicionar imagem // Adicionar o difficulty?)
-- [ ] Scroll gesture on the forms to pass between steps
-- [ ] Download spread sheet
+
+
+- [ ] tela de perfil (trocar grading / nome / foto / senha, logout)
 
 - [ ] auto layout
 - [ ] erro de conexão
@@ -89,6 +92,7 @@ Join our community of developers creating universal apps.
 
 
 ### Bugs
+- [X] status bar branca
 - [ ] slider vai e volta
 - [ ] data da session é salva errada
 

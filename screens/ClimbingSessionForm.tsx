@@ -9,7 +9,6 @@ import {
   Dimensions,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -83,24 +82,6 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     }
     return true; // Steps 3-5 are optional
   };
-
-  // Ref and height for animated step scrolling
-  const scrollViewRef = useRef<ScrollView | null>(null);
-  const [contentHeight, setContentHeight] = useState(0);
-
-  // Ensure correct offset once content height is measured
-  useEffect(() => {
-    if (contentHeight) {
-      scrollToStep(currentStep);
-    }
-  }, [contentHeight]);
-
-  // Cálculo da largura dos campos Grade baseado na fórmula:
-  // padding_esquerda + largura_campo + 20px + largura_campo + padding_direita = largura_total
-  const horizontalPadding = 20; // padding padrão usado no formulário
-  const gradeSpacing = 20; // espaçamento entre os campos
-  const availableWidth = screenWidth - (2 * horizontalPadding) - gradeSpacing;
-  const gradeFieldWidth = availableWidth / 2;
 
   // Main form state (declared early so it can be used by auto-advance logic below)
   const [formData, setFormData] = useState({
@@ -630,25 +611,23 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     return lightColors.includes(backgroundColor) ? '#333' : '#fff';
   };
 
-  const scrollToStep = (step: number) => {
-    if (scrollViewRef.current && contentHeight) {
-      scrollViewRef.current.scrollTo({ y: (step - 1) * contentHeight, animated: true });
-    }
-  };
-
   const handleNext = () => {
-    if (currentStep < totalSteps) {
+    if (currentStep < totalSteps && formAreaHeight) {
       const newStep = currentStep + 1;
       setCurrentStep(newStep);
-      scrollToStep(newStep);
+      setTimeout(() => {
+        mainScrollRef.current?.scrollTo({ y: formAreaHeight * (newStep - 1), animated: true });
+      }, 10);
     }
   };
 
   const handlePrevious = () => {
-    if (currentStep > 1) {
+    if (currentStep > 1 && formAreaHeight) {
       const newStep = currentStep - 1;
       setCurrentStep(newStep);
-      scrollToStep(newStep);
+      setTimeout(() => {
+        mainScrollRef.current?.scrollTo({ y: formAreaHeight * (newStep - 1), animated: true });
+      }, 10);
     }
   };
 
@@ -1452,157 +1431,140 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     switch (step) {
       case 1:
         return (
-          <ScrollView style={styles.stepScrollView} showsVerticalScrollIndicator={false}>
-            <View>
-              <Text style={styles.modalTitle}>Log your climbing session ✨</Text>
-              <Text style={styles.modalSubtitle}>
-                Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
-              </Text>
-              {renderDateTimePickerCompact('', 'when', showErrorsStep1)}
-              {renderLocationSelector()}
-              {renderActivitySelector()}
-              {renderStepButtons(1)}
-            </View>
-          </ScrollView>
+          <View>
+            <Text style={styles.modalTitle}>Log your climbing session ✨</Text>
+            <Text style={styles.modalSubtitle}>
+              Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
+            </Text>
+            {renderDateTimePickerCompact('', 'when', showErrorsStep1)}
+            {renderLocationSelector()}
+            {renderActivitySelector()}
+            {renderStepButtons(1)}
+          </View>
         );
 
       case 2:
         return (
-          <ScrollView style={styles.stepScrollView} showsVerticalScrollIndicator={false}>
-            <View>
-              <Text style={styles.modalTitle}>Add route details 🧗‍♂️</Text>
-              <Text style={styles.modalSubtitle}>Enter the information about your climbing route</Text>
-              
-              {/* Linha compartilhada: Route number + Route Color */}
-              <View style={styles.sharedRowContainer}>
-                <View style={styles.routeNameContainer}>
-                  <View style={styles.fieldContainer}>
-                    <Text style={styles.label}>Route number</Text>
-                    <TextInput
-                      style={[styles.textInput, styles.routeNameInput, showErrorsStep2 && formData.routeNumber.trim()==='' && styles.textInputError]}
-                      value={formData.routeNumber}
-                      onChangeText={(value) => updateField('routeNumber', value)}
-                      placeholder="Add number"
-                      placeholderTextColor="#999"
-                      selectionColor="#333"
-                    />
-                  </View>
-                </View>
-                <View style={styles.routeColorContainer}>
-                  {renderColorSelectorCompact()}
+          <View>
+            <Text style={styles.modalTitle}>Add route details 🧗‍♂️</Text>
+            <Text style={styles.modalSubtitle}>Enter the information about your climbing route</Text>
+            
+            {/* Linha compartilhada: Route number + Route Color */}
+            <View style={styles.sharedRowContainer}>
+              <View style={styles.routeNameContainer}>
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.label}>Route number</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.routeNameInput, showErrorsStep2 && formData.routeNumber.trim()==='' && styles.textInputError]}
+                    value={formData.routeNumber}
+                    onChangeText={(value) => updateField('routeNumber', value)}
+                    placeholder="Add number"
+                    placeholderTextColor="#999"
+                    selectionColor="#333"
+                  />
                 </View>
               </View>
-              
-              {/* Campo Grade - largura total */}
-              {renderDropdownPickerCompact('Grade', 'grade', filteredGradeOptions, showGradePicker, setShowGradePicker, showErrorsStep2)}
-              
-              {/* Campo Completion */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Completion</Text>
-                {renderPickerNoTitleCompact('completion', ['Completed', 'Attempt'], showErrorsStep2)}
+              <View style={styles.routeColorContainer}>
+                {renderColorSelectorCompact()}
               </View>
-              
-              {/* Route Rating */}
-              {renderStarRating('Route Rating', 'routeRating', showErrorsStep2)}
-              {renderStepButtons(2)}
             </View>
-          </ScrollView>
+            
+            {/* Campo Grade - largura total */}
+            {renderDropdownPickerCompact('Grade', 'grade', filteredGradeOptions, showGradePicker, setShowGradePicker, showErrorsStep2)}
+            
+            {/* Campo Completion */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Completion</Text>
+              {renderPickerNoTitleCompact('completion', ['Completed', 'Attempt'], showErrorsStep2)}
+            </View>
+            
+            {/* Route Rating */}
+            {renderStarRating('Route Rating', 'routeRating', showErrorsStep2)}
+            {renderStepButtons(2)}
+          </View>
         );
 
       case 3:
         return (
-          <ScrollView style={styles.stepScrollView} showsVerticalScrollIndicator={false}>
-            <View>
-              <Text style={styles.modalTitle}>How did it go? 🎯</Text>
-              <Text style={styles.modalSubtitle}>Tell us about your climbing performance</Text>
-              
-              {/* Difficulty Slider */}
-              {renderDifficultySlider()}
-              
-              {/* How did it feel */}
-              {renderFeelingSelector()}
-              
-              {/* Falls Counter */}
-              {renderFallsCounter()}
-              
-              {/* Ascent Type */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Ascent Type</Text>
-                {renderPickerNoTitleCompact('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
-              </View>
-              
-              {/* Campo Climbing Type - apenas para Climbing, não para Bouldering */}
-              {formData.activity === 'Climbing' && 
-                <View style={styles.fieldContainer}>
-                  <Text style={styles.label}>Top / Lead</Text>
-                  {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
-                </View>
-              }
-              {renderStepButtons(3)}
+          <View>
+            <Text style={styles.modalTitle}>How did it go? 🎯</Text>
+            <Text style={styles.modalSubtitle}>Tell us about your climbing performance</Text>
+            
+            {/* Difficulty Slider */}
+            {renderDifficultySlider()}
+            
+            {/* How did it feel */}
+            {renderFeelingSelector()}
+            
+            {/* Falls Counter */}
+            {renderFallsCounter()}
+            
+            {/* Ascent Type */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Ascent Type</Text>
+              {renderPickerNoTitleCompact('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
             </View>
-          </ScrollView>
+            
+            {/* Campo Climbing Type - apenas para Climbing, não para Bouldering */}
+            {formData.activity === 'Climbing' && 
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Top / Lead</Text>
+                {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
+              </View>
+            }
+            {renderStepButtons(3)}
+          </View>
         );
 
       case 4:
         return (
-          <ScrollView
-            ref={step === 4 ? step4ScrollRef : undefined}
-            style={styles.stepScrollView}
-            showsVerticalScrollIndicator={false}
-          >
-            <View>
-              <Text style={styles.modalTitle}>Capture the moment 📸</Text>
-              <Text style={styles.modalSubtitle}>Add a photo and your thoughts about this climb</Text>
-              
-              {/* Comments/Tips */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Comments/Tips</Text>
-                <TextInput
-                  style={[styles.textInput, styles.textArea]}
-                  value={formData.comments}
-                  onChangeText={(value) => updateField('comments', value)}
-                  placeholder="Add some notes or tips for your future self"
-                  placeholderTextColor="#999"
-                  multiline
-                  numberOfLines={4}
-                  selectionColor="#333"
-                  onBlur={() => {
-                    step4ScrollRef.current?.scrollTo({ y: 0, animated: true });
-                  }}
-                />
-              </View>
-
-              {/* Image Field */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Image</Text>
-                <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
-                  {formData.image ? (
-                    <Image source={{ uri: formData.image }} style={styles.imagePreview} />
-                  ) : (
-                    <>
-                      <FontAwesome6 name="camera" size={24} color="#666" />
-                      <Text style={styles.imageUploadText}>Add a photo</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-              {renderStepButtons(4)}
+          <View>
+            <Text style={styles.modalTitle}>Capture the moment 📸</Text>
+            <Text style={styles.modalSubtitle}>Add a photo and your thoughts about this climb</Text>
+            
+            {/* Comments/Tips */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Comments/Tips</Text>
+              <TextInput
+                style={[styles.textInput, styles.textArea]}
+                value={formData.comments}
+                onChangeText={(value) => updateField('comments', value)}
+                placeholder="Add some notes or tips for your future self"
+                placeholderTextColor="#999"
+                multiline
+                numberOfLines={4}
+                selectionColor="#333"
+              />
             </View>
-          </ScrollView>
+
+            {/* Image Field */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Image</Text>
+              <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
+                {formData.image ? (
+                  <Image source={{ uri: formData.image }} style={styles.imagePreview} />
+                ) : (
+                  <>
+                    <FontAwesome6 name="camera" size={24} color="#666" />
+                    <Text style={styles.imageUploadText}>Add a photo</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+            {renderStepButtons(4)}
+          </View>
         );
 
       case 5:
         return (
-          <ScrollView style={styles.stepScrollView} showsVerticalScrollIndicator={false}>
-            <View>
-              <Text style={styles.modalTitle}>Keep track of your moves 🧗‍♀️</Text>
-              <Text style={styles.modalSubtitle}>Select the moves you used on this route</Text>
-              {renderTagSelector('Movement', 'movement', movementOptions, showMovementModal, setShowMovementModal)}
-              {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
-              {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
-              {renderStepButtons(5)}
-            </View>
-          </ScrollView>
+          <View>
+            <Text style={styles.modalTitle}>Keep track of your moves 🧗‍♀️</Text>
+            <Text style={styles.modalSubtitle}>Select the moves you used on this route</Text>
+            {renderTagSelector('Movement', 'movement', movementOptions, showMovementModal, setShowMovementModal)}
+            {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
+            {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
+            {renderStepButtons(5)}
+          </View>
         );
 
       default:
@@ -1629,14 +1591,11 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   // Params passed via navigation
   const { onSave, userInfo } = route.params || {};
 
-  // Ref específico para o ScrollView do passo 4 (comentários) — usado para resetar offset ao fechar o teclado
-  const step4ScrollRef = useRef<ScrollView | null>(null);
-
   // Quando o teclado fechar, garanta que o passo 4 volte ao topo
   useEffect(() => {
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       if (currentStep === 4) {
-        step4ScrollRef.current?.scrollTo({ y: 0, animated: true });
+        // No need to scroll to top here
       }
     });
     return () => hideSub.remove();
@@ -1647,64 +1606,10 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   const [isScrollEnabled, setIsScrollEnabled] = useState(true);
   const [isScrollingToInvalid, setIsScrollingToInvalid] = useState(false);
 
+  const mainScrollRef = useRef<ScrollView | null>(null);
 
-  // Adicionar após as outras funções de navegação:
-  const handleScroll = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    const stepHeight = contentHeight;
-    
-    if (stepHeight > 0 && !isScrollingToInvalid) {
-      const currentStepFromScroll = Math.round(offsetY / stepHeight) + 1;
-      
-      // Se está tentando ir para um step maior que o atual
-      if (currentStepFromScroll > currentStep) {
-        // Verificar se pode avançar
-        if (!isStepValid(currentStep)) {
-          setIsScrollingToInvalid(true);
-          
-          scrollToStep(currentStep);
-          
-          // Mostrar erros
-          if (currentStep === 1) setShowErrorsStep1(true);
-          if (currentStep === 2) setShowErrorsStep2(true);
-          triggerSnack('Please fill in all required fields before continuing.');
-
-                    
-          // Resetar flag após um delay
-          setTimeout(() => {
-            setIsScrollingToInvalid(false);
-          }, 500);
-
-        }
-      }
-    }
-  };
-
-  const handleScrollEnd = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    const stepHeight = contentHeight;
-    
-    if (stepHeight > 0) {
-      const newStep = Math.round(offsetY / stepHeight) + 1;
-      
-      // Verificar se está tentando avançar para o próximo step
-      if (newStep > currentStep && newStep <= totalSteps) {
-        // Verificar se o step atual é válido antes de permitir avançar
-        if (isStepValid(currentStep)) {
-          setCurrentStep(newStep);
-        } else {
-          // Se não for válido, voltar para o step atual e mostrar erros
-          scrollToStep(currentStep);
-          if (currentStep === 1) setShowErrorsStep1(true);
-          if (currentStep === 2) setShowErrorsStep2(true);
-          triggerSnack('Please fill in all required fields before continuing.');
-        }
-      } else if (newStep < currentStep && newStep >= 1) {
-        // Permitir voltar para steps anteriores sem validação
-        setCurrentStep(newStep);
-      }
-    }
-  };
+  // 1. Adicionar estado para altura do step:
+  const [formAreaHeight, setFormAreaHeight] = useState<number | null>(null);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1719,43 +1624,13 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       </View>
 
       {/* Content */}
-      <KeyboardAvoidingView
-        style={styles.content}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View
-          style={{ flex: 1 }}
-          onLayout={(event) => {
-            const { height } = event.nativeEvent.layout;
-            setContentHeight(prev => (prev === 0 || height > prev ? height : prev));
-          }}
-        >
-          <ScrollView
-            ref={scrollViewRef}
-            showsVerticalScrollIndicator={false}
-            scrollEnabled={isScrollEnabled}
-            pagingEnabled
-            onScroll={handleScroll}
-            onMomentumScrollEnd={handleScrollEnd}
-            onScrollEndDrag={handleScrollEnd}
-            bounces={true}
-            bouncesZoom={false}
-          >
-            {[1, 2, 3, 4, 5].map((step) => (
-              <View
-                key={step}
-                style={{
-                  width: '100%',
-                  height: contentHeight || Dimensions.get('window').height * 0.7,
-                  paddingHorizontal: 10,
-                }}
-              >
-                {renderStepContent(step)}
-              </View>
-            ))}
-          </ScrollView>
+      <View style={styles.content} onLayout={e => setFormAreaHeight(e.nativeEvent.layout.height)}>
+        <View style={{ flex: 1, paddingHorizontal: 20 }}>
+          <View style={formAreaHeight ? { minHeight: formAreaHeight } : undefined}>
+            {renderStepContent(currentStep)}
+          </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       {showSnack && (
         <TouchableOpacity style={styles.snackbarContainer} activeOpacity={0.8} onPress={()=>setShowSnack(false)}>
@@ -2474,7 +2349,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    marginTop: 50,
+    marginTop: 40, // era 50, diminui 10px
   },
   snackbarContainer:{
     position:'absolute',
