@@ -7,6 +7,8 @@ import {
   Alert,
   Animated // <-- importar Animated
   ,
+
+
   BackHandler,
   Dimensions,
   Image,
@@ -613,23 +615,43 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     return lightColors.includes(backgroundColor) ? '#333' : '#fff';
   };
 
-  const handleNext = () => {
-    if (currentStep < totalSteps && formAreaHeight) {
-      const newStep = currentStep + 1;
-      setCurrentStep(newStep);
-      setTimeout(() => {
-        mainScrollRef.current?.scrollTo({ y: formAreaHeight * (newStep - 1), animated: true });
-      }, 10);
+  const goToStep = (newStep: number) => {
+    if (formAreaHeight && newStep !== displayedStep) {
+      const direction = newStep > displayedStep ? 1 : -1;
+      setPrevStepIndex(displayedStep);
+      setDisplayedStep(newStep); // já mostra o conteúdo novo
+      animatedYIn.setValue(direction * formAreaHeight);
+      animatedYOut.setValue(0);
+      Animated.parallel([
+        Animated.timing(animatedYIn, {
+          toValue: 0,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedYOut, {
+          toValue: -direction * formAreaHeight,
+          duration: 350,
+          useNativeDriver: true,
+        })
+      ]).start(() => {
+        setPrevStepIndex(null);
+      });
     }
   };
 
+  // Substituir setCurrentStep(newStep) por goToStep(newStep) em handleNext e handlePrevious:
+  const handleNext = () => {
+    if (currentStep < totalSteps && formAreaHeight) {
+      const newStep = currentStep + 1;
+      goToStep(newStep);
+      setCurrentStep(newStep);
+    }
+  };
   const handlePrevious = () => {
     if (currentStep > 1 && formAreaHeight) {
       const newStep = currentStep - 1;
+      goToStep(newStep);
       setCurrentStep(newStep);
-      setTimeout(() => {
-        mainScrollRef.current?.scrollTo({ y: formAreaHeight * (newStep - 1), animated: true });
-      }, 10);
     }
   };
 
@@ -1612,21 +1634,33 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
   // 1. Adicionar estado para altura do step:
   const [formAreaHeight, setFormAreaHeight] = useState<number | null>(null);
-  const animatedY = useRef(new Animated.Value(0)).current;
-  const prevStep = useRef(currentStep);
+  const [displayedStep, setDisplayedStep] = useState(currentStep); // step que está na tela
+  const [prevStepIndex, setPrevStepIndex] = useState<number | null>(null); // step que está saindo
+  const animatedYIn = useRef(new Animated.Value(0)).current;
+  const animatedYOut = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (formAreaHeight && prevStep.current !== currentStep) {
+    if (formAreaHeight && displayedStep !== currentStep) {
       // Direção: para baixo (próximo) ou para cima (anterior)
-      const direction = currentStep > prevStep.current ? 1 : -1;
-      // Começa fora da tela, anima para 0
-      animatedY.setValue(direction * formAreaHeight);
-      Animated.timing(animatedY, {
-        toValue: 0,
-        duration: 350,
-        useNativeDriver: true,
-      }).start();
-      prevStep.current = currentStep;
+      const direction = currentStep > displayedStep ? 1 : -1;
+      setPrevStepIndex(displayedStep);
+      animatedYIn.setValue(direction * formAreaHeight);
+      animatedYOut.setValue(0);
+      Animated.parallel([
+        Animated.timing(animatedYIn, {
+          toValue: 0,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedYOut, {
+          toValue: -direction * formAreaHeight,
+          duration: 350,
+          useNativeDriver: true,
+        })
+      ]).start(() => {
+        setDisplayedStep(currentStep);
+        setPrevStepIndex(null);
+      });
     }
   }, [currentStep, formAreaHeight]);
 
@@ -1645,14 +1679,30 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       {/* Content */}
       <View style={styles.content} onLayout={e => setFormAreaHeight(e.nativeEvent.layout.height)}>
         <View style={{ flex: 1, paddingHorizontal: 20, overflow: 'hidden' }}>
+          {formAreaHeight && prevStepIndex !== null && (
+            <Animated.View
+              style={{
+                minHeight: formAreaHeight,
+                position: 'absolute',
+                width: '100%',
+                top: 0,
+                left: 0,
+                transform: [{ translateY: animatedYOut }],
+                zIndex: 1,
+              }}
+              pointerEvents="none"
+            >
+              {renderStepContent(prevStepIndex)}
+            </Animated.View>
+          )}
           {formAreaHeight && (
             <Animated.View
               style={{
                 minHeight: formAreaHeight,
-                transform: [{ translateY: animatedY }],
+                transform: [{ translateY: prevStepIndex !== null ? animatedYIn : 0 }],
               }}
             >
-              {renderStepContent(currentStep)}
+              {renderStepContent(displayedStep)}
             </Animated.View>
           )}
           {!formAreaHeight && (
