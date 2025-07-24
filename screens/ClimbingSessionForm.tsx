@@ -5,6 +5,8 @@ import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated // <-- importar Animated
+  ,
   BackHandler,
   Dimensions,
   Image,
@@ -1610,6 +1612,23 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
   // 1. Adicionar estado para altura do step:
   const [formAreaHeight, setFormAreaHeight] = useState<number | null>(null);
+  const animatedY = useRef(new Animated.Value(0)).current;
+  const prevStep = useRef(currentStep);
+
+  useEffect(() => {
+    if (formAreaHeight && prevStep.current !== currentStep) {
+      // Direção: para baixo (próximo) ou para cima (anterior)
+      const direction = currentStep > prevStep.current ? 1 : -1;
+      // Começa fora da tela, anima para 0
+      animatedY.setValue(direction * formAreaHeight);
+      Animated.timing(animatedY, {
+        toValue: 0,
+        duration: 350,
+        useNativeDriver: true,
+      }).start();
+      prevStep.current = currentStep;
+    }
+  }, [currentStep, formAreaHeight]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1625,10 +1644,22 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
       {/* Content */}
       <View style={styles.content} onLayout={e => setFormAreaHeight(e.nativeEvent.layout.height)}>
-        <View style={{ flex: 1, paddingHorizontal: 20 }}>
-          <View style={formAreaHeight ? { minHeight: formAreaHeight } : undefined}>
-            {renderStepContent(currentStep)}
-          </View>
+        <View style={{ flex: 1, paddingHorizontal: 20, overflow: 'hidden' }}>
+          {formAreaHeight && (
+            <Animated.View
+              style={{
+                minHeight: formAreaHeight,
+                transform: [{ translateY: animatedY }],
+              }}
+            >
+              {renderStepContent(currentStep)}
+            </Animated.View>
+          )}
+          {!formAreaHeight && (
+            <View>
+              {renderStepContent(currentStep)}
+            </View>
+          )}
         </View>
       </View>
 
