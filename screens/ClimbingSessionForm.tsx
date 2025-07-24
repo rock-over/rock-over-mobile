@@ -9,6 +9,7 @@ import {
   ,
 
 
+
   BackHandler,
   Dimensions,
   Image,
@@ -1678,7 +1679,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
       {/* Content */}
       <View style={styles.content} onLayout={e => setFormAreaHeight(e.nativeEvent.layout.height)}>
-        <View style={{ flex: 1, paddingHorizontal: 20, overflow: 'hidden' }}>
+        <View style={{ flex: 1, overflow: 'hidden' }}>
           {formAreaHeight && prevStepIndex !== null && (
             <Animated.View
               style={{
@@ -1689,6 +1690,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
                 left: 0,
                 transform: [{ translateY: animatedYOut }],
                 zIndex: 1,
+                paddingHorizontal: 20,
               }}
               pointerEvents="none"
             >
@@ -1700,13 +1702,14 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               style={{
                 minHeight: formAreaHeight,
                 transform: [{ translateY: prevStepIndex !== null ? animatedYIn : 0 }],
+                paddingHorizontal: 20,
               }}
             >
               {renderStepContent(displayedStep)}
             </Animated.View>
           )}
           {!formAreaHeight && (
-            <View>
+            <View style={{ paddingHorizontal: 20 }}>
               {renderStepContent(currentStep)}
             </View>
           )}
