@@ -1297,23 +1297,11 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     const placeholder = isIndoor ? 'Search for a gym' : 'Search for a place';
 
     const renderPlaceRow = (rowData: any) => {
-      console.log('Autocomplete row:', rowData);
-      const getTitle = () => {
-        if (rowData.description) return rowData.description;
-        if (rowData.formatted_address) return rowData.formatted_address;
-        if (rowData.name) return rowData.name;
-        if (rowData.structured_formatting) {
-          const main = rowData.structured_formatting.main_text;
-          const secondary = rowData.structured_formatting.secondary_text;
-          return secondary ? `${main}, ${secondary}` : main;
-        }
-        return JSON.stringify(rowData);
-      };
-
+      const title = rowData.description || rowData.formatted_address || rowData.name || (rowData.structured_formatting ? rowData.structured_formatting.main_text : '');
       return (
-        <View style={styles.placeRowContainer}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingVertical: 10, paddingHorizontal: 8 }}>
           <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
-          <Text style={styles.placeRowText} numberOfLines={2}>{getTitle()}</Text>
+          <Text style={{ flex: 1, fontSize: 14, color: '#000' }} numberOfLines={2}>{title}</Text>
         </View>
       );
     };
@@ -1351,6 +1339,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               }}
               predefinedPlaces={[]}
               timeout={20000}
+              renderRow={renderPlaceRow}
               textInputProps={{ autoFocus: true }}
             />
           </View>
