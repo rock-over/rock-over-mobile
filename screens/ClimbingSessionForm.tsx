@@ -5,11 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Animated // <-- importar Animated
-  ,
-
-
-
+  Animated,
   BackHandler,
   Dimensions,
   Image,
@@ -24,10 +20,13 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../constants/Theme';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
+// NEW: Google Maps API key (expects env var from Expo config)
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDhK-e-oV7ex0f0gk3R1DMnlXCYSmfgOio';
 
 interface ClimbingSessionFormProps {
   navigation: any;
@@ -73,6 +72,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       return (
         formData.when !== '' &&
         formData.place.trim() !== '' &&
+        formData.location.trim() !== '' && // NEW validation
         formData.activity.trim() !== ''
       );
     }
@@ -91,6 +91,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   // Main form state (declared early so it can be used by auto-advance logic below)
   const [formData, setFormData] = useState({
     place: '',
+    location: '', // NEW – selected gym or outdoor place
     when: new Date().toISOString(), // Data e hora atual (obrigatória)
     activity: '',
     colour: THEME_COLORS.bluePrimary, // Cor inicial azul
@@ -684,6 +685,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     setShowErrorsStep2(false);
     setFormData({
       place: '',
+      location: '', // NEW reset
       when: new Date().toISOString(),
       activity: '',
       colour: THEME_COLORS.bluePrimary,
@@ -1226,6 +1228,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     );
   };
 
+  // Selector Indoor / Outdoor – ao selecionar abre modal de busca
   const renderLocationSelector = () => {
     const locationOptions = [
       {
@@ -1240,8 +1243,159 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       }
     ];
 
-    const showErr = showErrorsStep1 && formData.place.trim()==='';
-    return renderVisualSelectorCompact('Location', 'place', locationOptions, showErr);
+    const showErr = showErrorsStep1 && formData.place.trim() === '';
+
+    const handleOptionPress = (value: string) => {
+      if (formData.place === value) {
+        // deseleciona
+        updateField('place', '');
+        updateField('location', '');
+      } else {
+        updateField('place', value);
+        updateField('location', '');
+        setShowLocationModal(true);
+      }
+    };
+
+    // Copiamos renderVisualSelectorCompact inline para usar handleOptionPress custom
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Location</Text>
+        <View style={styles.locationContainer}>
+          {locationOptions.map((opt, idx) => (
+            <React.Fragment key={opt.value}>
+              {idx === 1 && <View style={styles.buttonSpacer} />}        
+              <TouchableOpacity
+                style={[
+                  styles.locationButton,
+                  formData.place === opt.value && styles.locationButtonSelected,
+                  showErr && styles.locationButtonError
+                ]}
+                onPress={() => handleOptionPress(opt.value)}
+              >
+                <Image
+                  source={opt.imageUrl}
+                  style={styles.locationImage}
+                  resizeMode="cover"
+                />
+                <Text style={[styles.locationText, formData.place === opt.value && styles.locationTextSelected]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            </React.Fragment>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  // Modal de busca com Google Places
+  const renderLocationModal = () => {
+    if (!showLocationModal) return null;
+    const isIndoor = formData.place === 'Indoor';
+    const title = isIndoor ? 'Select gym' : 'Select place';
+    const placeholder = isIndoor ? 'Search for a gym' : 'Search for a place';
+
+    const renderPlaceRow = (rowData: any) => {
+      console.log('Autocomplete row:', rowData);
+      const getTitle = () => {
+        if (rowData.description) return rowData.description;
+        if (rowData.formatted_address) return rowData.formatted_address;
+        if (rowData.name) return rowData.name;
+        if (rowData.structured_formatting) {
+          const main = rowData.structured_formatting.main_text;
+          const secondary = rowData.structured_formatting.secondary_text;
+          return secondary ? `${main}, ${secondary}` : main;
+        }
+        return JSON.stringify(rowData);
+      };
+
+      return (
+        <View style={styles.placeRowContainer}>
+          <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
+          <Text style={styles.placeRowText} numberOfLines={2}>{getTitle()}</Text>
+        </View>
+      );
+    };
+
+    return (
+      <Modal
+        visible={showLocationModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowLocationModal(false)}>
+          <View style={styles.locationModalContainer}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <GooglePlacesAutocomplete
+              placeholder={placeholder}
+              fetchDetails
+              enablePoweredByContainer={false}
+              onPress={(data: any, _details = null) => {
+                updateField('location', data.description);
+                setShowLocationModal(false);
+              }}
+              query={{
+                key: GOOGLE_MAPS_API_KEY,
+                language: 'en',
+                ...(isIndoor ? { types: 'establishment' } : { types: 'geocode' }),
+              }}
+              minLength={2}
+              debounce={300}
+              onFail={(error: unknown) => console.log('Places error', error)}
+              styles={{
+                container: { flex: 1 },
+                textInput: styles.textInput,
+                listView: { backgroundColor: '#fff', marginTop: 8 },
+              }}
+              predefinedPlaces={[]}
+              timeout={20000}
+              textInputProps={{ autoFocus: true }}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
+  // NEW – Google Places search for gym/address based on indoor/outdoor selection
+  const renderLocationSearch = () => {
+    if (formData.place.trim() === '') return null; // wait until user selects Indoor/Outdoor
+
+    const isIndoor = formData.place === 'Indoor';
+    const title = isIndoor ? 'Select gym' : 'Select place';
+    const placeholder = isIndoor ? 'Search for a gym' : 'Search for a place';
+    const showErr = showErrorsStep1 && formData.location.trim() === '';
+
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <GooglePlacesAutocomplete
+          placeholder={placeholder}
+          fetchDetails
+          enablePoweredByContainer={false}
+          onPress={(data: any, _details = null) => {
+            updateField('location', data.description);
+          }}
+          query={{
+            key: GOOGLE_MAPS_API_KEY,
+            language: 'en',
+            ...(isIndoor
+              ? { keyword: 'climbing gym', types: 'establishment' }
+              : { types: 'geocode' })
+          }}
+          styles={{
+            container: { flex: 0 },
+            textInput: [styles.textInput, showErr && styles.textInputError],
+            listView: { zIndex: 1000 },
+          }}
+          predefinedPlaces={[]}
+          textInputProps={{}}
+        />
+        {showErr && <Text style={styles.errorText}>This field is required</Text>}
+      </View>
+    );
   };
 
   const renderActivitySelector = () => {
@@ -1463,6 +1617,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
             </Text>
             {renderDateTimePickerCompact('', 'when', showErrorsStep1)}
             {renderLocationSelector()}
+            {renderLocationSearch()}
             {renderActivitySelector()}
             {renderStepButtons(1)}
           </View>
@@ -1665,6 +1820,15 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     }
   }, [currentStep, formAreaHeight]);
 
+  useEffect(() => {
+    // Always reset selected location when the user toggles Indoor / Outdoor
+    setFormData(prev => ({ ...prev, location: '' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.place]);
+
+  // Modal para busca de local (gym / place)
+  const [showLocationModal, setShowLocationModal] = useState(false);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
@@ -1737,6 +1901,8 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
           </TouchableOpacity>
         </View>
       )}
+
+      {renderLocationModal()}
     </SafeAreaView>
   );
 }
@@ -2490,4 +2656,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     elevation: 2,
   },
+  selectedLocationText: { marginTop: 8, fontSize: 14, color: '#333', textAlign: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-start' },
+  locationModalContainer: { backgroundColor: '#fff', borderRadius: 8, padding: 16, marginTop: 50, marginHorizontal: 16, flex: 1 },
+  placeRowContainer: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8 },
+  placeRowText: { flex: 1, fontSize: 14, color: '#000' },
  });  
