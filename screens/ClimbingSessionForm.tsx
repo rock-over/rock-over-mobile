@@ -1339,7 +1339,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               onNotFound={() => console.log('Places onNotFound')}
               styles={{
                 container: { flex: 1 },
-                textInput: styles.textInput,
+                textInput: { ...styles.textInput, placeholderTextColor: '#999' },
                 listView: { backgroundColor: '#fff', marginTop: 8 },
               }}
               predefinedPlaces={[]}
@@ -1347,7 +1347,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               renderRow={renderPlaceRow}
               keyboardShouldPersistTaps="always"
               isRowScrollable={false}
-              textInputProps={{ autoFocus: true }}
+              textInputProps={{ autoFocus: true, placeholderTextColor: '#999' }}
             />
           </View>
         </View>
@@ -1617,8 +1617,12 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               <View style={styles.locationDisplayRow}>
                 <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
                 <Text style={styles.locationDisplayText} numberOfLines={2}>{formData.location}</Text>
+                <TouchableOpacity onPress={() => setShowLocationModal(true)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                  <Text style={styles.changeLinkText}>Change</Text>
+                </TouchableOpacity>
               </View>
             )}
+            <View style={{ height: 16 }} />
             {renderActivitySelector()}
             {renderStepButtons(1)}
           </View>
@@ -2662,6 +2666,7 @@ const styles = StyleSheet.create({
   locationModalContainer: { backgroundColor: '#fff', borderRadius: 8, padding: 16, marginTop: 50, marginHorizontal: 16, flex: 1 },
   placeRowContainer: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8 },
   placeRowText: { flex: 1, fontSize: 14, color: '#000' },
-  locationDisplayRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingHorizontal: 8 },
+  locationDisplayRow: { flexDirection: 'row', alignItems: 'center', marginTop: 0, paddingHorizontal: 4 },
   locationDisplayText: { flex: 1, fontSize: 14, color: '#000' },
+  changeLinkText: { color: THEME_COLORS.bluePrimary, fontSize: 14, fontWeight: '600', marginLeft: 8 },
  });  
