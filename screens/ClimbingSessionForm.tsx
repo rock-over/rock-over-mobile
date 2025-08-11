@@ -1299,9 +1299,9 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     const renderPlaceRow = (rowData: any) => {
       const title = rowData.description || rowData.formatted_address || rowData.name || (rowData.structured_formatting ? rowData.structured_formatting.main_text : '');
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingVertical: 10, paddingHorizontal: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8, width: '100%' }}>
           <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
-          <Text style={{ flex: 1, fontSize: 14, color: '#000' }} numberOfLines={2}>{title}</Text>
+          <Text style={{ flex: 1, fontSize: 14, color: '#000', minWidth: 0 }} numberOfLines={2}>{title}</Text>
         </View>
       );
     };
@@ -1313,15 +1313,19 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
         transparent={true}
         onRequestClose={() => setShowLocationModal(false)}
       >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowLocationModal(false)}>
+        <View style={styles.modalOverlay}>
           <View style={styles.locationModalContainer}>
             <Text style={styles.modalTitle}>{title}</Text>
             <GooglePlacesAutocomplete
               placeholder={placeholder}
-              fetchDetails
+              fetchDetails={false}
               enablePoweredByContainer={false}
               onPress={(data: any, _details = null) => {
-                updateField('location', data.description);
+                console.log('Row press recognized:', data);
+                const title = data?.description || data?.formatted_address || data?.name;
+                if (title) {
+                  updateField('location', title);
+                }
                 setShowLocationModal(false);
               }}
               query={{
@@ -1332,6 +1336,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               minLength={2}
               debounce={300}
               onFail={(error: unknown) => console.log('Places error', error)}
+              onNotFound={() => console.log('Places onNotFound')}
               styles={{
                 container: { flex: 1 },
                 textInput: styles.textInput,
@@ -1340,10 +1345,12 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               predefinedPlaces={[]}
               timeout={20000}
               renderRow={renderPlaceRow}
+              keyboardShouldPersistTaps="always"
+              isRowScrollable={false}
               textInputProps={{ autoFocus: true }}
             />
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     );
   };
@@ -1362,7 +1369,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
         <Text style={styles.label}>{title}</Text>
         <GooglePlacesAutocomplete
           placeholder={placeholder}
-          fetchDetails
+          fetchDetails={false}
           enablePoweredByContainer={false}
           onPress={(data: any, _details = null) => {
             updateField('location', data.description);
@@ -1606,7 +1613,12 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
             </Text>
             {renderDateTimePickerCompact('', 'when', showErrorsStep1)}
             {renderLocationSelector()}
-            {renderLocationSearch()}
+            {formData.location !== '' && (
+              <View style={styles.locationDisplayRow}>
+                <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
+                <Text style={styles.locationDisplayText} numberOfLines={2}>{formData.location}</Text>
+              </View>
+            )}
             {renderActivitySelector()}
             {renderStepButtons(1)}
           </View>
@@ -2650,4 +2662,6 @@ const styles = StyleSheet.create({
   locationModalContainer: { backgroundColor: '#fff', borderRadius: 8, padding: 16, marginTop: 50, marginHorizontal: 16, flex: 1 },
   placeRowContainer: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8 },
   placeRowText: { flex: 1, fontSize: 14, color: '#000' },
+  locationDisplayRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingHorizontal: 8 },
+  locationDisplayText: { flex: 1, fontSize: 14, color: '#000' },
  });  
