@@ -4,6 +4,7 @@ import Slider from '@react-native-community/slider';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   BackHandler,
@@ -18,7 +19,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -160,6 +161,9 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   // -------- Auto-advance logic --------
   // Track previous validity by step to detect transitions from invalid ➜ valid
   const stepValidityRef = useRef<Record<number, boolean>>({});
+
+  // Ref for Google Places input inside location modal
+  const googlePlacesRef = useRef<any>(null);
 
   useEffect(() => {
     const wasValid = stepValidityRef.current[currentStep] || false;
@@ -1306,17 +1310,24 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       );
     };
 
+    // (using outer-scope googlePlacesRef)
+
     return (
       <Modal
         visible={showLocationModal}
         animationType="slide"
         transparent={true}
         onRequestClose={() => setShowLocationModal(false)}
+        onShow={() => {
+          // Ensure focus after modal animation completes
+          setTimeout(() => googlePlacesRef?.current?.focus?.(), 150);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.locationModalContainer}>
             <Text style={styles.modalTitle}>{title}</Text>
             <GooglePlacesAutocomplete
+              ref={googlePlacesRef}
               placeholder={placeholder}
               fetchDetails={false}
               enablePoweredByContainer={false}
@@ -1347,7 +1358,13 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               renderRow={renderPlaceRow}
               keyboardShouldPersistTaps="always"
               isRowScrollable={false}
-              textInputProps={{ autoFocus: true, placeholderTextColor: '#999' }}
+              // @ts-ignore – prop provided by the library but missing in its type definitions
+              listLoaderComponent={<ActivityIndicator size="large" color={THEME_COLORS.bluePrimary} style={{ marginTop: 24 }} />}
+              textInputProps={{
+                autoFocus: true,
+                selectTextOnFocus: true,
+                placeholderTextColor: '#999',
+              }}
             />
           </View>
         </View>
