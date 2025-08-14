@@ -2,6 +2,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -1302,10 +1303,48 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
     const renderPlaceRow = (rowData: any) => {
       const title = rowData.description || rowData.formatted_address || rowData.name || (rowData.structured_formatting ? rowData.structured_formatting.main_text : '');
+
+      // Trigger distance fetch if needed
+      if (userCoords && rowData.place_id && placeDistances[rowData.place_id] === undefined && !fetchingPlaceIds.current.has(rowData.place_id)) {
+        fetchingPlaceIds.current.add(rowData.place_id);
+        (async () => {
+          try {
+            const resp = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${rowData.place_id}&fields=geometry&key=${GOOGLE_MAPS_API_KEY}`);
+            const json = await resp.json();
+            const loc = json.result?.geometry?.location;
+            if (loc) {
+              const dist = haversineDistanceKm(userCoords.latitude, userCoords.longitude, loc.lat, loc.lng);
+              console.log(`[DISTANCE] ${title} -> ${dist.toFixed(2)} km`);
+              setPlaceDistances(prev => ({ ...prev, [rowData.place_id]: dist }));
+              resolvedCountRef.current += 1;
+              maybeHideOverlay();
+            } else {
+              console.log('[DISTANCE] Geometry not found for', title);
+            }
+          } catch (err) {
+            console.log('[DISTANCE] Error fetching for', title, err);
+          } finally {
+            // Ensure hide overlay even if error
+            resolvedCountRef.current += 1;
+            maybeHideOverlay();
+          }
+        })();
+      }
+
+      const distance = placeDistances[rowData.place_id];
+      console.log(`[RENDER ROW] ${title} distance:`, distance);
+
       return (
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8, width: '100%' }}>
           <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
           <Text style={{ flex: 1, fontSize: 14, color: '#000', minWidth: 0 }} numberOfLines={2}>{title}</Text>
+          {userCoords && (
+            distance !== undefined ? (
+              <Text style={{ marginLeft: 8, fontSize: 12, color: '#555' }}>{`${distance.toFixed(1)} km`}</Text>
+            ) : (
+              <ActivityIndicator size="small" color={THEME_COLORS.bluePrimary} style={{ marginLeft: 8 }} />
+            )
+          )}
         </View>
       );
     };
@@ -1319,6 +1358,12 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
         transparent={true}
         onRequestClose={() => setShowLocationModal(false)}
         onShow={() => {
+          // reset loading state each time modal opens
+          setPlaceDistances({});
+          fetchingPlaceIds.current.clear();
+          startedCountRef.current = 0;
+          setInitialLoading(false); // overlay only after fetch starts
+
           // Ensure focus after modal animation completes
           setTimeout(() => googlePlacesRef?.current?.focus?.(), 150);
         }}
@@ -1343,6 +1388,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
                 key: GOOGLE_MAPS_API_KEY,
                 language: 'en',
                 ...(isIndoor ? { types: 'establishment' } : { types: 'geocode' }),
+                ...(userCoords ? { location: `${userCoords.latitude},${userCoords.longitude}`, radius: 50000 } : {}),
               }}
               minLength={2}
               debounce={300}
@@ -1368,6 +1414,12 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
             />
           </View>
         </View>
+
+        {initialLoading && (
+          <View style={{ position: 'absolute', top: 60, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffffAA', pointerEvents: 'none' }}>
+            <ActivityIndicator size="large" color={THEME_COLORS.bluePrimary} />
+          </View>
+        )}
       </Modal>
     );
   };
@@ -1396,7 +1448,8 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
             language: 'en',
             ...(isIndoor
               ? { keyword: 'climbing gym', types: 'establishment' }
-              : { types: 'geocode' })
+              : { types: 'geocode' }),
+            ...(userCoords ? { location: `${userCoords.latitude},${userCoords.longitude}`, radius: 50000 } : {}),
           }}
           styles={{
             container: { flex: 0 },
@@ -1850,6 +1903,81 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
   // Modal para busca de local (gym / place)
   const [showLocationModal, setShowLocationModal] = useState(false);
+
+  // ---------------- User location ----------------
+  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          try {
+            // @ts-ignore – timeout not yet declared in Expo type definitions
+            const loc = await Promise.race([
+              Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+              new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+            ]);
+            setUserCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+          } catch (posErr) {
+            // Fallback: try last known position (may be undefined)
+            const last = await Location.getLastKnownPositionAsync();
+            if (last) {
+              setUserCoords({ latitude: last.coords.latitude, longitude: last.coords.longitude });
+            } else {
+              console.log('Could not retrieve position:', posErr);
+            }
+          }
+        }
+      } catch (err) {
+        console.log('Location permission error', err);
+      }
+    })();
+  }, []);
+
+  // Distance helpers
+  const haversineDistanceKm = (lat1:number, lon1:number, lat2:number, lon2:number) => {
+    const toRad = (v:number) => (v * Math.PI) / 180;
+    const R = 6371; // km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const [placeDistances, setPlaceDistances] = useState<Record<string, number>>({});
+  const fetchingPlaceIds = useRef<Set<string>>(new Set());
+
+  // show overall spinner until first 5 distances resolved
+  const [initialLoading, setInitialLoading] = useState(false);
+  const startedCountRef = useRef(0);
+  const resolvedCountRef = useRef(0);
+  const hasHiddenInitialOverlayRef = useRef(false);
+  const overlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showOverlay = () => {
+    if (!initialLoading && !hasHiddenInitialOverlayRef.current) {
+      setInitialLoading(true);
+      // hide overlay automatically after 4s as fallback
+      if (overlayTimeoutRef.current) clearTimeout(overlayTimeoutRef.current as any);
+      overlayTimeoutRef.current = setTimeout(() => {
+        setInitialLoading(false);
+        hasHiddenInitialOverlayRef.current = true;
+      }, 4000) as any;
+    }
+  };
+
+  const maybeHideOverlay = () => {
+    if (initialLoading && resolvedCountRef.current >= startedCountRef.current) {
+      if (overlayTimeoutRef.current) clearTimeout(overlayTimeoutRef.current as any);
+      setInitialLoading(false);
+      hasHiddenInitialOverlayRef.current = true;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
