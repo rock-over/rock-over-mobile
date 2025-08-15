@@ -2,6 +2,20 @@ import { supabase } from '../lib/supabase';
 
 export interface ClimbingSessionData {
   place: string | null;
+  location?: string | null; // NEW: Nome específico do local (gym, setor, etc)
+  location_data?: {
+    name?: string;
+    description?: string;
+    place_id?: string;
+    formatted_address?: string;
+    main_text?: string;
+    secondary_text?: string;
+    types?: string[];
+    vicinity?: string;
+    latitude?: number;
+    longitude?: number;
+    distance_km?: number;
+  } | null; // Rich location data from Google Places API
   when: string;
   timeOfDay: string | null;
   activity: string | null;
@@ -15,6 +29,8 @@ export interface ClimbingSessionData {
   ascentType: string | null;
   colour?: string | null;
   routeRating?: string | null;
+  suggestedGrade?: string | null; // Campo existente no SessionDetails
+  settersRating?: string | null;  // Campo existente no SessionDetails
   howItFelt?: string | null;
   movement?: string | null;
   grip?: string | null;

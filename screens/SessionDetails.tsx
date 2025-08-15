@@ -49,7 +49,10 @@ export default function SessionDetails({ session, onClose }: SessionDetailsProps
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Informações Gerais</Text>
           
-          {session.place ? renderField('Local', session.place) : renderEmptyField('Local')}
+          {session.place ? renderField('Tipo de Local', session.place) : renderEmptyField('Tipo de Local')}
+          {session.location ? renderField('Local', session.location) : renderEmptyField('Local')}
+          {session.location_data?.formatted_address ? renderField('Endereço', session.location_data.formatted_address) : null}
+          {session.location_data?.vicinity ? renderField('Região', session.location_data.vicinity) : null}
           {session.when ? renderField('Data', formatDate(session.when)) : renderEmptyField('Data')}
           {session.timeOfDay ? renderField('Período', session.timeOfDay) : renderEmptyField('Período')}
           {session.activity ? renderField('Atividade', session.activity) : renderEmptyField('Atividade')}

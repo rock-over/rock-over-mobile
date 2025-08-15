@@ -95,6 +95,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   const [formData, setFormData] = useState({
     place: '',
     location: '', // NEW – selected gym or outdoor place
+    location_data: null as any, // Rich location data from Google Places API
     when: new Date().toISOString(), // Data e hora atual (obrigatória)
     activity: '',
     colour: THEME_COLORS.bluePrimary, // Cor inicial azul
@@ -669,6 +670,12 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       return;
     }
 
+    // Validar campos obrigatórios do Step 1
+    if (!formData.place || !formData.location) {
+      Alert.alert('Erro', 'Local é obrigatório');
+      return;
+    }
+
     // Converter campos vazios para null, mas manter números e arrays como estão
     const cleanData = Object.fromEntries(
       Object.entries(formData).map(([key, value]) => [
@@ -678,6 +685,16 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
         (value === '' ? null : value)
       ])
     );
+
+    // Log para debug - remover em produção
+    console.log('Saving climbing session:', {
+      place: cleanData.place,
+      location: cleanData.location,
+      location_data: cleanData.location_data,
+      when: cleanData.when,
+      activity: cleanData.activity,
+      // ... outros campos importantes
+    });
 
     if (onSave) onSave(cleanData);
     navigation.goBack();
@@ -692,6 +709,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     setFormData({
       place: '',
       location: '', // NEW reset
+      location_data: null, // NEW reset rich data
       when: new Date().toISOString(),
       activity: '',
       colour: THEME_COLORS.bluePrimary,
@@ -1439,8 +1457,13 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
                         }}
                         onPress={() => {
                           console.log('Row press recognized:', result);
+                          console.log('Rich location data:', result.richLocationData);
                           if (title) {
                             updateField('location', title);
+                            // Save rich location data if available
+                            if (result.richLocationData) {
+                              setFormData(prev => ({ ...prev, location_data: result.richLocationData }));
+                            }
                           }
                           setShowLocationModal(false);
                         }}
@@ -1897,7 +1920,22 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
               {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
             </ScrollView>
-            {renderStepButtons(5)}
+            
+            {/* Step 5 - Custom buttons layout with both buttons on same row */}
+            <View style={styles.finalStepButtonsContainer}>
+              <TouchableOpacity
+                style={styles.circleNavButton}
+                onPress={handlePrevious}
+              >
+                <FontAwesome6 name="arrow-up" size={18} color="#fff" />
+              </TouchableOpacity>
+              
+              <View style={{ width: 12 }} />
+              
+              <TouchableOpacity style={styles.finalStepSaveButton} onPress={handleSave}>
+                <Text style={styles.saveButtonText}>Salve</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         );
 
@@ -1976,7 +2014,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
   useEffect(() => {
     // Always reset selected location when the user toggles Indoor / Outdoor
-    setFormData(prev => ({ ...prev, location: '' }));
+    setFormData(prev => ({ ...prev, location: '', location_data: null }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.place]);
 
@@ -2100,7 +2138,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
           try {
             const resp = await fetch(
-              `https://maps.googleapis.com/maps/api/place/details/json?place_id=${result.place_id}&fields=geometry&key=${GOOGLE_MAPS_API_KEY}`
+              `https://maps.googleapis.com/maps/api/place/details/json?place_id=${result.place_id}&fields=geometry,name,formatted_address,types,vicinity&key=${GOOGLE_MAPS_API_KEY}`
             );
             const json = await resp.json();
             const loc = json.result?.geometry?.location;
@@ -2112,7 +2150,23 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
                 loc.lat,
                 loc.lng
               );
-              return { ...result, distance: dist };
+              
+              // Create rich location data object
+              const richData = {
+                name: json.result?.name || result.structured_formatting?.main_text,
+                description: result.description,
+                place_id: result.place_id,
+                formatted_address: json.result?.formatted_address,
+                main_text: result.structured_formatting?.main_text,
+                secondary_text: result.structured_formatting?.secondary_text,
+                types: json.result?.types || result.types,
+                vicinity: json.result?.vicinity,
+                latitude: loc.lat,
+                longitude: loc.lng,
+                distance_km: dist
+              };
+              
+              return { ...result, distance: dist, richLocationData: richData };
             }
           } catch (error) {
             console.log(`[DISTANCE ERROR] ${result.description}:`, error);
@@ -2221,13 +2275,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       {/* Grade Picker Modal */}
       {renderGradePickerModal('grade', filteredGradeOptions, showGradePicker, () => setShowGradePicker(false))}
 
-      {currentStep === totalSteps && (
-        <View style={styles.fixedSaveButtonContainer}>
-          <TouchableOpacity style={styles.fixedSaveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Salvar</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+
 
       {renderLocationModal()}
     </SafeAreaView>
@@ -2932,6 +2980,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
+  },
+  finalStepButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 0,
+    paddingTop: 16,
+    paddingBottom: 24,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  finalStepSaveButton: {
+    flex: 1,
+    backgroundColor: THEME_COLORS.bluePrimary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   snackbarContainer:{
     position:'absolute',
