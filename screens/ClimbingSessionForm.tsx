@@ -11,6 +11,7 @@ import {
   BackHandler,
   Dimensions,
   Image,
+  InteractionManager,
   Keyboard,
   Modal,
   Platform,
@@ -164,7 +165,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   const stepValidityRef = useRef<Record<number, boolean>>({});
 
   // Ref for Google Places input inside location modal
-  const googlePlacesRef = useRef<any>(null);
+  const googlePlacesRef = useRef<TextInput>(null);
 
   useEffect(() => {
     const wasValid = stepValidityRef.current[currentStep] || false;
@@ -1329,14 +1330,62 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
           setIsCalculatingDistances(false);
           setProcessedResults([]);
 
-          // Ensure focus after modal animation completes
-          setTimeout(() => googlePlacesRef?.current?.focus?.(), 150);
+          // Aggressive keyboard opening strategy
+          const forceKeyboardOpen = () => {
+            // Use helper first, then main input
+            if (focusHelperRef.current) {
+              focusHelperRef.current.focus();
+              setTimeout(() => {
+                if (googlePlacesRef.current) {
+                  googlePlacesRef.current.focus();
+                  // Force selection
+                  googlePlacesRef.current.setSelection && googlePlacesRef.current.setSelection(0, 0);
+                }
+              }, 50);
+            } else if (googlePlacesRef.current) {
+              // Fallback strategy
+              googlePlacesRef.current.blur();
+              setTimeout(() => {
+                if (googlePlacesRef.current) {
+                  googlePlacesRef.current.focus();
+                  googlePlacesRef.current.setSelection && googlePlacesRef.current.setSelection(0, 0);
+                }
+              }, 100);
+            }
+          };
+
+          // Multiple attempts to ensure keyboard opens
+          InteractionManager.runAfterInteractions(() => {
+            forceKeyboardOpen();
+            setTimeout(forceKeyboardOpen, 200);
+            setTimeout(forceKeyboardOpen, 500);
+          });
         }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.locationModalContainer}>
             <Text style={styles.modalTitle}>{title}</Text>
+            
+            {/* Invisible button to help with keyboard focus if needed */}
+            <TouchableOpacity 
+              style={{ position: 'absolute', top: 50, right: 10, opacity: 0.1, padding: 8 }}
+              onPress={() => {
+                if (googlePlacesRef.current) {
+                  googlePlacesRef.current.focus();
+                }
+              }}
+            >
+              <Text style={{ fontSize: 12, color: '#999' }}>📝</Text>
+            </TouchableOpacity>
+            
             <View style={{ flex: 1 }}>
+              {/* Hidden TextInput helper to force keyboard */}
+              <TextInput
+                ref={focusHelperRef}
+                style={{ position: 'absolute', left: -1000, opacity: 0, height: 1 }}
+                autoFocus={false}
+              />
+              
               <TextInput
                 ref={googlePlacesRef}
                 style={[styles.textInput, { marginBottom: 8 }]}
@@ -1344,6 +1393,13 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
                 placeholderTextColor="#999"
                 autoFocus={true}
                 selectTextOnFocus={true}
+                blurOnSubmit={false}
+                returnKeyType="search"
+                enablesReturnKeyAutomatically={true}
+                keyboardType="default"
+                autoCorrect={false}
+                autoCapitalize="words"
+                clearButtonMode="while-editing"
                 onChangeText={(text) => {
                   if (text.length === 0) {
                     setProcessedResults([]);
@@ -1351,6 +1407,10 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
                   } else {
                     debouncedSearchPlaces(text);
                   }
+                }}
+                onFocus={() => {
+                  // Additional focus handler to ensure keyboard stays open
+                  console.log('TextInput focused');
                 }}
               />
               
@@ -1922,6 +1982,45 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
   // Modal para busca de local (gym / place)
   const [showLocationModal, setShowLocationModal] = useState(false);
+  
+  // Ref to force focus with a workaround
+  const focusHelperRef = useRef<TextInput>(null);
+
+  // Effect to handle location modal focus with aggressive keyboard opening
+  useEffect(() => {
+    if (showLocationModal) {
+      // Multiple strategies to ensure keyboard opens
+      const openKeyboard = () => {
+        // Strategy 1: Use helper input to force keyboard context
+        if (focusHelperRef.current) {
+          focusHelperRef.current.focus();
+          setTimeout(() => {
+            if (googlePlacesRef.current) {
+              googlePlacesRef.current.focus();
+            }
+          }, 50);
+        } else if (googlePlacesRef.current) {
+          // Fallback: Blur then focus
+          googlePlacesRef.current.blur();
+          setTimeout(() => {
+            if (googlePlacesRef.current) {
+              googlePlacesRef.current.focus();
+            }
+          }, 50);
+        }
+      };
+
+      // Use InteractionManager to wait for modal animation to complete
+      InteractionManager.runAfterInteractions(() => {
+        // Multiple attempts with different delays
+        setTimeout(openKeyboard, 100);
+        setTimeout(openKeyboard, 300);
+        setTimeout(openKeyboard, 600);
+        // Extra attempt for stubborn cases
+        setTimeout(openKeyboard, 1000);
+      });
+    }
+  }, [showLocationModal]);
 
   // ---------------- User location ----------------
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
