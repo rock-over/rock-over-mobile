@@ -1660,148 +1660,183 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     switch (step) {
       case 1:
         return (
-          <View>
-            <Text style={styles.modalTitle}>Log your climbing session ✨</Text>
-            <Text style={styles.modalSubtitle}>
-              Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
-            </Text>
-            {renderDateTimePickerCompact('', 'when', showErrorsStep1)}
-            {renderLocationSelector()}
-            {formData.location !== '' && (
-              <View style={styles.locationDisplayRow}>
-                <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
-                <Text style={styles.locationDisplayText} numberOfLines={2}>{formData.location}</Text>
-                <TouchableOpacity onPress={() => setShowLocationModal(true)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                  <Text style={styles.changeLinkText}>Change</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            <View style={{ height: 16 }} />
-            {renderActivitySelector()}
+          <View style={{ flex: 1 }}>
+            <ScrollView 
+              style={{ flex: 1 }} 
+              contentContainerStyle={{ paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.modalTitle}>Log your climbing session ✨</Text>
+              <Text style={styles.modalSubtitle}>
+                Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
+              </Text>
+              {renderDateTimePickerCompact('', 'when', showErrorsStep1)}
+              {renderLocationSelector()}
+              {formData.location !== '' && (
+                <View style={styles.locationDisplayRow}>
+                  <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
+                  <Text style={styles.locationDisplayText} numberOfLines={2}>{formData.location}</Text>
+                  <TouchableOpacity onPress={() => setShowLocationModal(true)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                    <Text style={styles.changeLinkText}>Change</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              <View style={{ height: 16 }} />
+              {renderActivitySelector()}
+            </ScrollView>
             {renderStepButtons(1)}
           </View>
         );
 
       case 2:
         return (
-          <View>
-            <Text style={styles.modalTitle}>Add route details 🧗‍♂️</Text>
-            <Text style={styles.modalSubtitle}>Enter the information about your climbing route</Text>
-            
-            {/* Linha compartilhada: Route number + Route Color */}
-            <View style={styles.sharedRowContainer}>
-              <View style={styles.routeNameContainer}>
-                <View style={styles.fieldContainer}>
-                  <Text style={styles.label}>Route number</Text>
-                  <TextInput
-                    style={[styles.textInput, styles.routeNameInput, showErrorsStep2 && formData.routeNumber.trim()==='' && styles.textInputError]}
-                    value={formData.routeNumber}
-                    onChangeText={(value) => updateField('routeNumber', value)}
-                    placeholder="Add number"
-                    placeholderTextColor="#999"
-                    selectionColor="#333"
-                  />
+          <View style={{ flex: 1 }}>
+            <ScrollView 
+              style={{ flex: 1 }} 
+              contentContainerStyle={{ paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.modalTitle}>Add route details 🧗‍♂️</Text>
+              <Text style={styles.modalSubtitle}>Enter the information about your climbing route</Text>
+              
+              {/* Linha compartilhada: Route number + Route Color */}
+              <View style={styles.sharedRowContainer}>
+                <View style={styles.routeNameContainer}>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.label}>Route number</Text>
+                    <TextInput
+                      style={[styles.textInput, styles.routeNameInput, showErrorsStep2 && formData.routeNumber.trim()==='' && styles.textInputError]}
+                      value={formData.routeNumber}
+                      onChangeText={(value) => updateField('routeNumber', value)}
+                      placeholder="Add number"
+                      placeholderTextColor="#999"
+                      selectionColor="#333"
+                    />
+                  </View>
+                </View>
+                <View style={styles.routeColorContainer}>
+                  {renderColorSelectorCompact()}
                 </View>
               </View>
-              <View style={styles.routeColorContainer}>
-                {renderColorSelectorCompact()}
+              
+              {/* Campo Grade - largura total */}
+              {renderDropdownPickerCompact('Grade', 'grade', filteredGradeOptions, showGradePicker, setShowGradePicker, showErrorsStep2)}
+              
+              {/* Campo Completion */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Completion</Text>
+                {renderPickerNoTitleCompact('completion', ['Completed', 'Attempt'], showErrorsStep2)}
               </View>
-            </View>
-            
-            {/* Campo Grade - largura total */}
-            {renderDropdownPickerCompact('Grade', 'grade', filteredGradeOptions, showGradePicker, setShowGradePicker, showErrorsStep2)}
-            
-            {/* Campo Completion */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Completion</Text>
-              {renderPickerNoTitleCompact('completion', ['Completed', 'Attempt'], showErrorsStep2)}
-            </View>
-            
-            {/* Route Rating */}
-            {renderStarRating('Route Rating', 'routeRating', showErrorsStep2)}
+              
+              {/* Route Rating */}
+              {renderStarRating('Route Rating', 'routeRating', showErrorsStep2)}
+            </ScrollView>
             {renderStepButtons(2)}
           </View>
         );
 
       case 3:
         return (
-          <View>
-            <Text style={styles.modalTitle}>How did it go? 🎯</Text>
-            <Text style={styles.modalSubtitle}>Tell us about your climbing performance</Text>
-            
-            {/* Difficulty Slider */}
-            {renderDifficultySlider()}
-            
-            {/* How did it feel */}
-            {renderFeelingSelector()}
-            
-            {/* Falls Counter */}
-            {renderFallsCounter()}
-            
-            {/* Ascent Type */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Ascent Type</Text>
-              {renderPickerNoTitleCompact('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
-            </View>
-            
-            {/* Campo Climbing Type - apenas para Climbing, não para Bouldering */}
-            {formData.activity === 'Climbing' && 
+          <View style={{ flex: 1 }}>
+            <ScrollView 
+              style={{ flex: 1 }} 
+              contentContainerStyle={{ paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.modalTitle}>How did it go? 🎯</Text>
+              <Text style={styles.modalSubtitle}>Tell us about your climbing performance</Text>
+              
+              {/* Difficulty Slider */}
+              {renderDifficultySlider()}
+              
+              {/* How did it feel */}
+              {renderFeelingSelector()}
+              
+              {/* Falls Counter */}
+              {renderFallsCounter()}
+              
+              {/* Ascent Type */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Top / Lead</Text>
-                {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
+                <Text style={styles.label}>Ascent Type</Text>
+                {renderPickerNoTitleCompact('ascentType', ['Redpoint', 'Onsight', 'Flash'])}
               </View>
-            }
+              
+              {/* Campo Climbing Type - apenas para Climbing, não para Bouldering */}
+              {formData.activity === 'Climbing' && 
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.label}>Top / Lead</Text>
+                  {renderPickerNoTitleCompact('climbingType', ['Top', 'Lead'])}
+                </View>
+              }
+            </ScrollView>
             {renderStepButtons(3)}
           </View>
         );
 
       case 4:
         return (
-          <View>
-            <Text style={styles.modalTitle}>Capture the moment 📸</Text>
-            <Text style={styles.modalSubtitle}>Add a photo and your thoughts about this climb</Text>
-            
-            {/* Comments/Tips */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Comments/Tips</Text>
-              <TextInput
-                style={[styles.textInput, styles.textArea]}
-                value={formData.comments}
-                onChangeText={(value) => updateField('comments', value)}
-                placeholder="Add some notes or tips for your future self"
-                placeholderTextColor="#999"
-                multiline
-                numberOfLines={4}
-                selectionColor="#333"
-              />
-            </View>
+          <View style={{ flex: 1 }}>
+            <ScrollView 
+              style={{ flex: 1 }} 
+              contentContainerStyle={{ paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.modalTitle}>Capture the moment 📸</Text>
+              <Text style={styles.modalSubtitle}>Add a photo and your thoughts about this climb</Text>
+              
+              {/* Comments/Tips */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Comments/Tips</Text>
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  value={formData.comments}
+                  onChangeText={(value) => updateField('comments', value)}
+                  placeholder="Add some notes or tips for your future self"
+                  placeholderTextColor="#999"
+                  multiline
+                  numberOfLines={4}
+                  selectionColor="#333"
+                />
+              </View>
 
-            {/* Image Field */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Image</Text>
-              <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
-                {formData.image ? (
-                  <Image source={{ uri: formData.image }} style={styles.imagePreview} />
-                ) : (
-                  <>
-                    <FontAwesome6 name="camera" size={24} color="#666" />
-                    <Text style={styles.imageUploadText}>Add a photo</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
+              {/* Image Field */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Image</Text>
+                <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
+                  {formData.image ? (
+                    <Image source={{ uri: formData.image }} style={styles.imagePreview} />
+                  ) : (
+                    <>
+                      <FontAwesome6 name="camera" size={24} color="#666" />
+                      <Text style={styles.imageUploadText}>Add a photo</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
             {renderStepButtons(4)}
           </View>
         );
 
       case 5:
         return (
-          <View>
-            <Text style={styles.modalTitle}>Keep track of your moves 🧗‍♀️</Text>
-            <Text style={styles.modalSubtitle}>Select the moves you used on this route</Text>
-            {renderTagSelector('Movement', 'movement', movementOptions, showMovementModal, setShowMovementModal)}
-            {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
-            {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
+          <View style={{ flex: 1 }}>
+            <ScrollView 
+              style={{ flex: 1 }} 
+              contentContainerStyle={{ paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.modalTitle}>Keep track of your moves 🧗‍♀️</Text>
+              <Text style={styles.modalSubtitle}>Select the moves you used on this route</Text>
+              {renderTagSelector('Movement', 'movement', movementOptions, showMovementModal, setShowMovementModal)}
+              {renderTagSelector('Grip', 'grip', gripOptions, showGripModal, setShowGripModal)}
+              {renderTagSelector('Footwork', 'footwork', footworkOptions, showFootworkModal, setShowFootworkModal)}
+            </ScrollView>
             {renderStepButtons(5)}
           </View>
         );
@@ -2792,7 +2827,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    marginTop: 40, // era 50, diminui 10px
+    paddingTop: 16,
+    paddingBottom: 24,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
   snackbarContainer:{
     position:'absolute',
