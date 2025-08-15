@@ -1303,47 +1303,14 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
     const renderPlaceRow = (rowData: any) => {
       const title = rowData.description || rowData.formatted_address || rowData.name || (rowData.structured_formatting ? rowData.structured_formatting.main_text : '');
-
-      // Trigger distance fetch if needed
-      if (userCoords && rowData.place_id && placeDistances[rowData.place_id] === undefined && !fetchingPlaceIds.current.has(rowData.place_id)) {
-        fetchingPlaceIds.current.add(rowData.place_id);
-        (async () => {
-          try {
-            const resp = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${rowData.place_id}&fields=geometry&key=${GOOGLE_MAPS_API_KEY}`);
-            const json = await resp.json();
-            const loc = json.result?.geometry?.location;
-            if (loc) {
-              const dist = haversineDistanceKm(userCoords.latitude, userCoords.longitude, loc.lat, loc.lng);
-              console.log(`[DISTANCE] ${title} -> ${dist.toFixed(2)} km`);
-              setPlaceDistances(prev => ({ ...prev, [rowData.place_id]: dist }));
-              resolvedCountRef.current += 1;
-              maybeHideOverlay();
-            } else {
-              console.log('[DISTANCE] Geometry not found for', title);
-            }
-          } catch (err) {
-            console.log('[DISTANCE] Error fetching for', title, err);
-          } finally {
-            // Ensure hide overlay even if error
-            resolvedCountRef.current += 1;
-            maybeHideOverlay();
-          }
-        })();
-      }
-
-      const distance = placeDistances[rowData.place_id];
-      console.log(`[RENDER ROW] ${title} distance:`, distance);
+      const distance = rowData.distance;
 
       return (
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8, width: '100%' }}>
           <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
           <Text style={{ flex: 1, fontSize: 14, color: '#000', minWidth: 0 }} numberOfLines={2}>{title}</Text>
-          {userCoords && (
-            distance !== undefined ? (
-              <Text style={{ marginLeft: 8, fontSize: 12, color: '#555' }}>{`${distance.toFixed(1)} km`}</Text>
-            ) : (
-              <ActivityIndicator size="small" color={THEME_COLORS.bluePrimary} style={{ marginLeft: 8 }} />
-            )
+          {userCoords && distance !== null && distance !== undefined && (
+            <Text style={{ marginLeft: 8, fontSize: 12, color: '#555' }}>{`${distance.toFixed(1)} km`}</Text>
           )}
         </View>
       );
@@ -1359,10 +1326,8 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
         onRequestClose={() => setShowLocationModal(false)}
         onShow={() => {
           // reset loading state each time modal opens
-          setPlaceDistances({});
-          fetchingPlaceIds.current.clear();
-          startedCountRef.current = 0;
-          setInitialLoading(false); // overlay only after fetch starts
+          setIsCalculatingDistances(false);
+          setProcessedResults([]);
 
           // Ensure focus after modal animation completes
           setTimeout(() => googlePlacesRef?.current?.focus?.(), 150);
@@ -1371,55 +1336,74 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
         <View style={styles.modalOverlay}>
           <View style={styles.locationModalContainer}>
             <Text style={styles.modalTitle}>{title}</Text>
-            <GooglePlacesAutocomplete
-              ref={googlePlacesRef}
-              placeholder={placeholder}
-              fetchDetails={false}
-              enablePoweredByContainer={false}
-              onPress={(data: any, _details = null) => {
-                console.log('Row press recognized:', data);
-                const title = data?.description || data?.formatted_address || data?.name;
-                if (title) {
-                  updateField('location', title);
-                }
-                setShowLocationModal(false);
-              }}
-              query={{
-                key: GOOGLE_MAPS_API_KEY,
-                language: 'en',
-                ...(isIndoor ? { types: 'establishment' } : { types: 'geocode' }),
-                ...(userCoords ? { location: `${userCoords.latitude},${userCoords.longitude}`, radius: 50000 } : {}),
-              }}
-              minLength={2}
-              debounce={300}
-              onFail={(error: unknown) => console.log('Places error', error)}
-              onNotFound={() => console.log('Places onNotFound')}
-              styles={{
-                container: { flex: 1 },
-                textInput: { ...styles.textInput, placeholderTextColor: '#999' },
-                listView: { backgroundColor: '#fff', marginTop: 8 },
-              }}
-              predefinedPlaces={[]}
-              timeout={20000}
-              renderRow={renderPlaceRow}
-              keyboardShouldPersistTaps="always"
-              isRowScrollable={false}
-              // @ts-ignore – prop provided by the library but missing in its type definitions
-              listLoaderComponent={<ActivityIndicator size="large" color={THEME_COLORS.bluePrimary} style={{ marginTop: 24 }} />}
-              textInputProps={{
-                autoFocus: true,
-                selectTextOnFocus: true,
-                placeholderTextColor: '#999',
-              }}
-            />
+            <View style={{ flex: 1 }}>
+              <TextInput
+                ref={googlePlacesRef}
+                style={[styles.textInput, { marginBottom: 8 }]}
+                placeholder={placeholder}
+                placeholderTextColor="#999"
+                autoFocus={true}
+                selectTextOnFocus={true}
+                onChangeText={(text) => {
+                  if (text.length === 0) {
+                    setProcessedResults([]);
+                    setIsCalculatingDistances(false);
+                  } else {
+                    debouncedSearchPlaces(text);
+                  }
+                }}
+              />
+              
+              {isCalculatingDistances ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+                  <ActivityIndicator size="large" color={THEME_COLORS.bluePrimary} />
+                  <Text style={{ marginTop: 16, color: '#666', fontSize: 16 }}>Calculating distances...</Text>
+                  <Text style={{ marginTop: 4, color: '#999', fontSize: 14 }}>Please wait while we find the best matches</Text>
+                </View>
+              ) : (
+                <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} keyboardShouldPersistTaps="always">
+                  {processedResults.map((result, index) => {
+                    const title = result.description || result.formatted_address || result.name || (result.structured_formatting ? result.structured_formatting.main_text : '');
+                    const distance = result.distance;
+
+                    return (
+                      <TouchableOpacity
+                        key={`${result.place_id}-${index}`}
+                        style={{ 
+                          flexDirection: 'row', 
+                          alignItems: 'center', 
+                          paddingVertical: 12, 
+                          paddingHorizontal: 8, 
+                          borderBottomWidth: 1, 
+                          borderBottomColor: '#f0f0f0' 
+                        }}
+                        onPress={() => {
+                          console.log('Row press recognized:', result);
+                          if (title) {
+                            updateField('location', title);
+                          }
+                          setShowLocationModal(false);
+                        }}
+                      >
+                        <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
+                        <Text style={{ flex: 1, fontSize: 14, color: '#000', minWidth: 0 }} numberOfLines={2}>{title}</Text>
+                        {userCoords && distance !== null && distance !== undefined && (
+                          <Text style={{ marginLeft: 8, fontSize: 12, color: '#555', fontWeight: '500' }}>{`${distance.toFixed(1)} km`}</Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                  
+                  {processedResults.length === 0 && !isCalculatingDistances && (
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                      <Text style={{ color: '#999', fontSize: 14 }}>Start typing to search for places</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              )}
+            </View>
           </View>
         </View>
-
-        {initialLoading && (
-          <View style={{ position: 'absolute', top: 60, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffffAA', pointerEvents: 'none' }}>
-            <ActivityIndicator size="large" color={THEME_COLORS.bluePrimary} />
-          </View>
-        )}
       </Modal>
     );
   };
@@ -1949,34 +1933,93 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     return R * c;
   };
 
-  const [placeDistances, setPlaceDistances] = useState<Record<string, number>>({});
-  const fetchingPlaceIds = useRef<Set<string>>(new Set());
+  // New states for improved search experience
+  const [isCalculatingDistances, setIsCalculatingDistances] = useState(false);
+  const [processedResults, setProcessedResults] = useState<any[]>([]);
 
-  // show overall spinner until first 5 distances resolved
-  const [initialLoading, setInitialLoading] = useState(false);
-  const startedCountRef = useRef(0);
-  const resolvedCountRef = useRef(0);
-  const hasHiddenInitialOverlayRef = useRef(false);
-  const overlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const showOverlay = () => {
-    if (!initialLoading && !hasHiddenInitialOverlayRef.current) {
-      setInitialLoading(true);
-      // hide overlay automatically after 4s as fallback
-      if (overlayTimeoutRef.current) clearTimeout(overlayTimeoutRef.current as any);
-      overlayTimeoutRef.current = setTimeout(() => {
-        setInitialLoading(false);
-        hasHiddenInitialOverlayRef.current = true;
-      }, 4000) as any;
+
+  // Custom search function that fetches places and calculates distances
+  const searchPlacesWithDistances = async (searchText: string) => {
+    if (searchText.length < 2 || !userCoords) {
+      setProcessedResults([]);
+      return;
+    }
+
+    setIsCalculatingDistances(true);
+
+    try {
+      const isIndoor = formData.place === 'Indoor';
+      const searchUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(searchText)}&key=${GOOGLE_MAPS_API_KEY}&language=en${
+        isIndoor ? '&types=establishment' : '&types=geocode'
+      }&location=${userCoords.latitude},${userCoords.longitude}&radius=50000`;
+
+      const response = await fetch(searchUrl);
+      const data = await response.json();
+      
+      if (data.predictions && data.predictions.length > 0) {
+        // Calculate distances for all results in parallel
+        const distancePromises = data.predictions.map(async (result: any) => {
+          if (!result.place_id) {
+            return { ...result, distance: null };
+          }
+
+          try {
+            const resp = await fetch(
+              `https://maps.googleapis.com/maps/api/place/details/json?place_id=${result.place_id}&fields=geometry&key=${GOOGLE_MAPS_API_KEY}`
+            );
+            const json = await resp.json();
+            const loc = json.result?.geometry?.location;
+
+            if (loc) {
+              const dist = haversineDistanceKm(
+                userCoords.latitude,
+                userCoords.longitude,
+                loc.lat,
+                loc.lng
+              );
+              return { ...result, distance: dist };
+            }
+          } catch (error) {
+            console.log(`[DISTANCE ERROR] ${result.description}:`, error);
+          }
+
+          return { ...result, distance: null };
+        });
+
+        const resultsWithDistances = await Promise.all(distancePromises);
+        
+        // Sort by distance if available
+        const sortedResults = resultsWithDistances.sort((a, b) => {
+          if (a.distance === null && b.distance === null) return 0;
+          if (a.distance === null) return 1;
+          if (b.distance === null) return -1;
+          return a.distance - b.distance;
+        });
+
+        setProcessedResults(sortedResults);
+      } else {
+        setProcessedResults([]);
+      }
+    } catch (error) {
+      console.log('[PLACES SEARCH ERROR]:', error);
+      setProcessedResults([]);
+    } finally {
+      setIsCalculatingDistances(false);
     }
   };
 
-  const maybeHideOverlay = () => {
-    if (initialLoading && resolvedCountRef.current >= startedCountRef.current) {
-      if (overlayTimeoutRef.current) clearTimeout(overlayTimeoutRef.current as any);
-      setInitialLoading(false);
-      hasHiddenInitialOverlayRef.current = true;
+  // Debounced search
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  const debouncedSearchPlaces = (searchText: string) => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
     }
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      searchPlacesWithDistances(searchText);
+    }, 300);
   };
 
   return (
