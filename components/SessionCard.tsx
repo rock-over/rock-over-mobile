@@ -31,8 +31,17 @@ const SessionCard = ({ session, onPress }: SessionCardProps) => {
   const getTitle = () => {
     const activity = session.activity || 'Climb';
     const routeNumber = session.routeNumber || '--';
+    
+    // Map activity names to shorter versions
+    let displayActivity = activity;
+    if (activity.toLowerCase().includes('bouldering')) {
+      displayActivity = 'Boulder';
+    } else if (activity.toLowerCase().includes('climbing')) {
+      displayActivity = 'Route';
+    }
+    
     // Format as "Activity RouteNumber" (e.g., "Boulder 43")
-    return `${activity} ${routeNumber}`;
+    return `${displayActivity} ${routeNumber}`;
   };
 
   const getLocationText = () => {
@@ -96,19 +105,22 @@ const SessionCard = ({ session, onPress }: SessionCardProps) => {
       {/* Header: Title and Grade */}
       <View style={styles.headerRow}>
         <Text style={styles.cardTitle}>{getTitle()}</Text>
-        <Text style={styles.gradeText}>{session.grade || 'N/A'}</Text>
+        <View style={styles.gradeContainer}>
+          <Ionicons name="speedometer-outline" size={14} color={sessionColor} />
+          <Text style={styles.gradeText}>{session.grade || 'N/A'}</Text>
+        </View>
       </View>
 
       {/* Location and Date Row */}
       <View style={styles.locationDateRow}>
         <View style={styles.locationContainer}>
-          <Ionicons name="location-outline" size={14} color={sessionColor} />
+          <Ionicons name="location" size={14} color={sessionColor} />
           <Text style={[styles.locationText, { color: THEME_COLORS.text.secondary }]} numberOfLines={1} ellipsizeMode="tail">
             {getLocationText()}
           </Text>
         </View>
         <View style={styles.dateContainer}>
-          <Ionicons name="calendar-outline" size={12} color={THEME_COLORS.text.secondary} />
+          <Ionicons name="calendar-outline" size={12} color={sessionColor} />
           <Text style={styles.dateText}>{formatDate(session.when)}</Text>
         </View>
       </View>
@@ -167,6 +179,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: THEME_COLORS.text.primary,
     flex: 1,
+  },
+  gradeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   gradeText: {
     fontSize: 16,
