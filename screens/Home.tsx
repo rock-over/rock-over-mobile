@@ -1,8 +1,8 @@
-import { FontAwesome6 } from '@expo/vector-icons';
+import { FontAwesome, FontAwesome5, FontAwesome6, Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Alert, AppState, FlatList, Image, Modal, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, AppState, FlatList, Image, Modal, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SessionCard from '../components/SessionCard'; // Importar o novo card
 import { THEME_COLORS } from '../constants/Theme';
@@ -21,12 +21,69 @@ interface HomeProps {
   } | null;
 }
 
+// Helper functions for table view
+const getSessionColor = (session: ClimbingSession) => {
+  if (session.colour) return session.colour;
+  
+  switch (session.activity?.toLowerCase()) {
+    case 'bouldering': return '#FF6B6B';
+    case 'sport climbing': return '#4ECDC4';
+    case 'traditional': return '#45B7D1';
+    case 'indoor': return '#96CEB4';
+    default: return THEME_COLORS.bluePrimary;
+  }
+};
+
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch (e) {
+    return dateString;
+  }
+};
+
+const getLocationText = (session: ClimbingSession) => {
+  if (session.location_data) {
+    const { main_text, secondary_text, description, formatted_address } = session.location_data;
+    
+    if (main_text && secondary_text) {
+      return `${main_text}, ${secondary_text}`;
+    }
+    
+    if (description) {
+      return description;
+    }
+    
+    if (formatted_address) {
+      return formatted_address;
+    }
+  }
+  
+  return session.place || 'Unknown location';
+};
+
+const getTitle = (session: ClimbingSession) => {
+  const activity = session.activity || 'Climb';
+  const routeNumber = session.routeNumber || '--';
+  
+  let displayActivity = activity;
+  if (activity.toLowerCase().includes('bouldering')) {
+    displayActivity = 'Boulder';
+  } else if (activity.toLowerCase().includes('climbing')) {
+    displayActivity = 'Route';
+  }
+  
+  return `${displayActivity} ${routeNumber}`;
+};
+
 export default function Home({ onLogout, userInfo }: HomeProps) {
   const [sessions, setSessions] = useState<ClimbingSession[]>([]);
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<ClimbingSession | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isTableView, setIsTableView] = useState(false);
 
   useEffect(() => {
     if (userInfo?.email) {
@@ -148,6 +205,112 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     return str.split(' ').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
     ).join(' ');
+  };
+
+  const renderStars = (session: ClimbingSession) => {
+    const numRating = session.routeRating ? parseInt(session.routeRating, 10) : 0;
+    if (isNaN(numRating) || numRating <= 0) {
+      return <Text style={tableStyles.notRatedText}>Not Rated</Text>;
+    }
+    const stars = Array.from({ length: 5 }, (_, i) => (
+      <FontAwesome
+        key={i}
+        name={i < numRating ? 'star' : 'star-o'}
+        size={14}
+        color="#FFC700"
+      />
+    ));
+    return <View style={tableStyles.starsContainer}>{stars}</View>;
+  };
+
+  const renderTableRow = (session: ClimbingSession, index: number) => {
+    const sessionColor = getSessionColor(session);
+    const completionStatus = session.completion?.toLowerCase() ?? '';
+    const isCompleted = completionStatus === 'completed' || completionStatus === 'flash' || completionStatus === 'onsight';
+
+    return (
+      <View 
+        key={session.id} 
+        style={[tableStyles.tableRow, index % 2 === 0 ? tableStyles.evenRow : tableStyles.oddRow]}
+      >
+        {/* Name Column with Fixed Layout */}
+        <View style={tableStyles.nameColumn}>
+          {/* Color indicator */}
+          <View style={[tableStyles.colorIndicator, { backgroundColor: sessionColor }]} />
+          
+          {/* Spacing after color */}
+          <View style={tableStyles.spacingAfterColor} />
+          
+          {/* Name area */}
+          <View style={tableStyles.nameArea}>
+            <TouchableOpacity onPress={() => handleCardPress(session)}>
+              <Text 
+                style={[tableStyles.cellTitle, tableStyles.clickableTitle]}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {getTitle(session)}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Spacing before button */}
+          <View style={tableStyles.spacingBeforeButton} />
+          
+          {/* Open button */}
+          <TouchableOpacity 
+            style={tableStyles.openButton}
+            onPress={() => handleCardPress(session)}
+          >
+            <Text style={tableStyles.openButtonText}>OPEN</Text>
+          </TouchableOpacity>
+          
+          {/* Spacing after button */}
+          <View style={tableStyles.spacingAfterButton} />
+        </View>
+
+        {/* Grade */}
+        <View style={tableStyles.gradeCell}>
+          <Ionicons name="speedometer-outline" size={14} color={sessionColor} />
+          <Text style={tableStyles.cellGrade}>{session.grade || 'N/A'}</Text>
+        </View>
+
+        {/* Location */}
+        <View style={tableStyles.locationCell}>
+          <Ionicons name="location" size={14} color={sessionColor} />
+          <Text style={tableStyles.cellLocation} numberOfLines={2} ellipsizeMode="tail">
+            {getLocationText(session)}
+          </Text>
+        </View>
+
+        {/* Date */}
+        <View style={tableStyles.dateCell}>
+          <Ionicons name="calendar-outline" size={14} color={sessionColor} />
+          <Text style={tableStyles.cellDate}>{formatDate(session.when)}</Text>
+        </View>
+
+        {/* Rating */}
+        <View style={tableStyles.ratingCell}>
+          {renderStars(session)}
+        </View>
+
+        {/* Completion */}
+        <View style={tableStyles.completionCell}>
+          {isCompleted ? (
+            <FontAwesome5 name="check-circle" size={14} color={THEME_COLORS.success} />
+          ) : completionStatus === 'attempt' ? (
+            <Ionicons name="trending-up" size={14} color={THEME_COLORS.bluePrimary} />
+          ) : (
+            <FontAwesome5 name="times-circle" size={14} color={THEME_COLORS.error} />
+          )}
+          <Text style={tableStyles.completionText}>
+            {completionStatus === 'attempt' || !session.completion ? 'Attempting' : session.completion}
+          </Text>
+        </View>
+
+
+      </View>
+    );
   };
 
   const getFirstName = (str: string | null | undefined) => {
@@ -302,28 +465,132 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
       {/* Content */}
       <View style={styles.content}>
-        <FlatList
-          data={sessions}
-          renderItem={renderSessionCard}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-          refreshing={loading}
-          onRefresh={loadSessions}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <FontAwesome6 name="mountain" size={48} color="#ccc" />
-              <Text style={styles.emptyText}>
-                {loading ? 'Loading sessions...' : 'No climbing sessions yet'}
-              </Text>
-              {!loading && (
-                <Text style={styles.emptySubtext}>
-                  Tap the + button to log your first climb!
-                </Text>
-              )}
+        {/* View Toggle Switch */}
+        <View style={styles.viewToggleContainer}>
+          <View style={styles.viewToggleContent}>
+            <View style={styles.toggleSwitchContainer}>
+              <TouchableOpacity 
+                style={[styles.toggleButton, !isTableView && styles.activeToggleButton]}
+                onPress={() => setIsTableView(false)}
+              >
+                <Ionicons 
+                  name="list" 
+                  size={18} 
+                  color={!isTableView ? THEME_COLORS.bluePrimary : THEME_COLORS.text.secondary} 
+                />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.toggleButton, isTableView && styles.activeToggleButton]}
+                onPress={() => setIsTableView(true)}
+              >
+                <Ionicons 
+                  name="grid" 
+                  size={18} 
+                  color={isTableView ? THEME_COLORS.bluePrimary : THEME_COLORS.text.secondary} 
+                />
+              </TouchableOpacity>
             </View>
-          }
-        />
+          </View>
+        </View>
+
+        {isTableView ? (
+          /* Table View */
+          <ScrollView 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={loadSessions}
+                tintColor={THEME_COLORS.bluePrimary}
+                colors={[THEME_COLORS.bluePrimary]}
+              />
+            }
+          >
+            {sessions.length === 0 ? (
+              <View style={styles.emptyState}>
+                <FontAwesome6 name="mountain" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>
+                  {loading ? 'Loading sessions...' : 'No climbing sessions yet'}
+                </Text>
+                {!loading && (
+                  <Text style={styles.emptySubtext}>
+                    Tap the + button to log your first climb!
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <View style={tableStyles.tableContainer}>
+                {/* Horizontal Scrollable Table */}
+                <ScrollView 
+                  horizontal={true}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={tableStyles.scrollContainer}
+                >
+                  <View style={tableStyles.tableContent}>
+                    {/* Table Header */}
+                    <View style={tableStyles.tableHeader}>
+                      <View style={tableStyles.nameColumnHeader}>
+                        <View style={tableStyles.headerColorIndicator} />
+                        <View style={tableStyles.spacingAfterColor} />
+                        <View style={tableStyles.nameHeaderArea}>
+                          <Text style={tableStyles.headerText}>Route</Text>
+                        </View>
+                        <View style={tableStyles.spacingBeforeButton} />
+                        <View style={tableStyles.openButtonHeaderSpace}>
+                          <Text style={tableStyles.headerText}>Action</Text>
+                        </View>
+                        <View style={tableStyles.spacingAfterButton} />
+                      </View>
+                      <View style={tableStyles.gradeHeader}>
+                        <Text style={tableStyles.headerText}>Grade</Text>
+                      </View>
+                      <View style={tableStyles.locationHeader}>
+                        <Text style={tableStyles.headerText}>Location</Text>
+                      </View>
+                      <View style={tableStyles.dateHeader}>
+                        <Text style={tableStyles.headerText}>Date</Text>
+                      </View>
+                      <View style={tableStyles.ratingHeader}>
+                        <Text style={tableStyles.headerText}>Rating</Text>
+                      </View>
+                      <View style={tableStyles.completionHeader}>
+                        <Text style={tableStyles.headerText}>Status</Text>
+                      </View>
+                    </View>
+                    
+                    {/* Table Rows */}
+                    {sessions.map((session, index) => renderTableRow(session, index))}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+          </ScrollView>
+        ) : (
+          /* Card View */
+          <FlatList
+            data={sessions}
+            renderItem={renderSessionCard}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContainer}
+            refreshing={loading}
+            onRefresh={loadSessions}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <FontAwesome6 name="mountain" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>
+                  {loading ? 'Loading sessions...' : 'No climbing sessions yet'}
+                </Text>
+                {!loading && (
+                  <Text style={styles.emptySubtext}>
+                    Tap the + button to log your first climb!
+                  </Text>
+                )}
+              </View>
+            }
+          />
+        )}
       </View>
 
       {/* Floating Action Button */}
@@ -415,7 +682,40 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: 10,
+  },
+  viewToggleContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  viewToggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  toggleSwitchContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F0F0',
+    borderRadius: 8,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: THEME_COLORS.border.light,
+  },
+  toggleButton: {
+    width: 40,
+    height: 32,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  activeToggleButton: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   listContainer: {
     paddingBottom: 100,
@@ -624,5 +924,230 @@ const successStyles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#fff',
+  },
+});
+
+const tableStyles = StyleSheet.create({
+  tableContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginTop: 5,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  scrollContainer: {
+    paddingRight: 20, // Add some padding to the right for better scrolling
+  },
+  tableContent: {
+    minWidth: 860, // Adjusted for new name column layout
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME_COLORS.border.light,
+  },
+  nameColumnHeader: {
+    width: 180, // Total width for name column
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: THEME_COLORS.border.light,
+    paddingRight: 16,
+  },
+  headerColorIndicator: {
+    width: 6,
+  },
+  headerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME_COLORS.text.primary,
+    textTransform: 'uppercase',
+  },
+  spacingAfterColor: {
+    width: 8,
+  },
+  nameHeaderArea: {
+    flex: 1,
+  },
+  spacingBeforeButton: {
+    width: 8,
+  },
+  openButtonHeaderSpace: {
+    width: 50,
+    alignItems: 'center',
+  },
+  spacingAfterButton: {
+    width: 8,
+  },
+  gradeHeader: {
+    width: 80,
+    alignItems: 'center',
+    marginRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: THEME_COLORS.border.light,
+    paddingRight: 16,
+  },
+  locationHeader: {
+    width: 180,
+    marginRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: THEME_COLORS.border.light,
+    paddingRight: 16,
+  },
+  dateHeader: {
+    width: 80,
+    alignItems: 'center',
+    marginRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: THEME_COLORS.border.light,
+    paddingRight: 16,
+  },
+  ratingHeader: {
+    width: 120,
+    alignItems: 'center',
+    marginRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: THEME_COLORS.border.light,
+    paddingRight: 16,
+  },
+  completionHeader: {
+    width: 120,
+    alignItems: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  evenRow: {
+    backgroundColor: '#FAFAFA',
+  },
+  oddRow: {
+    backgroundColor: '#fff',
+  },
+  nameColumn: {
+    width: 180, // Same as header
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: THEME_COLORS.border.light,
+    paddingRight: 16,
+  },
+  colorIndicator: {
+    width: 6,
+    height: 32,
+    borderRadius: 3,
+  },
+  nameArea: {
+    flex: 1,
+    paddingVertical: 2,
+  },
+  cellTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME_COLORS.text.primary,
+  },
+  clickableTitle: {
+    textDecorationLine: 'underline',
+    color: THEME_COLORS.text.primary, // Changed to black
+  },
+  openButton: {
+    backgroundColor: THEME_COLORS.bluePrimary,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 4,
+    width: 50,
+    alignItems: 'center',
+  },
+  openButtonText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  gradeCell: {
+    width: 80,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: THEME_COLORS.border.light,
+    paddingRight: 16,
+  },
+  cellGrade: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: THEME_COLORS.text.primary,
+  },
+  locationCell: {
+    width: 180,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: THEME_COLORS.border.light,
+    paddingRight: 16,
+  },
+  cellLocation: {
+    fontSize: 12,
+    color: THEME_COLORS.text.secondary,
+    flex: 1,
+  },
+  dateCell: {
+    width: 80,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: THEME_COLORS.border.light,
+    paddingRight: 16,
+  },
+  cellDate: {
+    fontSize: 11,
+    color: THEME_COLORS.text.secondary,
+  },
+  ratingCell: {
+    width: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: THEME_COLORS.border.light,
+    paddingRight: 16,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  notRatedText: {
+    fontSize: 10,
+    fontStyle: 'italic',
+    color: THEME_COLORS.text.light,
+  },
+  completionCell: {
+    width: 120,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  completionText: {
+    fontSize: 11,
+    color: THEME_COLORS.text.secondary,
+    textTransform: 'capitalize',
   },
 });
