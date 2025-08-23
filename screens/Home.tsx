@@ -538,7 +538,6 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
                         </View>
                         <View style={tableStyles.spacingBeforeButton} />
                         <View style={tableStyles.openButtonHeaderSpace}>
-                          <Text style={tableStyles.headerText}>Action</Text>
                         </View>
                         <View style={tableStyles.spacingAfterButton} />
                       </View>
@@ -685,13 +684,15 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   viewToggleContainer: {
-    paddingHorizontal: 20,
+    paddingLeft: 0,
+    paddingRight: 0,
     paddingVertical: 8,
   },
   viewToggleContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
+    paddingRight: 20,
   },
   toggleSwitchContainer: {
     flexDirection: 'row',
@@ -930,13 +931,12 @@ const successStyles = StyleSheet.create({
 const tableStyles = StyleSheet.create({
   tableContainer: {
     backgroundColor: '#fff',
-    marginHorizontal: 20,
     marginTop: 5,
     borderRadius: 12,
     overflow: 'hidden',
   },
   scrollContainer: {
-    paddingRight: 20, // Add some padding to the right for better scrolling
+    // No padding needed since table takes full width
   },
   tableContent: {
     minWidth: 860, // Adjusted for new name column layout
@@ -946,7 +946,8 @@ const tableStyles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F8F9FA',
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingLeft: 20,
+    paddingRight: 20,
     borderBottomWidth: 1,
     borderBottomColor: THEME_COLORS.border.light,
   },
@@ -1023,7 +1024,8 @@ const tableStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingLeft: 20,
+    paddingRight: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
