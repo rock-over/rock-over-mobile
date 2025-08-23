@@ -27,18 +27,44 @@ const getSessionColor = (session: ClimbingSession) => {
 
 const SessionCard = ({ session, onPress }: SessionCardProps) => {
   const sessionColor = getSessionColor(session);
-  const isColorWhite = sessionColor.toUpperCase() === '#FFFFFF';
 
   const getTitle = () => {
-    const location = session.place || 'Unknown';
     const activity = session.activity || 'Climb';
-    return `${location} ${activity}`;
+    const routeNumber = session.routeNumber || '--';
+    // Format as "Activity RouteNumber" (e.g., "Boulder 43")
+    return `${activity} ${routeNumber}`;
+  };
+
+  const getLocationText = () => {
+    // Priority order for displaying location:
+    // 1. Google Places main_text + secondary_text
+    // 2. Google Places description or formatted_address
+    // 3. Simple place field
+    // 4. Fallback to 'Unknown location'
+    
+    if (session.location_data) {
+      const { main_text, secondary_text, description, formatted_address } = session.location_data;
+      
+      if (main_text && secondary_text) {
+        return `${main_text}, ${secondary_text}`;
+      }
+      
+      if (description) {
+        return description;
+      }
+      
+      if (formatted_address) {
+        return formatted_address;
+      }
+    }
+    
+    return session.place || 'Unknown location';
   };
 
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch (e) {
       return dateString;
     }
@@ -53,7 +79,7 @@ const SessionCard = ({ session, onPress }: SessionCardProps) => {
       <FontAwesome
         key={i}
         name={i < numRating ? 'star' : 'star-o'}
-        size={18}
+        size={16}
         color="#FFC700"
       />
     ));
@@ -67,43 +93,40 @@ const SessionCard = ({ session, onPress }: SessionCardProps) => {
     <TouchableOpacity onPress={onPress} style={styles.card}>
       <View style={[styles.colorStrip, { backgroundColor: sessionColor }]} />
 
-      <View style={styles.mainContentRow}>
-        {/* Left Column */}
-        <View style={styles.leftColumn}>
-          <Text style={styles.routeValue}>{session.routeNumber || '--'}</Text>
-          <Text style={[styles.locationStyleText, { color: isColorWhite ? THEME_COLORS.text.primary : sessionColor }]}>
-            {getTitle()}
-          </Text>
-          <View style={styles.ratingContainer}>
-            {renderStars()}
-          </View>
-        </View>
+      {/* Header: Title and Grade */}
+      <View style={styles.headerRow}>
+        <Text style={styles.cardTitle}>{getTitle()}</Text>
+        <Text style={styles.gradeText}>{session.grade || 'N/A'}</Text>
+      </View>
 
-        {/* Right Column */}
-        <View style={styles.rightColumn}>
-          <View style={[styles.gradeBadge, { backgroundColor: sessionColor }]}>
-            <Text style={[styles.gradeValue, { color: isColorWhite ? THEME_COLORS.text.primary : '#f9f9f9' }]}>
-              {session.grade || 'N/A'}
-            </Text>
-          </View>
+      {/* Location and Date Row */}
+      <View style={styles.locationDateRow}>
+        <View style={styles.locationContainer}>
+          <Ionicons name="location-outline" size={14} color={sessionColor} />
+          <Text style={[styles.locationText, { color: THEME_COLORS.text.secondary }]} numberOfLines={1} ellipsizeMode="tail">
+            {getLocationText()}
+          </Text>
+        </View>
+        <View style={styles.dateContainer}>
+          <Ionicons name="calendar-outline" size={12} color={THEME_COLORS.text.secondary} />
+          <Text style={styles.dateText}>{formatDate(session.when)}</Text>
         </View>
       </View>
 
-      {/* Footer: Date and Completion */}
+      {/* Footer: Rating and Completion */}
       <View style={styles.footer}>
-        <View style={styles.footerItem}>
-          <Ionicons name="calendar-outline" size={14} color={THEME_COLORS.text.secondary} />
-          <Text style={styles.footerText}>{formatDate(session.when)}</Text>
+        <View style={styles.ratingContainer}>
+          {renderStars()}
         </View>
-        <View style={styles.footerItem}>
+        <View style={styles.completionContainer}>
           {isCompleted ? (
-            <FontAwesome5 name="check-circle" size={16} color={THEME_COLORS.success} />
+            <FontAwesome5 name="check-circle" size={14} color={THEME_COLORS.success} />
           ) : completionStatus === 'attempt' ? (
-            <Ionicons name="trending-up" size={18} color={THEME_COLORS.bluePrimary} />
+            <Ionicons name="trending-up" size={14} color={THEME_COLORS.bluePrimary} />
           ) : (
-            <FontAwesome5 name="times-circle" size={16} color={THEME_COLORS.error} />
+            <FontAwesome5 name="times-circle" size={14} color={THEME_COLORS.error} />
           )}
-          <Text style={styles.footerText}>
+          <Text style={styles.completionText}>
             {completionStatus === 'attempt' || !session.completion ? 'Attempting' : session.completion}
           </Text>
         </View>
@@ -116,8 +139,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: THEME_COLORS.background.secondary,
     borderRadius: 16,
-    padding: 20,
-    paddingTop: 30, // Make space for the color strip
+    padding: 16,
+    paddingTop: 20, // Make space for the color strip
     marginVertical: 8,
     marginHorizontal: 20,
     elevation: 0,
@@ -131,67 +154,79 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 10,
+    height: 6,
   },
-  mainContentRow: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 8,
   },
-  leftColumn: {
-    flex: 1,
-    marginRight: 16,
-  },
-  rightColumn: {
-    // Aligns the grade badge to the top of its column
-  },
-  routeValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: THEME_COLORS.text.primary,
-    marginBottom: 4, // Tighter spacing
+    flex: 1,
   },
-  gradeBadge: {
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  gradeValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: THEME_COLORS.text.white,
-  },
-  locationStyleText: {
+  gradeText: {
     fontSize: 16,
     fontWeight: '500',
-    marginBottom: 10, // Tighter spacing
+    color: THEME_COLORS.text.primary,
+  },
+  locationDateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    marginRight: 12,
+  },
+  locationText: {
+    fontSize: 13,
+    color: THEME_COLORS.text.secondary,
+    flex: 1,
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
+  },
+  dateText: {
+    fontSize: 12,
+    color: THEME_COLORS.text.secondary,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderColor: THEME_COLORS.border.light,
   },
   ratingContainer: {
     alignItems: 'flex-start',
   },
   starsContainer: {
     flexDirection: 'row',
-    gap: 3,
+    gap: 2,
   },
   notRatedText: {
-    fontSize: 14,
+    fontSize: 12,
     fontStyle: 'italic',
     color: THEME_COLORS.text.light,
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderColor: THEME_COLORS.border.light,
-  },
-  footerItem: {
+  completionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
-  footerText: {
+  completionText: {
     fontSize: 12,
     color: THEME_COLORS.text.secondary,
     textTransform: 'capitalize',
