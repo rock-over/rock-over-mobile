@@ -1,5 +1,5 @@
 import { FontAwesome6 } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image,
   ScrollView,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../constants/Theme';
+import { supabase } from '../lib/supabase';
 import { ClimbingSession } from '../services/climbingSessionService';
 
 interface SessionDetailsProps {
@@ -317,13 +318,75 @@ export default function SessionDetails({ session, onClose }: SessionDetailsProps
     );
   };
 
-  // Renderizar campo de imagem (somente visualização)
-  const renderImageDisplay = (title: string, imageUrl: string | null) => {
+  // Componente de imagem com carregamento assíncrono
+  const ImageDisplay = ({ title, imagePath }: { title: string, imagePath: string | null }) => {
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+      if (!imagePath) {
+        setImageUrl(null);
+        return;
+      }
+
+      const loadImage = async () => {
+        setLoading(true);
+        setError(null);
+        
+        try {
+          // Para buckets privados, usar createSignedUrl
+          const { data, error: supabaseError } = await supabase.storage
+            .from('climbing-images')
+            .createSignedUrl(imagePath, 3600); // URL válida por 1 hora
+          
+          if (supabaseError) {
+            setError(supabaseError.message);
+            return;
+          }
+          
+          const signedUrl = data.signedUrl;
+          setImageUrl(signedUrl);
+          
+        } catch (err) {
+          setError('Failed to load image');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadImage();
+    }, [imagePath]);
+
     return (
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>{title}</Text>
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.imagePreview} />
+        {imagePath ? (
+          <View style={styles.imageContainer}>
+
+            {loading ? (
+              <View style={styles.imagePlaceholder}>
+                <Text style={styles.imagePlaceholderText}>Loading image...</Text>
+              </View>
+            ) : error ? (
+              <View style={styles.imagePlaceholder}>
+                <FontAwesome6 name="exclamation-triangle" size={24} color="#ff6b6b" />
+                <Text style={styles.imagePlaceholderText}>Error: {error}</Text>
+              </View>
+            ) : imageUrl ? (
+              <Image 
+                source={{ uri: imageUrl }} 
+                style={styles.imagePreview}
+                resizeMode="cover"
+
+              />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <FontAwesome6 name="camera" size={24} color="#999" />
+                <Text style={styles.imagePlaceholderText}>No image URL generated</Text>
+              </View>
+            )}
+          </View>
         ) : (
           <View style={styles.imagePlaceholder}>
             <FontAwesome6 name="camera" size={24} color="#999" />
@@ -448,7 +511,10 @@ export default function SessionDetails({ session, onClose }: SessionDetailsProps
         {/* Step 4: Comments and Image */}
         {renderTextDisplay('Comments/Tips', session.comments || '', 'No comments logged')}
         
-        {renderImageDisplay('Image', session.images?.[0] || null)}
+        <ImageDisplay 
+          title="Image" 
+          imagePath={session.images && session.images.length > 0 ? session.images[0] : null} 
+        />
 
         {/* Step 5: Technique Tags */}
         {renderTagsDisplay('Movement', session.movement && session.movement !== '' ? session.movement.replace(/[\[\]"]/g, '').split(',').filter(tag => tag.trim() !== '') : [])}
@@ -712,10 +778,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 16,
     height: 16,
-    borderRadius: 10,
+    borderRadius: 8,
     backgroundColor: THEME_COLORS.bluePrimary,
     top: -6,
-    marginLeft: -10,
+    marginLeft: -8,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -810,11 +876,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   // Image Display
+  imageContainer: {
+    marginTop: 6,
+  },
   imagePreview: {
     width: '100%',
     height: 150,
     borderRadius: 12,
-    marginTop: 6,
   },
   imagePlaceholder: {
     height: 150,
@@ -830,6 +898,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#999',
   },
+
   // Shared Row
   sharedRowContainer: {
     flexDirection: 'row',
