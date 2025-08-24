@@ -1,12 +1,12 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import React from 'react';
 import {
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../constants/Theme';
@@ -513,6 +513,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderWidth: 1,
     borderColor: '#e0e0e0',
+    marginTop: 6,
   },
   dateIcon: {
     marginRight: 10,
@@ -586,6 +587,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     width: 80,
     height: 50,
+    marginTop: 6,
   },
   colorPreview: {
     width: 30,
@@ -607,6 +609,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     minHeight: 50,
     justifyContent: 'center',
+    marginTop: 6,
   },
   dropdownDisplayText: {
     fontSize: 14,
@@ -619,6 +622,7 @@ const styles = StyleSheet.create({
   // Options Display
   optionsContainer: {
     flexDirection: 'row',
+    marginTop: 6,
   },
   optionButton: {
     backgroundColor: '#fff',
@@ -645,6 +649,7 @@ const styles = StyleSheet.create({
   starsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 6,
   },
   starButton: {
     marginRight: 8,
@@ -654,6 +659,7 @@ const styles = StyleSheet.create({
   feelingsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 6,
   },
   feelingButton: {
     flex: 1,
@@ -682,13 +688,14 @@ const styles = StyleSheet.create({
   difficultyDisplayContainer: {
     paddingHorizontal: 15,
     paddingVertical: 0,
+    marginTop: 12,
   },
   difficultyBarContainer: {
     position: 'relative',
-    marginBottom: 8,
+    marginBottom: 0,
   },
   difficultyBar: {
-    height: 8,
+    height: 4,
     backgroundColor: '#e0e0e0',
     borderRadius: 4,
     overflow: 'hidden',
@@ -703,8 +710,8 @@ const styles = StyleSheet.create({
   },
   difficultyThumb: {
     position: 'absolute',
-    width: 20,
-    height: 20,
+    width: 16,
+    height: 16,
     borderRadius: 10,
     backgroundColor: THEME_COLORS.bluePrimary,
     top: -6,
@@ -732,8 +739,8 @@ const styles = StyleSheet.create({
   },
   difficultyValue: {
     textAlign: 'center',
-    marginTop: 8,
-    fontSize: 16,
+    marginTop: 0,
+    fontSize: 20,
     fontWeight: '600',
     color: THEME_COLORS.bluePrimary,
   },
@@ -742,9 +749,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 15,
     paddingVertical: 0,
+    marginTop: 6,
   },
   fallsValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
     color: THEME_COLORS.bluePrimary,
   },
@@ -756,7 +764,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    marginTop: 0,
+    marginTop: 6,
   },
   tagChip: {
     backgroundColor: THEME_COLORS.bluePrimary,
@@ -781,6 +789,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e9ecef',
+    marginTop: 6,
   },
   // Text Display
   textDisplayContainer: {
@@ -790,6 +799,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     minHeight: 50,
     justifyContent: 'center',
+    marginTop: 6,
   },
   textDisplayText: {
     fontSize: 16,
@@ -804,6 +814,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 150,
     borderRadius: 12,
+    marginTop: 6,
   },
   imagePlaceholder: {
     height: 150,
@@ -813,6 +824,7 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 6,
   },
   imagePlaceholderText: {
     marginTop: 8,
