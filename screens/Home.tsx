@@ -1,8 +1,9 @@
 import { FontAwesome, FontAwesome5, FontAwesome6, Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+
 import React, { useEffect, useState } from 'react';
-import { Alert, AppState, FlatList, Image, Modal, RefreshControl, ScrollView, Share, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, FlatList, Image, Modal, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SessionCard from '../components/SessionCard'; // Importar o novo card
 import { THEME_COLORS } from '../constants/Theme';
@@ -86,7 +87,8 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   const [isTableView, setIsTableView] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [isViewTransitioning, setIsViewTransitioning] = useState(false);
+
 
   useEffect(() => {
     if (userInfo?.email) {
@@ -280,89 +282,22 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     );
   };
 
-  const formatDataForExport = () => {
-    const data = getSortedSessions();
-    return data.map(session => ({
-      Route: getTitle(session),
-      Grade: session.grade || 'N/A',
-      Location: getLocationText(session),
-      Date: formatDate(session.when),
-      Rating: session.routeRating ? `${session.routeRating} stars` : 'Not Rated',
-      Status: session.completion || 'Attempting',
-      Activity: session.activity || '',
-      'Route Number': session.routeNumber || '',
-      Difficulty: session.difficulty || '',
-      Effort: session.effort || '',
-      Falls: session.falls || '',
-      'Ascent Type': session.ascentType || '',
-      Comments: session.comments || ''
-    }));
-  };
 
-  const exportToCSV = () => {
-    const data = formatDataForExport();
-    
-    // Create CSV headers
-    const headers = Object.keys(data[0] || {});
-    const csvHeaders = headers.join(',');
-    
-    // Create CSV rows
-    const csvRows = data.map(row => 
-      headers.map(header => {
-        const value = row[header as keyof typeof row] || '';
-        // Escape quotes and wrap in quotes if contains comma
-        return typeof value === 'string' && (value.includes(',') || value.includes('"'))
-          ? `"${value.replace(/"/g, '""')}"`
-          : value;
-      }).join(',')
-    );
-    
-    const csvContent = [csvHeaders, ...csvRows].join('\n');
-    
-    // Share the CSV content
-    Share.share({
-      message: csvContent,
-      title: 'Climbing Sessions Export',
-    }).catch(err => {
-      console.error('Error sharing CSV:', err);
-      Alert.alert('Export Error', 'Failed to export CSV file');
-    });
-  };
 
-  const exportToXLSX = () => {
-    const data = formatDataForExport();
-    
-    // For XLSX, we'll create a simple tab-separated format that Excel can open
-    const headers = Object.keys(data[0] || {});
-    const xlsxHeaders = headers.join('\t');
-    
-    const xlsxRows = data.map(row => 
-      headers.map(header => row[header as keyof typeof row] || '').join('\t')
-    );
-    
-    const xlsxContent = [xlsxHeaders, ...xlsxRows].join('\n');
-    
-    // Share as TSV (Tab-Separated Values) which Excel can open
-    Share.share({
-      message: xlsxContent,
-      title: 'Climbing Sessions Export (Excel Format)',
-    }).catch(err => {
-      console.error('Error sharing XLSX:', err);
-      Alert.alert('Export Error', 'Failed to export Excel file');
-    });
-  };
 
-  const handleExportToggle = () => {
-    setShowExportDropdown(!showExportDropdown);
-  };
 
-  const handleExportOption = (format: 'csv' | 'xlsx') => {
-    setShowExportDropdown(false);
-    if (format === 'csv') {
-      exportToCSV();
-    } else {
-      exportToXLSX();
-    }
+
+
+
+
+  const handleViewToggle = (newView: boolean) => {
+    setIsViewTransitioning(true);
+    
+    // Simulate a small delay for smooth transition
+    setTimeout(() => {
+      setIsTableView(newView);
+      setIsViewTransitioning(false);
+    }, 300);
   };
 
   const capitalizeWords = (str: string | null) => {
@@ -609,14 +544,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
       
-      {/* Invisible overlay to close dropdown when clicking outside */}
-      {showExportDropdown && (
-        <TouchableOpacity 
-          style={styles.dropdownOverlay}
-          onPress={() => setShowExportDropdown(false)}
-          activeOpacity={1}
-        />
-      )}
+
       
       {/* Blue Header */}
       <View style={styles.header}>
@@ -642,50 +570,20 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
         {/* View Toggle Switch */}
         <View style={styles.viewToggleContainer}>
           <View style={styles.viewToggleContent}>
-            {/* Export Button with Dropdown */}
-            <View style={styles.exportContainer}>
-              <TouchableOpacity 
-                style={styles.exportButton}
-                onPress={handleExportToggle}
-              >
-                <Text style={styles.exportButtonText}>Export</Text>
-                <Ionicons 
-                  name="chevron-down" 
-                  size={16} 
-                  color={THEME_COLORS.bluePrimary}
-                  style={styles.exportArrow}
-                />
-              </TouchableOpacity>
-
-              {/* Export Dropdown */}
-              {showExportDropdown && (
-                <View style={styles.exportDropdown}>
-                  <TouchableOpacity 
-                    style={styles.dropdownOption}
-                    onPress={() => handleExportOption('csv')}
-                  >
-                    <Ionicons name="document-text-outline" size={16} color={THEME_COLORS.text.primary} />
-                    <Text style={styles.dropdownOptionText}>CSV</Text>
-                  </TouchableOpacity>
-                  
-                  <View style={styles.dropdownSeparator} />
-                  
-                  <TouchableOpacity 
-                    style={styles.dropdownOption}
-                    onPress={() => handleExportOption('xlsx')}
-                  >
-                    <Ionicons name="grid-outline" size={16} color={THEME_COLORS.text.primary} />
-                    <Text style={styles.dropdownOptionText}>Excel</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+            {/* Title and Subtitle */}
+            <View style={styles.titleContainer}>
+              <Text style={styles.titleText}>Your logs</Text>
+              <Text style={styles.logsSubtitleText}>
+                {sessions.length} sessions up to today
+              </Text>
             </View>
             
             {/* View Toggle */}
             <View style={styles.toggleSwitchContainer}>
               <TouchableOpacity 
                 style={[styles.toggleButton, !isTableView && styles.activeToggleButton]}
-                onPress={() => setIsTableView(false)}
+                onPress={() => handleViewToggle(false)}
+                disabled={isViewTransitioning}
               >
                 <Ionicons 
                   name="list" 
@@ -695,7 +593,8 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.toggleButton, isTableView && styles.activeToggleButton]}
-                onPress={() => setIsTableView(true)}
+                onPress={() => handleViewToggle(true)}
+                disabled={isViewTransitioning}
               >
                 <Ionicons 
                   name="grid" 
@@ -706,8 +605,18 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
             </View>
           </View>
         </View>
-
-        {isTableView ? (
+        
+        {/* Content based on view type */}
+        {isViewTransitioning ? (
+          /* Loading State - Full Screen */
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator 
+              size="large" 
+              color={THEME_COLORS.bluePrimary} 
+              style={styles.loadingSpinner}
+            />
+          </View>
+        ) : isTableView ? (
           /* Table View */
           <ScrollView 
             showsVerticalScrollIndicator={false}
@@ -945,71 +854,29 @@ const styles = StyleSheet.create({
     paddingLeft: 20,
     paddingRight: 20,
   },
-  exportContainer: {
-    position: 'relative',
-    zIndex: 1000,
+  titleContainer: {
+    flex: 1,
   },
-  exportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: 'rgba(69, 183, 209, 0.1)',
-    borderWidth: 1,
-    borderColor: THEME_COLORS.bluePrimary,
-    gap: 6,
-  },
-  exportButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: THEME_COLORS.bluePrimary,
-  },
-  exportArrow: {
-    marginLeft: 2,
-  },
-  exportDropdown: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: THEME_COLORS.border.light,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-    marginTop: 4,
-    zIndex: 1001,
-  },
-  dropdownOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  dropdownOptionText: {
-    fontSize: 14,
+  titleText: {
+    fontSize: 20,
+    fontWeight: '700',
     color: THEME_COLORS.text.primary,
-    fontWeight: '500',
+    marginBottom: 4,
   },
-  dropdownSeparator: {
-    height: 1,
-    backgroundColor: THEME_COLORS.border.light,
-    marginHorizontal: 8,
+  logsSubtitleText: {
+    fontSize: 14,
+    color: THEME_COLORS.text.secondary,
+    fontWeight: '400',
   },
-  dropdownOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 999,
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    backgroundColor: '#F8F9FA',
+    paddingTop: '35%',
+  },
+  loadingSpinner: {
+    transform: [{ scale: 1.5 }],
   },
   toggleSwitchContainer: {
     flexDirection: 'row',
