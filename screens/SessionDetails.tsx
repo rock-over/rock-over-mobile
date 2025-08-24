@@ -1,6 +1,14 @@
+import { FontAwesome6 } from '@expo/vector-icons';
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
+import {
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../constants/Theme';
 import { ClimbingSession } from '../services/climbingSessionService';
 
@@ -10,106 +18,444 @@ interface SessionDetailsProps {
 }
 
 export default function SessionDetails({ session, onClose }: SessionDetailsProps) {
-  const renderField = (label: string, value: string | null | undefined) => {
-    if (!value) return null;
-    
+  // Função para formatar data e hora
+  const formatDateTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${day}/${month}/${year}, ${hours}:${minutes}`;
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Função para determinar a cor do texto do checkmark baseada na cor de fundo
+  const getCheckmarkTextColor = (backgroundColor: string) => {
+    const lightColors = ['#ffffff', '#ffeb3b', '#bdbdbd'];
+    return lightColors.includes(backgroundColor) ? '#333' : '#fff';
+  };
+
+  // Função para converter valor numérico da dificuldade em texto
+  const getDifficultyLabel = (value: number) => {
+    if (value <= 3) return 'Smooth';
+    if (value <= 6) return 'Moderate';
+    if (value <= 8) return 'Hard';
+    return 'Very Hard';
+  };
+
+  // Renderizar avaliação por estrelas (somente visualização)
+  const renderStarRating = (title: string, rating: number) => {
     return (
       <View style={styles.fieldContainer}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <Text style={styles.fieldValue}>{value}</Text>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.starsContainer}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <View key={star} style={styles.starButton}>
+              <FontAwesome6
+                name="star"
+                size={28}
+                color={star <= rating ? "#FFD700" : "#E0E0E0"}
+                solid={star <= rating}
+              />
+            </View>
+          ))}
+        </View>
       </View>
     );
   };
 
-  const renderEmptyField = (label: string) => (
-    <View style={styles.fieldContainer}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={styles.emptyValue}>-</Text>
-    </View>
-  );
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
+  // Renderizar seletor de data e hora (somente visualização)
+  const renderDateTimeDisplay = (title: string, dateString: string) => {
+    return (
+      <View style={styles.fieldContainer}>
+        <View style={styles.dateTimeDisplayContainer}>
+          <FontAwesome6 
+            name="calendar-days" 
+            size={18} 
+            color={THEME_COLORS.bluePrimary}
+            style={styles.dateIcon}
+          />
+          <Text style={styles.dateTimeDisplayText}>
+            {dateString ? formatDateTime(dateString) : 'No date selected'}
+          </Text>
+        </View>
+      </View>
+    );
   };
 
-  return (
-    <SafeAreaViewContext style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onClose}>
-          <Text style={styles.closeButton}>Fechar</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Detalhes da Sessão</Text>
-        <View style={styles.placeholder} />
+  // Renderizar seletor visual (somente visualização)
+  const renderVisualSelector = (
+    title: string, 
+    selectedValue: string,
+    options: Array<{value: string, label: string, imageUrl: any}>
+  ) => {
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.locationContainer}>
+          {options.map((option, index) => (
+            <React.Fragment key={option.value}>
+              {index > 0 && <View style={styles.buttonSpacer} />}
+              <TouchableOpacity
+                style={[
+                  styles.locationButton,
+                  selectedValue === option.value && styles.locationButtonSelected
+                ]}
+                disabled={true}
+              >
+                <Image
+                  source={option.imageUrl}
+                  style={styles.locationImage}
+                  resizeMode="cover"
+                />
+                <Text style={[
+                  styles.locationText,
+                  selectedValue === option.value && styles.locationTextSelected
+                ]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            </React.Fragment>
+          ))}
+        </View>
       </View>
+    );
+  };
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Informações Principais */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Informações Gerais</Text>
-          
-          {session.place ? renderField('Tipo de Local', session.place) : renderEmptyField('Tipo de Local')}
-          {session.location ? renderField('Local', session.location) : renderEmptyField('Local')}
-          {session.location_data?.formatted_address ? renderField('Endereço', session.location_data.formatted_address) : null}
-          {session.location_data?.vicinity ? renderField('Região', session.location_data.vicinity) : null}
-          {session.when ? renderField('Data', formatDate(session.when)) : renderEmptyField('Data')}
-          {session.timeOfDay ? renderField('Período', session.timeOfDay) : renderEmptyField('Período')}
-          {session.activity ? renderField('Atividade', session.activity) : renderEmptyField('Atividade')}
-          {session.climbingType ? renderField('Tipo de Escalada', session.climbingType) : renderEmptyField('Tipo de Escalada')}
+  // Renderizar seletor de cor (somente visualização)
+  const renderColorDisplay = (title: string, color: string) => {
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.colorDisplayContainer}>
+          <View style={[styles.colorPreview, { backgroundColor: color || THEME_COLORS.bluePrimary }]} />
         </View>
+      </View>
+    );
+  };
 
-        {/* Detalhes da Rota */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Detalhes da Rota</Text>
-          
-          {session.routeNumber ? renderField('Número/Nome da Rota', session.routeNumber) : renderEmptyField('Número/Nome da Rota')}
-          {session.grade ? renderField('Grau', session.grade) : renderEmptyField('Grau')}
-          {session.colour ? renderField('Cor', session.colour) : renderEmptyField('Cor')}
-          {session.suggestedGrade ? renderField('Grau Sugerido', session.suggestedGrade) : renderEmptyField('Grau Sugerido')}
+  // Renderizar dropdown (somente visualização)
+  const renderDropdownDisplay = (title: string, value: string, placeholder: string) => {
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.dropdownDisplayContainer}>
+          <Text style={[styles.dropdownDisplayText, !value && styles.dropdownPlaceholderText]}>
+            {value || placeholder}
+          </Text>
         </View>
+      </View>
+    );
+  };
 
-        {/* Performance */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Performance</Text>
-          
-          {session.difficulty ? renderField('Dificuldade', session.difficulty) : renderEmptyField('Dificuldade')}
-          {session.effort ? renderField('Esforço', session.effort) : renderEmptyField('Esforço')}
-          {session.falls ? renderField('Número de Quedas', session.falls) : renderEmptyField('Número de Quedas')}
-          {session.ascentType ? renderField('Tipo de Ascensão', session.ascentType) : renderEmptyField('Tipo de Ascensão')}
-          {session.howItFelt ? renderField('Como se Sentiu', session.howItFelt) : renderEmptyField('Como se Sentiu')}
-        </View>
-
-        {/* Avaliações */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Avaliações</Text>
-          
-          {session.routeRating ? renderField('Avaliação da Rota', session.routeRating) : renderEmptyField('Avaliação da Rota')}
-          {session.settersRating ? renderField('Avaliação do Setter', session.settersRating) : renderEmptyField('Avaliação do Setter')}
-        </View>
-
-        {/* Técnica */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Técnica</Text>
-          
-          {session.movement ? renderField('Movimento Usado', session.movement) : renderEmptyField('Movimento Usado')}
-          {session.grip ? renderField('Pegada', session.grip) : renderEmptyField('Pegada')}
-          {session.footwork ? renderField('Trabalho de Pés', session.footwork) : renderEmptyField('Trabalho de Pés')}
-        </View>
-
-        {/* Comentários */}
-        {session.comments && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Comentários/Dicas</Text>
-            <View style={styles.commentsContainer}>
-              <Text style={styles.commentsText}>{session.comments}</Text>
+  // Renderizar seletor de opções (somente visualização)
+  const renderOptionsDisplay = (title: string, selectedValue: string, options: string[]) => {
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsContainer}>
+          {options.map((option) => (
+            <View
+              key={option}
+              style={[
+                styles.optionButton,
+                selectedValue === option && styles.optionButtonSelected
+              ]}
+            >
+              <Text style={[
+                styles.optionText,
+                selectedValue === option && styles.optionTextSelected
+              ]}>
+                {option}
+              </Text>
             </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Renderizar seletor de sentimentos (somente visualização)
+  const renderFeelingDisplay = (title: string, selectedValue: string) => {
+    const feelings = [
+      { value: 'soft', label: 'Soft', emoji: '😌' },
+      { value: 'stiff', label: 'Stiff', emoji: '😰' },
+      { value: 'good', label: 'Good', emoji: '😊' },
+      { value: 'bad', label: 'Bad', emoji: '😞' }
+    ];
+
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.feelingsContainer}>
+          {feelings.map((feeling) => (
+            <View
+              key={feeling.value}
+              style={[
+                styles.feelingButton,
+                selectedValue === feeling.value && styles.feelingButtonSelected
+              ]}
+            >
+              <Text style={styles.feelingEmoji}>{feeling.emoji}</Text>
+              <Text 
+                style={[
+                  styles.feelingText,
+                  selectedValue === feeling.value && styles.feelingTextSelected
+                ]}
+                numberOfLines={1}
+              >
+                {feeling.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  // Renderizar slider de dificuldade (somente visualização)
+  const renderDifficultyDisplay = (title: string, value: number) => {
+    const hasValue = value && value > 0;
+    
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.difficultyDisplayContainer}>
+          <View style={styles.difficultyBarContainer}>
+            <View style={[styles.difficultyBar, !hasValue && styles.difficultyBarEmpty]}>
+              {hasValue && (
+                <View 
+                  style={[
+                    styles.difficultyProgress, 
+                    { width: `${(value / 10) * 100}%` }
+                  ]} 
+                />
+              )}
+            </View>
+            {hasValue && (
+              <View 
+                style={[
+                  styles.difficultyThumb,
+                  { left: `${(value / 10) * 100}%` }
+                ]} 
+              />
+            )}
+          </View>
+          <View style={styles.difficultyLabelsContainer}>
+            <Text style={styles.difficultyLabelLeft}>Smooth</Text>
+            <Text style={styles.difficultyLabelRight}>Very Hard</Text>
+          </View>
+          {hasValue && (
+            <Text style={styles.difficultyValue}>{value}</Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  // Renderizar contador de quedas (somente visualização)
+  const renderFallsDisplay = (title: string, value: number) => {
+    const hasValue = value && value > 0;
+    
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.fallsDisplayContainer}>
+          <Text style={[styles.fallsValue, !hasValue && styles.fallsValueEmpty]}>
+            {hasValue ? value : '-'}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  // Renderizar seletor de tags (somente visualização)
+  const renderTagsDisplay = (title: string, tags: string[]) => {
+    if (!tags || tags.length === 0) {
+      const emptyText = title === 'Movement' ? 'No movements logged' : 
+                       title === 'Grip' ? 'No grips logged' : 
+                       title === 'Footwork' ? 'No footwork logged' : 
+                       'No tags selected';
+      
+      return (
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>{title}</Text>
+          <Text style={styles.emptyTagsText}>{emptyText}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.tagsContainer}>
+          {tags.map((tag, index) => (
+            <View key={index} style={styles.tagChip}>
+              <Text style={styles.tagChipText}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  // Renderizar campo de texto (somente visualização)
+  const renderTextDisplay = (title: string, value: string, placeholder: string) => {
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        <View style={styles.textDisplayContainer}>
+          <Text style={[styles.textDisplayText, !value && styles.textDisplayPlaceholder]}>
+            {value || placeholder}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  // Renderizar campo de imagem (somente visualização)
+  const renderImageDisplay = (title: string, imageUrl: string | null) => {
+    return (
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>{title}</Text>
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.imagePreview} />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <FontAwesome6 name="camera" size={24} color="#999" />
+            <Text style={styles.imagePlaceholderText}>No image added</Text>
           </View>
         )}
+      </View>
+    );
+  };
 
-        <View style={styles.bottomSpace} />
+  // Opções para as tags
+  const movementOptions = [
+    'Dynamic', 'Static', 'Compression', 'Mantling', 'Stemming', 'Layback', 
+    'Undercling', 'Deadpoint', 'Dyno', 'Campus', 'Lock-off', 'Gaston',
+    'Side Pull', 'Heel Hook', 'Toe Hook', 'Flagging', 'Barn Door', 'Drop Knee'
+  ];
+
+  const gripOptions = [
+    'Crimp', 'Open Hand', 'Pinch', 'Sloper', 'Jug', 'Pocket', 'Edge',
+    'Volume', 'Undercling', 'Side Pull', 'Gaston', 'Horn', 'Rail',
+    'Incut', 'Two Finger Pocket', 'Three Finger Pocket', 'Mono'
+  ];
+
+  const footworkOptions = [
+    'Edging', 'Smearing', 'Heel Hook', 'Toe Hook', 'Inside Edge', 'Outside Edge',
+    'Drop Knee', 'High Step', 'Rock Over', 'Mantling', 'Stemming', 'Flagging',
+    'Back Step', 'Bicycle', 'Cam Hook', 'Toe Cam', 'Knee Bar', 'Rest Position'
+  ];
+
+  // Opções para localização
+  const locationOptions = [
+    {
+      value: 'Indoor',
+      label: 'Indoor',
+      imageUrl: require('../assets/images/indoor.png')
+    },
+    {
+      value: 'Outdoor',
+      label: 'Outdoor',
+      imageUrl: require('../assets/images/outdoor.png')
+    }
+  ];
+
+  // Opções para atividade
+  const activityOptions = [
+    {
+      value: 'Climbing',
+      label: 'Climbing',
+      imageUrl: require('../assets/images/climbing.png')
+    },
+    {
+      value: 'Bouldering',
+      label: 'Bouldering',
+      imageUrl: require('../assets/images/bouldering.png')
+    }
+  ];
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <FontAwesome6 name="xmark" size={22} color="#000" />
+        </TouchableOpacity>
+        <View style={styles.headerRight} />
+      </View>
+
+      {/* Content */}
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.modalTitle}>Session Details ✨</Text>
+        <Text style={styles.modalSubtitle}>
+          View your climbing session information
+        </Text>
+
+        {/* Step 1: Basic Information */}
+        {renderDateTimeDisplay('', session.when)}
+        
+        {renderVisualSelector('Location', session.place || '', locationOptions)}
+        
+        {session.location && (
+          <View style={styles.locationDisplayRow}>
+            <FontAwesome6 name="location-dot" size={18} color={THEME_COLORS.bluePrimary} style={{ marginRight: 8 }} />
+            <Text style={styles.locationDisplayText} numberOfLines={2}>{session.location}</Text>
+          </View>
+        )}
+        
+        {renderVisualSelector('Style', session.activity || '', activityOptions)}
+
+        {/* Step 2: Route Details */}
+        <View style={styles.sharedRowContainer}>
+          <View style={styles.routeNameContainer}>
+            {renderTextDisplay('Route number', session.routeNumber || '', 'Add number')}
+          </View>
+          <View style={styles.routeColorContainer}>
+            {renderColorDisplay('Color', session.colour || '')}
+          </View>
+        </View>
+        
+        {renderDropdownDisplay('Grade', session.grade || '', 'Select grade')}
+        
+        {renderOptionsDisplay('Completion', session.completion || '', ['Completed', 'Attempt'])}
+
+        {renderStarRating('Route Rating', parseInt(session.routeRating || '0'))}
+
+        {/* Step 3: Performance */}
+        {renderDifficultyDisplay('Difficulty', parseInt(session.difficulty || '5'))}
+        
+        {renderFeelingDisplay('How It Felt', session.howItFelt || '')}
+        
+        {renderFallsDisplay('Number of Falls', parseInt(session.falls || '0'))}
+        
+        {renderOptionsDisplay('Ascent Type', session.ascentType || '', ['Redpoint', 'Onsight', 'Flash'])}
+
+        {session.activity === 'Climbing' && 
+          renderOptionsDisplay('Top / Lead', session.climbingType || '', ['Top', 'Lead'])
+        }
+
+        {/* Step 4: Comments and Image */}
+        {renderTextDisplay('Comments/Tips', session.comments || '', 'No comments logged')}
+        
+        {renderImageDisplay('Image', session.images?.[0] || null)}
+
+        {/* Step 5: Technique Tags */}
+        {renderTagsDisplay('Movement', session.movement && session.movement !== '' ? session.movement.replace(/[\[\]"]/g, '').split(',').filter(tag => tag.trim() !== '') : [])}
+        {renderTagsDisplay('Grip', session.grip && session.grip !== '' ? session.grip.replace(/[\[\]"]/g, '').split(',').filter(tag => tag.trim() !== '') : [])}
+        {renderTagsDisplay('Footwork', session.footwork && session.footwork !== '' ? session.footwork.replace(/[\[\]"]/g, '').split(',').filter(tag => tag.trim() !== '') : [])}
       </ScrollView>
-    </SafeAreaViewContext>
+    </SafeAreaView>
   );
 }
 
@@ -122,94 +468,366 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    padding: 10,
     backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   closeButton: {
-    fontSize: 16,
-    color: THEME_COLORS.bluePrimary,
-    fontWeight: '600',
+    padding: 5,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  placeholder: {
-    width: 50, // Para centralizar o título
+  headerRight: {
+    width: 40,
+    height: 40,
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
   },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sectionTitle: {
+  modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#333',
-    marginBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    paddingBottom: 10,
+    marginBottom: 8,
+    marginTop: 0,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 25,
   },
   fieldContainer: {
-    marginBottom: 15,
+    marginBottom: 20,
   },
-  fieldLabel: {
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 6,
+  },
+  // DateTime Display
+  dateTimeDisplayContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  dateIcon: {
+    marginRight: 10,
+  },
+  dateTimeDisplayText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
+  },
+  // Visual Selector
+  locationContainer: {
+    flexDirection: 'row',
+    marginTop: 6,
+  },
+  buttonSpacer: {
+    width: 16,
+  },
+  locationButton: {
+    flex: 1,
+    height: 150,
+    backgroundColor: THEME_COLORS.background.primary,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+  },
+  locationButtonSelected: {
+    borderColor: THEME_COLORS.bluePrimary,
+    backgroundColor: '#f0f7ff',
+  },
+  locationImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginBottom: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
-    marginBottom: 5,
-  },
-  fieldValue: {
-    fontSize: 16,
     color: '#333',
-    backgroundColor: '#f8f9fa',
+    textAlign: 'center',
+  },
+  locationTextSelected: {
+    color: THEME_COLORS.bluePrimary,
+  },
+  locationDisplayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 0,
+    paddingHorizontal: 4,
+    marginBottom: 16,
+  },
+  locationDisplayText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#000',
+  },
+  // Color Display
+  colorDisplayContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME_COLORS.background.input,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    width: 80,
+    height: 50,
+  },
+  colorPreview: {
+    width: 30,
+    height: 30,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+  },
+  colorDisplayText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+  },
+  // Dropdown Display
+  dropdownDisplayContainer: {
+    backgroundColor: THEME_COLORS.background.input,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  dropdownDisplayText: {
+    fontSize: 14,
+    color: '#000000',
+    fontWeight: '400',
+  },
+  dropdownPlaceholderText: {
+    color: '#999',
+  },
+  // Options Display
+  optionsContainer: {
+    flexDirection: 'row',
+  },
+  optionButton: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  optionButtonSelected: {
+    backgroundColor: THEME_COLORS.bluePrimary,
+    borderColor: THEME_COLORS.bluePrimary,
+  },
+  optionText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  optionTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  // Stars Display
+  starsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  starButton: {
+    marginRight: 8,
+    padding: 4,
+  },
+  // Feelings Display
+  feelingsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  feelingButton: {
+    flex: 1,
+    alignItems: 'center',
     padding: 12,
+    marginHorizontal: 4,
+  },
+  feelingButtonSelected: {
+    // Sem background nem borda quando selecionado
+  },
+  feelingEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  feelingText: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#666',
+    textAlign: 'center',
+  },
+  feelingTextSelected: {
+    color: THEME_COLORS.bluePrimary,
+    fontWeight: '700',
+  },
+  // Difficulty Display
+  difficultyDisplayContainer: {
+    paddingHorizontal: 15,
+    paddingVertical: 0,
+  },
+  difficultyBarContainer: {
+    position: 'relative',
+    marginBottom: 8,
+  },
+  difficultyBar: {
+    height: 8,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  difficultyBarEmpty: {
+    backgroundColor: '#f0f0f0',
+  },
+  difficultyProgress: {
+    height: '100%',
+    backgroundColor: THEME_COLORS.bluePrimary,
+    borderRadius: 4,
+  },
+  difficultyThumb: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: THEME_COLORS.bluePrimary,
+    top: -6,
+    marginLeft: -10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  difficultyLabelsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  difficultyLabelLeft: {
+    fontSize: 14,
+    color: '#666',
+    marginRight: 15,
+  },
+  difficultyLabelRight: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 15,
+  },
+  difficultyValue: {
+    textAlign: 'center',
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: '600',
+    color: THEME_COLORS.bluePrimary,
+  },
+  // Falls Display
+  fallsDisplayContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 0,
+  },
+  fallsValue: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: THEME_COLORS.bluePrimary,
+  },
+  fallsValueEmpty: {
+    color: '#999',
+  },
+  // Tags Display
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: 0,
+  },
+  tagChip: {
+    backgroundColor: THEME_COLORS.bluePrimary,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  tagChipText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  emptyTagsText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    padding: 20,
+    backgroundColor: '#f8f9fa',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e9ecef',
   },
-  emptyValue: {
-    fontSize: 16,
-    color: '#999',
-    backgroundColor: '#f8f9fa',
-    padding: 12,
+  // Text Display
+  textDisplayContainer: {
+    backgroundColor: THEME_COLORS.background.input,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  textDisplayText: {
+    fontSize: 16,
+    color: '#000000',
+  },
+  textDisplayPlaceholder: {
+    color: '#999',
     fontStyle: 'italic',
   },
-  commentsContainer: {
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    minHeight: 80,
+  // Image Display
+  imagePreview: {
+    width: '100%',
+    height: 150,
+    borderRadius: 12,
   },
-  commentsText: {
-    fontSize: 16,
-    color: '#333',
-    lineHeight: 22,
+  imagePlaceholder: {
+    height: 150,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  bottomSpace: {
-    height: 30,
+  imagePlaceholderText: {
+    marginTop: 8,
+    color: '#999',
+  },
+  // Shared Row
+  sharedRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  routeNameContainer: {
+    flex: 1,
+    marginRight: 15,
+  },
+  routeColorContainer: {
+    alignItems: 'flex-end',
   },
 }); 
