@@ -2,6 +2,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,14 +12,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../constants/Theme';
 import { supabase } from '../lib/supabase';
-import { ClimbingSession } from '../services/climbingSessionService';
+import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
 
 interface SessionDetailsProps {
   session: ClimbingSession;
   onClose: () => void;
+  onSessionDeleted?: () => void;
 }
 
-export default function SessionDetails({ session, onClose }: SessionDetailsProps) {
+export default function SessionDetails({ session, onClose, onSessionDeleted }: SessionDetailsProps) {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   // Função para formatar data e hora
   const formatDateTime = (dateString: string) => {
     try {
@@ -38,6 +42,33 @@ export default function SessionDetails({ session, onClose }: SessionDetailsProps
   const getCheckmarkTextColor = (backgroundColor: string) => {
     const lightColors = ['#ffffff', '#ffeb3b', '#bdbdbd'];
     return lightColors.includes(backgroundColor) ? '#333' : '#fff';
+  };
+
+  // Função para deletar a sessão
+  const handleDeleteSession = async () => {
+    try {
+      console.log('Deleting session:', session.id);
+      
+      // Deletar a sessão do Supabase
+      await climbingSessionService.deleteSession(session.id);
+      
+      console.log('Session deleted successfully');
+      
+      // Fechar o modal
+      setShowDeleteModal(false);
+      
+      // Fechar a tela de detalhes
+      onClose();
+      
+      // Chamar callback para atualizar a lista na tela pai
+      onSessionDeleted?.();
+      
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      // Fechar o modal mesmo em caso de erro
+      setShowDeleteModal(false);
+      // Aqui você pode mostrar um alerta de erro se necessário
+    }
   };
 
   // Função para converter valor numérico da dificuldade em texto
@@ -520,7 +551,63 @@ export default function SessionDetails({ session, onClose }: SessionDetailsProps
         {renderTagsDisplay('Movement', session.movement && session.movement !== '' ? session.movement.replace(/[\[\]"]/g, '').split(',').filter(tag => tag.trim() !== '') : [])}
         {renderTagsDisplay('Grip', session.grip && session.grip !== '' ? session.grip.replace(/[\[\]"]/g, '').split(',').filter(tag => tag.trim() !== '') : [])}
         {renderTagsDisplay('Footwork', session.footwork && session.footwork !== '' ? session.footwork.replace(/[\[\]"]/g, '').split(',').filter(tag => tag.trim() !== '') : [])}
+
+        {/* Delete Button */}
+        <View style={styles.deleteButtonContainer}>
+          <TouchableOpacity 
+            style={styles.deleteButton}
+            onPress={() => setShowDeleteModal(true)}
+          >
+            <FontAwesome6 name="trash" size={18} color="#fff" />
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowDeleteModal(false)}
+        >
+          <TouchableOpacity 
+            style={styles.deleteModalContainer}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.deleteModalHeader}>
+              <FontAwesome6 name="trash" size={32} color="#ff6b6b" />
+              <Text style={styles.deleteModalTitle}>Delete Session</Text>
+            </View>
+            
+            <Text style={styles.deleteModalMessage}>
+              This action cannot be undone.
+            </Text>
+            
+            <View style={styles.deleteModalActions}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => setShowDeleteModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.confirmDeleteButton}
+                onPress={handleDeleteSession}
+              >
+                <Text style={styles.confirmDeleteButtonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -910,5 +997,100 @@ const styles = StyleSheet.create({
   },
   routeColorContainer: {
     alignItems: 'flex-end',
+  },
+  // Delete Button
+  deleteButtonContainer: {
+    marginTop: 30,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ff6b6b',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  // Delete Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 20,
+    width: '90%',
+    maxWidth: 400,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  deleteModalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  deleteModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginTop: 12,
+  },
+  deleteModalMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    backgroundColor: '#ff6b6b',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmDeleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 }); 

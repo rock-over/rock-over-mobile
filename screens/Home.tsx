@@ -780,6 +780,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
           <SessionDetails
             session={selectedSession}
             onClose={() => setSelectedSession(null)}
+            onSessionDeleted={loadSessions}
           />
         )}
       </Modal>
