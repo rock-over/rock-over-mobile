@@ -3,7 +3,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, FlatList, Image, Modal, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, FlatList, Image, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SessionCard from '../components/SessionCard'; // Importar o novo card
 import { THEME_COLORS } from '../constants/Theme';
@@ -621,27 +621,27 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
           <ScrollView 
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContainer}
-            refreshControl={
-              <RefreshControl
-                refreshing={loading}
-                onRefresh={loadSessions}
-                tintColor={THEME_COLORS.bluePrimary}
-                colors={[THEME_COLORS.bluePrimary]}
-              />
-            }
           >
             {sessions.length === 0 ? (
-              <View style={styles.emptyState}>
-                <FontAwesome6 name="mountain" size={48} color="#ccc" />
-                <Text style={styles.emptyText}>
-                  {loading ? 'Loading sessions...' : 'No climbing sessions yet'}
-                </Text>
-                {!loading && (
+              loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator 
+                    size="large" 
+                    color={THEME_COLORS.bluePrimary} 
+                    style={styles.loadingSpinner}
+                  />
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <FontAwesome6 name="mountain" size={48} color="#ccc" />
+                  <Text style={styles.emptyText}>
+                    No climbing sessions yet
+                  </Text>
                   <Text style={styles.emptySubtext}>
                     Tap the + button to log your first climb!
                   </Text>
-                )}
-              </View>
+                </View>
+              )
             ) : (
               <View style={tableStyles.tableContainer}>
                 {/* Horizontal Scrollable Table */}
@@ -732,20 +732,26 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
-          refreshing={loading}
-          onRefresh={loadSessions}
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <FontAwesome6 name="mountain" size={48} color="#ccc" />
-              <Text style={styles.emptyText}>
-                {loading ? 'Loading sessions...' : 'No climbing sessions yet'}
-              </Text>
-              {!loading && (
+            loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator 
+                  size="large" 
+                  color={THEME_COLORS.bluePrimary} 
+                  style={styles.loadingSpinner}
+                />
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <FontAwesome6 name="mountain" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>
+                  No climbing sessions yet
+                </Text>
                 <Text style={styles.emptySubtext}>
                   Tap the + button to log your first climb!
                 </Text>
-              )}
-            </View>
+              </View>
+            )
           }
         />
         )}
