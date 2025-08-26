@@ -1,17 +1,17 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    InteractionManager,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  InteractionManager,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import Slider from '@react-native-community/slider';
@@ -680,19 +680,24 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
                 style={[
                   styles.locationButton,
                   currentValue === option.value && styles.locationButtonSelected,
-                  hasValidationError && styles.locationButtonError
+                  hasValidationError && styles.locationButtonError,
+                  !isEditing && currentValue !== option.value && styles.disabledButton
                 ]}
                 disabled={!isEditing}
                 onPress={() => handleOptionPress(option.value)}
               >
                 <Image
                   source={option.imageUrl}
-                  style={styles.locationImage}
+                  style={[
+                    styles.locationImage,
+                    !isEditing && currentValue !== option.value && styles.disabledImage
+                  ]}
                   resizeMode="cover"
                 />
                 <Text style={[
                   styles.locationText,
-                  currentValue === option.value && styles.locationTextSelected
+                  currentValue === option.value && styles.locationTextSelected,
+                  !isEditing && currentValue !== option.value && styles.disabledText
                 ]}>
                   {option.label}
                 </Text>
@@ -798,14 +803,16 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
               key={option}
               style={[
                 styles.optionButton,
-                currentValue === option && styles.optionButtonSelected
+                currentValue === option && styles.optionButtonSelected,
+                !isEditing && currentValue !== option && styles.disabledButton
               ]}
               disabled={!isEditing}
               onPress={() => handleOptionPress(option)}
             >
               <Text style={[
                 styles.optionText,
-                currentValue === option && styles.optionTextSelected
+                currentValue === option && styles.optionTextSelected,
+                !isEditing && currentValue !== option && styles.disabledText
               ]}>
                 {option}
               </Text>
@@ -848,16 +855,21 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
               key={feeling.value}
               style={[
                 styles.feelingButton,
-                currentValue === feeling.value && styles.feelingButtonSelected
+                currentValue === feeling.value && styles.feelingButtonSelected,
+                !isEditing && currentValue !== feeling.value && styles.disabledButton
               ]}
               disabled={!isEditing}
               onPress={() => handleFeelingPress(feeling.value)}
             >
-              <Text style={styles.feelingEmoji}>{feeling.emoji}</Text>
+              <Text style={[
+                styles.feelingEmoji,
+                !isEditing && currentValue !== feeling.value && styles.disabledEmoji
+              ]}>{feeling.emoji}</Text>
               <Text 
                 style={[
                   styles.feelingText,
-                  currentValue === feeling.value && styles.feelingTextSelected
+                  currentValue === feeling.value && styles.feelingTextSelected,
+                  !isEditing && currentValue !== feeling.value && styles.disabledText
                 ]}
                 numberOfLines={1}
               >
@@ -1685,26 +1697,29 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         {renderTagsDisplay('Footwork', currentSession.footwork && currentSession.footwork !== '' ? currentSession.footwork.replace(/[\[\]"]/g, '').split(',').filter(tag => tag.trim() !== '') : [], 'footwork')}
 
         {/* Action Button - Delete or Save */}
-        <View style={styles.actionButtonContainer}>
-          {isEditing ? (
-            <TouchableOpacity 
-              style={styles.saveButton}
-              onPress={handleSaveSession}
-            >
-              <FontAwesome6 name="check" size={18} color="#fff" />
-              <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity 
-              style={styles.deleteButton}
-              onPress={() => setShowDeleteModal(true)}
-            >
-              <FontAwesome6 name="trash" size={18} color="#fff" />
-              <Text style={styles.deleteButtonText}>Delete</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <View style={styles.actionButtonSpacer} />
       </ScrollView>
+
+      {/* Fixed Bottom Bar */}
+      <View style={styles.fixedBottomBar}>
+        {isEditing ? (
+          <TouchableOpacity 
+            style={styles.saveButton}
+            onPress={handleSaveSession}
+          >
+            <FontAwesome6 name="check" size={18} color="#fff" />
+            <Text style={styles.saveButtonText}>Save</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={styles.deleteButton}
+            onPress={() => setShowDeleteModal(true)}
+            >
+            <FontAwesome6 name="trash" size={18} color="#fff" />
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -1880,6 +1895,21 @@ const styles = StyleSheet.create({
   },
   locationTextSelected: {
     color: THEME_COLORS.bluePrimary,
+  },
+  // Disabled states for non-editing mode
+  disabledButton: {
+    opacity: 0.4,
+    backgroundColor: '#f5f5f5',
+    borderColor: '#d0d0d0',
+  },
+  disabledImage: {
+    opacity: 0.4,
+  },
+  disabledText: {
+    color: '#999',
+  },
+  disabledEmoji: {
+    opacity: 0.4,
   },
   locationDisplayRow: {
     flexDirection: 'row',
@@ -2547,13 +2577,35 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     alignItems: 'center',
   },
+  actionButtonSpacer: {
+    height: 80, // Reduzido para a barra mais compacta
+  },
+  fixedBottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    alignItems: 'center',
+  },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#ff6b6b',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderRadius: 8,
+    minWidth: 280,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -2569,10 +2621,12 @@ const styles = StyleSheet.create({
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#4caf50',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderRadius: 8,
+    minWidth: 280,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
