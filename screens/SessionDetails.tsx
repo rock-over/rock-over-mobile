@@ -525,7 +525,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       if (validationErrors.length > 0) {
         setShowErrorsStep1(true);
         setShowErrorsStep2(true);
-        triggerSnack(validationErrors[0]); // Mostrar primeiro erro na snackbar
+        triggerSnack('Please fill in all required fields before continuing.');
         console.log('Validation errors:', validationErrors);
         return;
       }
@@ -1849,11 +1849,11 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
 
       {/* Snackbar */}
       {showSnackbar && (
-        <View style={styles.snackbarContainer}>
-          <View style={styles.snackbar}>
-            <Text style={styles.snackbarText}>{snackbarMessage}</Text>
-          </View>
-        </View>
+        <TouchableOpacity style={styles.snackbarContainer} activeOpacity={0.8} onPress={() => setShowSnackbar(false)}>
+          <FontAwesome6 name="circle-exclamation" size={18} color="#ff4d4d" style={{marginRight:8}} />
+          <Text style={[styles.snackbarText,{flex:1}]}>{snackbarMessage}</Text>
+          <FontAwesome6 name="xmark" size={16} color="#fff" />
+        </TouchableOpacity>
       )}
     </SafeAreaView>
   );
@@ -2830,22 +2830,21 @@ const styles = StyleSheet.create({
   // Snackbar
   snackbarContainer: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 30,
     left: 20,
     right: 20,
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  snackbar: {
     backgroundColor: '#333',
-    paddingHorizontal: 20,
     paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    maxWidth: '90%',
+    opacity: 0.9,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   snackbarText: {
     color: '#fff',
     fontSize: 14,
-    textAlign: 'center',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
 }); 
