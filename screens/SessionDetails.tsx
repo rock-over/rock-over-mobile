@@ -38,6 +38,8 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const [currentSession, setCurrentSession] = useState<ClimbingSession>(session);
   const [editedSession, setEditedSession] = useState<ClimbingSession>(session);
   const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const [showErrorsStep1, setShowErrorsStep1] = useState(false);
+  const [showErrorsStep2, setShowErrorsStep2] = useState(false);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -300,6 +302,9 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const startEditing = () => {
     setIsEditing(true);
     setEditedSession({ ...currentSession });
+    setShowValidationErrors(false);
+    setShowErrorsStep1(false);
+    setShowErrorsStep2(false);
   };
 
   // Função para cancelar edição
@@ -307,6 +312,8 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
     setIsEditing(false);
     setEditedSession({ ...currentSession });
     setShowValidationErrors(false);
+    setShowErrorsStep1(false);
+    setShowErrorsStep2(false);
   };
 
   /* ------- Image Picker ------- */
@@ -337,20 +344,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
     setTimeout(() => setShowSnackbar(false), 3000);
   };
 
-  // Função para validar campos obrigatórios
-  const validateSession = () => {
-    const errors: string[] = [];
-    
-    if (!editedSession.place || editedSession.place.trim() === '') {
-      errors.push('Location type (Indoor/Outdoor) is required');
-    }
-    
-    if (editedSession.place && (!editedSession.location || editedSession.location.trim() === '')) {
-      errors.push('Specific location is required');
-    }
-    
-    return errors;
-  };
+
 
   // Função para formatar data e hora
   const formatDateTime = (dateString: string) => {
@@ -485,13 +479,52 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
     );
   };
 
+  // Função para validar campos obrigatórios (replicando lógica do forms)
+  const validateSession = (): string[] => {
+    const errors: string[] = [];
+    
+    // Validar campos obrigatórios do Step 1
+    if (!editedSession.when) {
+      errors.push('Data e hora são obrigatórios');
+    }
+    if (!editedSession.place || editedSession.place.trim() === '') {
+      errors.push('Local é obrigatório');
+    }
+    if (!editedSession.location || editedSession.location.trim() === '') {
+      errors.push('Localização específica é obrigatória');
+    }
+    if (!editedSession.activity || editedSession.activity.trim() === '') {
+      errors.push('Estilo de atividade é obrigatório');
+    }
+
+    // Validar campos obrigatórios do Step 2
+    if (!editedSession.routeNumber || editedSession.routeNumber.trim() === '') {
+      errors.push('Número da rota é obrigatório');
+    }
+    if (!editedSession.grade || editedSession.grade.trim() === '') {
+      errors.push('Graduação é obrigatória');
+    }
+    if (!editedSession.completion || editedSession.completion.trim() === '') {
+      errors.push('Status de conclusão é obrigatório');
+    }
+    if (!editedSession.colour || editedSession.colour.trim() === '') {
+      errors.push('Cor da rota é obrigatória');
+    }
+    if (!editedSession.routeRating || parseInt(editedSession.routeRating.toString()) === 0) {
+      errors.push('Avaliação da rota é obrigatória');
+    }
+
+    return errors;
+  };
+
   // Função para salvar as alterações
   const handleSaveSession = async () => {
     try {
       // Validar campos obrigatórios
       const validationErrors = validateSession();
       if (validationErrors.length > 0) {
-        setShowValidationErrors(true);
+        setShowErrorsStep1(true);
+        setShowErrorsStep2(true);
         triggerSnack(validationErrors[0]); // Mostrar primeiro erro na snackbar
         console.log('Validation errors:', validationErrors);
         return;
@@ -530,6 +563,8 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       // Sair do modo de edição
       setIsEditing(false);
       setShowValidationErrors(false);
+      setShowErrorsStep1(false);
+      setShowErrorsStep2(false);
       
       // Mostrar snackbar de sucesso
       triggerSnack('Session saved successfully! 🎉');
@@ -589,10 +624,16 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       parseInt(editedSession[field as keyof ClimbingSession] as string || '0') : 
       rating;
 
+    // Verificar se este campo tem erro de validação
+    const hasValidationError = field === 'routeRating' && showErrorsStep2 && currentRating === 0;
+
     return (
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>{title}</Text>
-        <View style={styles.starsContainer}>
+        <View style={[
+          styles.starsContainer,
+          hasValidationError && styles.starsContainerError
+        ]}>
           {[1, 2, 3, 4, 5].map((star) => (
             <TouchableOpacity 
               key={star} 
@@ -666,8 +707,8 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       selectedValue;
 
     // Verificar se este campo tem erro de validação
-    const hasValidationError = showValidationErrors && field === 'place' && 
-      (!editedSession.place || editedSession.place.trim() === '');
+    const hasValidationError = showErrorsStep1 && (field === 'place' || field === 'activity') && 
+      (!editedSession[field as keyof ClimbingSession] || (editedSession[field as keyof ClimbingSession] as string).trim() === '');
 
     return (
       <View style={styles.fieldContainer}>
@@ -715,12 +756,19 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       editedSession[field as keyof ClimbingSession] as string : 
       color;
 
+    // Verificar se este campo tem erro de validação
+    const hasValidationError = field === 'colour' && showErrorsStep2 && 
+      (!currentColor || currentColor.trim() === '');
+
     return (
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>{title}</Text>
         {isEditing && field ? (
           <TouchableOpacity
-            style={(styles as any).colorSelectorButton}
+            style={[
+              (styles as any).colorSelectorButton,
+              hasValidationError && (styles as any).colorSelectorButtonError
+            ]}
             onPress={() => setShowColorPicker(true)}
           >
             <View style={[styles.colorPreview, { backgroundColor: currentColor || THEME_COLORS.bluePrimary }]} />
@@ -746,12 +794,19 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       editedSession[field as keyof ClimbingSession] as string : 
       value;
 
+    // Verificar se este campo tem erro de validação
+    const hasValidationError = field === 'grade' && showErrorsStep2 && 
+      (!currentValue || currentValue.trim() === '');
+
     return (
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>{title}</Text>
         {isEditing && field ? (
           <TouchableOpacity
-            style={(styles as any).dropdownButton}
+            style={[
+              (styles as any).dropdownButton,
+              hasValidationError && (styles as any).dropdownButtonError
+            ]}
             onPress={() => field === 'grade' && setShowGradePicker(true)}
           >
             <Text style={[
@@ -794,6 +849,10 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       editedSession[field as keyof ClimbingSession] as string : 
       selectedValue;
 
+    // Verificar se este campo tem erro de validação
+    const hasValidationError = field === 'completion' && showErrorsStep2 && 
+      (!currentValue || currentValue.trim() === '');
+
     return (
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>{title}</Text>
@@ -804,7 +863,8 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
               style={[
                 styles.optionButton,
                 currentValue === option && styles.optionButtonSelected,
-                !isEditing && currentValue !== option && styles.disabledButton
+                !isEditing && currentValue !== option && styles.disabledButton,
+                hasValidationError && styles.optionButtonError
               ]}
               disabled={!isEditing}
               onPress={() => handleOptionPress(option)}
@@ -1061,13 +1121,25 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
 
   // Renderizar campo de texto (visualização ou edição)
   const renderTextDisplay = (title: string, value: string, placeholder: string, field?: string) => {
+    const currentValue = isEditing && field ? 
+      editedSession[field as keyof ClimbingSession] as string : 
+      value;
+
+    // Verificar se este campo tem erro de validação
+    const hasValidationError = field === 'routeNumber' && showErrorsStep2 && 
+      (!currentValue || currentValue.trim() === '');
+
     return (
     <View style={styles.fieldContainer}>
         <Text style={styles.label}>{title}</Text>
         {isEditing && field ? (
           <TextInput
-            style={[styles.textInput, field === 'routeNumber' && styles.routeNameInput]}
-            value={editedSession[field as keyof ClimbingSession] as string || ''}
+            style={[
+              styles.textInput, 
+              field === 'routeNumber' && styles.routeNameInput,
+              hasValidationError && styles.textInputError
+            ]}
+            value={currentValue || ''}
             onChangeText={(text) => updateField(field, text)}
             placeholder={placeholder}
             placeholderTextColor="#999"
@@ -1075,8 +1147,8 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
           />
         ) : (
           <View style={styles.textDisplayContainer}>
-            <Text style={[styles.textDisplayText, !value && styles.textDisplayPlaceholder]}>
-              {value || placeholder}
+            <Text style={[styles.textDisplayText, !currentValue && styles.textDisplayPlaceholder]}>
+              {currentValue || placeholder}
             </Text>
           </View>
         )}
@@ -1876,8 +1948,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f7ff',
   },
   locationButtonError: {
-    borderColor: '#ff6b6b',
+    borderColor: '#ff0000',
     backgroundColor: '#fff5f5',
+  },
+  dropdownButtonError: {
+    borderColor: '#ff0000',
+    backgroundColor: '#fff5f5',
+    borderWidth: 2,
   },
   locationImage: {
     width: 100,
@@ -2296,6 +2373,11 @@ const styles = StyleSheet.create({
     backgroundColor: THEME_COLORS.bluePrimary,
     borderColor: THEME_COLORS.bluePrimary,
   },
+  optionButtonError: {
+    borderColor: '#ff0000',
+    backgroundColor: '#fff5f5',
+    borderWidth: 2,
+  },
   optionText: {
     fontSize: 14,
     color: '#666',
@@ -2309,6 +2391,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 6,
+  },
+  starsContainerError: {
+    borderWidth: 2,
+    borderColor: '#ff0000',
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: '#fff5f5',
   },
   starButton: {
     marginRight: 8,
@@ -2521,6 +2610,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000000',
     marginTop: 6,
+  },
+  textInputError: {
+    borderWidth: 2,
+    borderColor: '#ff0000',
+    backgroundColor: '#fff5f5',
   },
   routeNameInput: {
     height: 50,
