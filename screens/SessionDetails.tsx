@@ -58,6 +58,10 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const [tempMovementTags, setTempMovementTags] = useState<string[]>([]);
   const [tempGripTags, setTempGripTags] = useState<string[]>([]);
   const [tempFootworkTags, setTempFootworkTags] = useState<string[]>([]);
+  
+  // Estados temporários para localização (para permitir cancelamento)
+  const [tempPlace, setTempPlace] = useState<string>('');
+  const [tempLocation, setTempLocation] = useState<string>('');
 
   // Get user location for distance calculations (copiado do ClimbingSessionForm)
   useEffect(() => {
@@ -756,6 +760,10 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         updateField(field, value);
         // Limpar localização específica quando alterar place e abrir modal
         if (field === 'place') {
+          // Salvar estado atual antes de abrir o modal
+          setTempPlace(editedSession.place || '');
+          setTempLocation(editedSession.location || '');
+          
           updateField('location', '');
           updateField('location_data', null);
           // Abrir modal de seleção de localização
@@ -1230,7 +1238,12 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         visible={showLocationModal}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShowLocationModal(false)}
+        onRequestClose={() => {
+          // Restaurar estado anterior quando modal for fechado
+          updateField('place', tempPlace);
+          updateField('location', tempLocation);
+          setShowLocationModal(false);
+        }}
         onShow={() => {
           // reset loading state each time modal opens
           setIsCalculatingDistances(false);
@@ -1268,7 +1281,16 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
           });
         }}
       >
-        <View style={styles.locationModalOverlay}>
+        <TouchableOpacity 
+          style={styles.locationModalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            // Restaurar estado anterior quando clicar no overlay
+            updateField('place', tempPlace);
+            updateField('location', tempLocation);
+            setShowLocationModal(false);
+          }}
+        >
           <View style={styles.locationModalContainer}>
             <Text style={styles.modalTitle}>{title}</Text>
             
@@ -1351,6 +1373,9 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
                             if (result.richLocationData) {
                               updateField('location_data', result.richLocationData);
                             }
+                            // Limpar estados temporários após confirmação
+                            setTempPlace('');
+                            setTempLocation('');
                           }
                           setShowLocationModal(false);
                         }}
@@ -1373,7 +1398,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
               )}
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     );
   };
