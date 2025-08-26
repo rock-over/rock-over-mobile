@@ -44,6 +44,9 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  
+  // Ref para scroll automático
+  const scrollViewRef = useRef<ScrollView>(null);
   const [isCalculatingDistances, setIsCalculatingDistances] = useState(false);
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [processedResults, setProcessedResults] = useState<any[]>([]);
@@ -479,6 +482,59 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
     );
   };
 
+  // Função para scroll automático para o primeiro campo com erro
+  const scrollToFirstError = () => {
+    // Verificar campos do Step 1 primeiro (ordem de prioridade)
+    if (!editedSession.place || editedSession.place.trim() === '') {
+      // Scroll para o topo (campo Location)
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    
+    if (!editedSession.location || editedSession.location.trim() === '') {
+      // Scroll para o campo Location (após o header)
+      scrollViewRef.current?.scrollTo({ y: 100, animated: true });
+      return;
+    }
+    
+    if (!editedSession.activity || editedSession.activity.trim() === '') {
+      // Scroll para o campo Activity
+      scrollViewRef.current?.scrollTo({ y: 200, animated: true });
+      return;
+    }
+
+    // Verificar campos do Step 2
+    if (!editedSession.routeNumber || editedSession.routeNumber.trim() === '') {
+      // Scroll para o campo Route Number
+      scrollViewRef.current?.scrollTo({ y: 400, animated: true });
+      return;
+    }
+    
+    if (!editedSession.grade || editedSession.grade.trim() === '') {
+      // Scroll para o campo Grade
+      scrollViewRef.current?.scrollTo({ y: 500, animated: true });
+      return;
+    }
+    
+    if (!editedSession.completion || editedSession.completion.trim() === '') {
+      // Scroll para o campo Completion
+      scrollViewRef.current?.scrollTo({ y: 600, animated: true });
+      return;
+    }
+    
+    if (!editedSession.colour || editedSession.colour.trim() === '') {
+      // Scroll para o campo Colour
+      scrollViewRef.current?.scrollTo({ y: 700, animated: true });
+      return;
+    }
+    
+    if (!editedSession.routeRating || parseInt(editedSession.routeRating.toString()) === 0) {
+      // Scroll para o campo Route Rating
+      scrollViewRef.current?.scrollTo({ y: 800, animated: true });
+      return;
+    }
+  };
+
   // Função para validar campos obrigatórios (replicando lógica do forms)
   const validateSession = (): string[] => {
     const errors: string[] = [];
@@ -527,6 +583,12 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         setShowErrorsStep2(true);
         triggerSnack('Please fill in all required fields before continuing.');
         console.log('Validation errors:', validationErrors);
+        
+        // Scroll automático para o primeiro campo com erro
+        setTimeout(() => {
+          scrollToFirstError();
+        }, 100);
+        
         return;
       }
 
@@ -1692,6 +1754,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
 
       {/* Content */}
       <ScrollView 
+        ref={scrollViewRef}
         style={styles.content} 
         contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
@@ -1704,7 +1767,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         {/* Step 1: Basic Information */}
         {renderDateTimeDisplay('', currentSession.when)}
         
-                {renderVisualSelector('Location', currentSession.place || '', locationOptions, 'place')}
+        {renderVisualSelector('Location', currentSession.place || '', locationOptions, 'place')}
         
         {(isEditing ? editedSession.location : currentSession.location) && (
           <View style={[
