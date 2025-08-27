@@ -49,9 +49,15 @@ export default function VerifyEmail({ info, onSuccess, onGoBack }: VerifyEmailPr
     }
 
     setIsSubmitting(true);
+    console.log('[VerifyEmail] 🚀 Starting verification for:', info.email);
+    console.log('[VerifyEmail] 📝 User info:', { name: info.name, email: info.email, gradingSystem: info.gradingSystem });
+    
     try {
       const { success, user, error: verifyError } = await verifyEmailSignup(info.email, code.trim());
+      console.log('[VerifyEmail] 📊 Verification result:', { success, user: user ? { id: user.id, email: user.email, email_confirmed_at: user.email_confirmed_at } : null, error: verifyError });
+      
       if (!success || !user) {
+        console.log('[VerifyEmail] ❌ Verification failed:', verifyError);
         if (verifyError?.toLowerCase().includes('invalid') || verifyError?.toLowerCase().includes('expired')) {
           setError('Invalid or expired verification code');
         } else {
@@ -60,12 +66,16 @@ export default function VerifyEmail({ info, onSuccess, onGoBack }: VerifyEmailPr
         return;
       }
 
+      console.log('[VerifyEmail] ✅ Email verified successfully');
+
       // Ensure session exists. If not, log in with stored credentials.
       let authUser = user;
       if (!authUser?.session && info.password) {
+        console.log('[VerifyEmail] 🔐 No session found, attempting login');
         const { success: signOk, user: signUser } = await signInEmail(info.email, info.password);
         if (signOk && signUser) {
           authUser = signUser as any;
+          console.log('[VerifyEmail] ✅ Login successful after verification');
         }
       }
 
@@ -74,13 +84,12 @@ export default function VerifyEmail({ info, onSuccess, onGoBack }: VerifyEmailPr
         name: info.name,
         email: info.email,
         photo: null,
-        profilePhoto: 'illustration_1',
-        gradingSystem: info.gradingSystem,
       };
 
+      console.log('[VerifyEmail] 🎯 Calling onSuccess with user (should go to ProfileSetup):', finalUser);
       onSuccess(finalUser);
     } catch (e) {
-      console.error('verifyEmail error', e);
+      console.error('[VerifyEmail] ❌ Exception during verification:', e);
       setError('Unexpected error while verifying email');
     } finally {
       setIsSubmitting(false);

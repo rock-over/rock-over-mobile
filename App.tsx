@@ -62,18 +62,40 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     fetchSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('[App] 🔄 onAuthStateChange triggered:', _event, session ? 'session exists' : 'no session');
+      
       setSession(session);
       if (session) {
         const user = session.user;
-        const finalUser = {
-          id: user.id,
-          name: user.user_metadata?.name || user.email?.split('@')[0],
-          email: user.email,
-          photo: user.user_metadata?.avatar_url,
-          profilePhoto: user.user_metadata?.profilePhoto || 'illustration_1',
-        };
-        setUserInfo(finalUser);
+        
+        // Check if user has completed profile setup
+        const hasCompletedProfile = user.user_metadata?.profilePhoto && 
+                                   user.user_metadata?.gradingSystem &&
+                                   user.user_metadata?.profilePhoto !== 'illustration_1';
+        
+        console.log('[App] 🔍 Profile completion check:', {
+          profilePhoto: user.user_metadata?.profilePhoto,
+          gradingSystem: user.user_metadata?.gradingSystem,
+          hasCompletedProfile
+        });
+        
+        if (hasCompletedProfile) {
+          const finalUser = {
+            id: user.id,
+            name: user.user_metadata?.name || user.email?.split('@')[0],
+            email: user.email,
+            photo: user.user_metadata?.avatar_url,
+            profilePhoto: user.user_metadata?.profilePhoto,
+            gradingSystem: user.user_metadata?.gradingSystem,
+          };
+          console.log('[App] ✅ User has completed profile, setting userInfo:', finalUser);
+          setUserInfo(finalUser);
+        } else {
+          console.log('[App] ⏳ User has NOT completed profile setup, staying in AuthFlow');
+          setUserInfo(null); // Keep in AuthFlow
+        }
       } else {
+        console.log('[App] 🚫 No session, clearing userInfo');
         setUserInfo(null);
       }
     });
@@ -148,16 +170,40 @@ function AppContent() {
   };
 
   const handleAuthSuccess = async (user: any) => {
-    console.log('Auth success with user:', user);
-    // The Supabase session should already be created by the signInWithGoogle function
-    // No additional action needed here
+    console.log('[App] 🎉 Auth success with user:', user);
+    
+    // Update user metadata in Supabase with profile setup data
+    if (user.profilePhoto && user.gradingSystem) {
+      console.log('[App] 💾 Updating user metadata in Supabase');
+      
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          profilePhoto: user.profilePhoto,
+          gradingSystem: user.gradingSystem,
+          name: user.name
+        }
+      });
+      
+      if (error) {
+        console.error('[App] ❌ Error updating user metadata:', error);
+      } else {
+        console.log('[App] ✅ User metadata updated successfully');
+      }
+    }
+    
+    // Set userInfo to trigger Home screen
+    setUserInfo(user);
   };
+
+  console.log('[App] 🎬 Render decision - session:', !!session, 'userInfo:', !!userInfo);
+  console.log('[App] 📊 UserInfo details:', userInfo);
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {session && userInfo ? (
           <>
+            {console.log('[App] 🏠 RENDERING HOME SCREEN!')}
             <Stack.Screen name="Home">
               {(props) => <Home {...props} userInfo={userInfo} onLogout={handleLogout} />}
             </Stack.Screen>
@@ -168,16 +214,19 @@ function AppContent() {
             />
           </>
         ) : (
-          <Stack.Screen name="AuthFlow">
-            {(props) => (
-              <AuthFlow 
-                {...props}
-                initialScreen={authFlowState.initialScreen}
-                resetTokens={authFlowState.resetTokens}
-                onAuthSuccess={handleAuthSuccess}
-              />
-            )}
-          </Stack.Screen>
+          <>
+            {console.log('[App] 🔐 RENDERING AUTHFLOW SCREEN!')}
+            <Stack.Screen name="AuthFlow">
+              {(props) => (
+                <AuthFlow 
+                  {...props}
+                  initialScreen={authFlowState.initialScreen}
+                  resetTokens={authFlowState.resetTokens}
+                  onAuthSuccess={handleAuthSuccess}
+                />
+              )}
+            </Stack.Screen>
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

@@ -32,13 +32,9 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 setCurrentScreen('forgot-password');
                 return true;
             } else if (currentScreen === 'profile') {
-                // On profile screen, complete with temp user and default profile photo
-                const userWithDefaults = {
-                    ...tempUser,
-                    profilePhoto: 'illustration_1' // Default to first illustration
-                };
-                onAuthSuccess?.(userWithDefaults);
-                return true;
+                // On profile screen, do NOT auto-complete - let user finish setup
+                console.log('[AuthFlow] 🚫 Back button pressed on profile screen - ignoring to let user complete setup');
+                return true; // Prevent back action but don't auto-complete
             }
             // On welcome screen, allow default behavior (close app)
             return false;
@@ -80,17 +76,23 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
 
     const handleSignUpSuccess = (user: any) => {
         // Após signup, ir para profile setup
+        console.log('[AuthFlow] 🎯 handleSignUpSuccess called with user:', user);
+        console.log('[AuthFlow] 🔄 Setting currentScreen to profile');
         setTempUser(user);
         setCurrentScreen('profile');
     };
 
     const handleNavigateToVerify = (info: { email: string; password: string; name: string; gradingSystem: string }) => {
+        console.log('[AuthFlow] 📧 handleNavigateToVerify called with info:', info);
+        console.log('[AuthFlow] 🔄 Setting currentScreen to verify');
         setSignUpInfo(info);
         setCurrentScreen('verify');
     };
 
     const handleVerificationSuccess = (user: any) => {
         // Após verificação bem-sucedida, seguir para profile
+        console.log('[AuthFlow] ✅ handleVerificationSuccess called with user:', user);
+        console.log('[AuthFlow] 🔄 Setting currentScreen to profile');
         setTempUser(user);
         setCurrentScreen('profile');
     };
@@ -118,17 +120,27 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
     };
 
     const handleProfileSkip = () => {
+        console.log('[AuthFlow] 🚨 HANDLEPROFILESKIP CALLED! WHO CALLED THIS?');
+        console.log('[AuthFlow] 📍 Stack trace:');
+        console.trace();
+        
         // Usuário pulou o setup do perfil, usar padrões
         const userWithDefaults = {
             ...tempUser,
             profilePhoto: 'illustration_1',
             gradingSystem: 'yds'
         };
+        console.log('[AuthFlow] 🏠 Going to Home with defaults:', userWithDefaults);
         onAuthSuccess?.(userWithDefaults);
     };
 
+    console.log('[AuthFlow] 🎬 Current screen:', currentScreen);
+    console.log('[AuthFlow] 👤 Temp user:', tempUser);
+    console.log('[AuthFlow] 📋 SignUp info:', signUpInfo);
+
     switch (currentScreen) {
         case 'welcome':
+            console.log('[AuthFlow] 🏠 Rendering Welcome screen');
             return (
                 <Welcome
                     onNavigateToLogin={handleNavigateToLogin}
@@ -136,6 +148,7 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'login':
+            console.log('[AuthFlow] 🔑 Rendering Login screen');
             return (
                 <Login
                     onLoginSuccess={handleLoginSuccess}
@@ -145,6 +158,7 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'signup':
+            console.log('[AuthFlow] 📝 Rendering SignUp screen');
             return (
                 <SignUp
                     onSignUpSuccess={handleSignUpSuccess}
@@ -154,6 +168,7 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'verify':
+            console.log('[AuthFlow] 📧 Rendering VerifyEmail screen');
             // signUpInfo should be non-null here
             return (
                 <VerifyEmail
@@ -163,6 +178,7 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'forgot-password':
+            console.log('[AuthFlow] 🔒 Rendering ForgotPassword screen');
             return (
                 <ForgotPassword
                     onGoBack={handleGoBack}
@@ -170,6 +186,7 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'reset-password':
+            console.log('[AuthFlow] 🔑 Rendering ResetPassword screen');
             return (
                 <ResetPassword
                     accessToken={passwordResetTokens?.accessToken || ''}
@@ -179,6 +196,7 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'profile':
+            console.log('[AuthFlow] 👤 Rendering ProfileSetup screen');
             return (
                 <ProfileSetup
                     onComplete={handleProfileComplete}
@@ -186,6 +204,7 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         default:
+            console.log('[AuthFlow] ❓ Unknown screen, returning null');
             return null;
     }
 } 

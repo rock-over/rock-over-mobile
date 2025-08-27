@@ -120,16 +120,21 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
         }
 
         setIsSubmitting(true);
-        console.log('[SignUp] Submitting form', formData);
+        console.log('[SignUp] 🚀 Starting signup process for:', formData.email);
+        console.log('[SignUp] 📝 Form data:', formData);
 
         try {
             const { success, user, error } = await signUpEmail(formData.email, formData.password, formData.name);
-            console.log('[SignUp] Result', { success, user, error });
+            console.log('[SignUp] 📊 Supabase result:', { success, user: user ? { id: user.id, email: user.email } : null, error });
 
             if (!success || !user) {
+                console.log('[SignUp] ❌ Signup failed:', error);
                 Alert.alert('Error', error || 'Unable to create account');
                 return;
             }
+
+            console.log('[SignUp] ✅ Signup successful, navigating to verify');
+            console.log('[SignUp] 📧 User needs email verification - is new user:', !user.email_confirmed_at);
 
             // Pass data to verification flow so user can enter OTP code
             onNavigateToVerify?.({
@@ -140,7 +145,7 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
             });
 
         } catch (error) {
-            console.error('[SignUp] Exception', error);
+            console.error('[SignUp] ❌ Exception during signup:', error);
             Alert.alert('Error', 'An unexpected error occurred. Please try again.');
         } finally {
             setIsSubmitting(false);
@@ -175,16 +180,20 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
             const authResult = await signInWithGoogle(idToken || '', tokens.accessToken || '');
             
             if (authResult.success && authResult.user) {
+                console.log('[SignUp Google] 📊 User metadata:', authResult.user.user_metadata);
+                console.log('[SignUp Google] 🆕 Is new user:', !authResult.user.user_metadata?.profilePhoto);
+                console.log('[SignUp Google] 📅 Created at:', authResult.user.created_at);
+                
                 // Create user object with Supabase user data
                 const userInfo = {
                     id: authResult.user.id,
                     name: authResult.user.user_metadata?.name || name || 'Unknown User',
                     email: authResult.user.email || email,
                     photo: authResult.user.user_metadata?.avatar_url || photo,
-                    profilePhoto: authResult.user.user_metadata?.profilePhoto || 'illustration_1'
                 };
                 
-                // Success - call the callback with user data
+                console.log('[SignUp Google] ✅ Calling onSignUpSuccess with user:', userInfo);
+                // Success - call the callback with user data (will go to ProfileSetup)
                 onSignUpSuccess?.(userInfo);
             } else {
                 showMessage(authResult.error || "Google Sign-In failed");
