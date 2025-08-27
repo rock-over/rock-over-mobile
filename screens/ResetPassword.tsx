@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
     },
     title: {
-        fontSize: 24,
+        fontSize: 18,
         fontWeight: 'bold',
         color: '#333',
         textAlign: 'left',
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     subtitle: {
-        fontSize: 16,
+        fontSize: 14,
         color: '#666',
         textAlign: 'left',
         marginBottom: 32,

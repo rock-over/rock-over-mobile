@@ -14,10 +14,11 @@ import { signInEmail, signInWithGoogle } from '../lib/supabase';
 interface LoginProps {
     onLoginSuccess?: (user: any) => void;
     onNavigateToSignUp?: () => void;
+    onNavigateToForgotPassword?: () => void;
     onGoBack?: () => void;
 }
 
-export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: LoginProps) {
+export default function Login({ onLoginSuccess, onNavigateToSignUp, onNavigateToForgotPassword, onGoBack }: LoginProps) {
 
     const textColor = useThemeColor({}, "text");
 
@@ -248,7 +249,10 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onGoBack }: 
                 </View>
 
                 {/* Forgot Password Link */}
-                <TouchableOpacity style={styles.forgotPasswordContainer}>
+                <TouchableOpacity 
+                    style={styles.forgotPasswordContainer}
+                    onPress={onNavigateToForgotPassword}
+                >
                     <Text style={styles.forgotPasswordText}>Forget password?</Text>
                 </TouchableOpacity>
 
