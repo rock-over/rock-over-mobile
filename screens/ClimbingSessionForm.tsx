@@ -1348,6 +1348,11 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
           setIsCalculatingDistances(false);
           setProcessedResults([]);
 
+          // Try to get user location if not already available
+          if (locationPermissionGranted && !userCoords) {
+            getUserLocation();
+          }
+
           // Aggressive keyboard opening strategy
           const forceKeyboardOpen = () => {
             // Use helper first, then main input
@@ -1431,6 +1436,26 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
                   console.log('TextInput focused');
                 }}
               />
+              
+              {/* Current Location Button */}
+              <TouchableOpacity
+                style={styles.currentLocationButton}
+                onPress={handleUseCurrentLocation}
+                disabled={isCalculatingDistances || !locationPermissionGranted}
+              >
+                <FontAwesome6 
+                  name="location-crosshairs" 
+                  size={18} 
+                  color={!locationPermissionGranted ? "#ccc" : THEME_COLORS.bluePrimary} 
+                  style={{ marginRight: 8 }} 
+                />
+                <Text style={[
+                  styles.currentLocationText,
+                  !locationPermissionGranted && styles.currentLocationTextDisabled
+                ]}>
+                  Use current location
+                </Text>
+              </TouchableOpacity>
               
               {isCalculatingDistances ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
@@ -1526,6 +1551,27 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
           predefinedPlaces={[]}
           textInputProps={{}}
         />
+        
+        {/* Current Location Button for GooglePlacesAutocomplete */}
+        <TouchableOpacity
+          style={[styles.currentLocationButton, { marginTop: 8 }]}
+          onPress={handleUseCurrentLocation}
+          disabled={!locationPermissionGranted}
+        >
+          <FontAwesome6 
+            name="location-crosshairs" 
+            size={18} 
+            color={!locationPermissionGranted ? "#ccc" : THEME_COLORS.bluePrimary} 
+            style={{ marginRight: 8 }} 
+          />
+          <Text style={[
+            styles.currentLocationText,
+            !locationPermissionGranted && styles.currentLocationTextDisabled
+          ]}>
+            Use current location
+          </Text>
+        </TouchableOpacity>
+        
         {showErr && <Text style={styles.errorText}>This field is required</Text>}
       </View>
     );
@@ -2063,32 +2109,38 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   // ---------------- User location ----------------
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          try {
-            // @ts-ignore – timeout not yet declared in Expo type definitions
-            const loc = await Promise.race([
-              Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-              new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
-            ]);
-            setUserCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-          } catch (posErr) {
-            // Fallback: try last known position (may be undefined)
-            const last = await Location.getLastKnownPositionAsync();
-            if (last) {
-              setUserCoords({ latitude: last.coords.latitude, longitude: last.coords.longitude });
-            } else {
-              console.log('Could not retrieve position:', posErr);
-            }
+  const getUserLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        setLocationPermissionGranted(true);
+        try {
+          // @ts-ignore – timeout not yet declared in Expo type definitions
+          const loc = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+          ]);
+          setUserCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+        } catch (posErr) {
+          // Fallback: try last known position (may be undefined)
+          const last = await Location.getLastKnownPositionAsync();
+          if (last) {
+            setUserCoords({ latitude: last.coords.latitude, longitude: last.coords.longitude });
+          } else {
+            console.log('Could not retrieve position:', posErr);
           }
         }
-      } catch (err) {
-        console.log('Location permission error', err);
+      } else {
+        setLocationPermissionGranted(false);
       }
-    })();
+    } catch (err) {
+      console.log('Location permission error', err);
+      setLocationPermissionGranted(false);
+    }
+  };
+
+  useEffect(() => {
+    getUserLocation();
   }, []);
 
   // Distance helpers
@@ -2108,6 +2160,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   // New states for improved search experience
   const [isCalculatingDistances, setIsCalculatingDistances] = useState(false);
   const [processedResults, setProcessedResults] = useState<any[]>([]);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
 
 
 
@@ -2192,6 +2245,92 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     } catch (error) {
       console.log('[PLACES SEARCH ERROR]:', error);
       setProcessedResults([]);
+    } finally {
+      setIsCalculatingDistances(false);
+    }
+  };
+
+  // Function to get current location and find nearest place/address
+  const handleUseCurrentLocation = async () => {
+    if (!locationPermissionGranted) {
+      Alert.alert('Location not available', 'Please enable location services and try again.');
+      return;
+    }
+
+    // If coordinates are not available, try to get them first
+    if (!userCoords) {
+      await getUserLocation();
+    }
+
+    // Check again after trying to get location
+    if (!userCoords) {
+      Alert.alert('Location not available', 'Could not determine your current location. Please try again.');
+      return;
+    }
+
+    setIsCalculatingDistances(true);
+    
+    try {
+      const isIndoor = formData.place === 'Indoor';
+      
+      if (isIndoor) {
+        // For indoor, search for nearby climbing gyms
+        const query = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${userCoords.latitude},${userCoords.longitude}&radius=5000&type=establishment&keyword=climbing+gym&key=${GOOGLE_MAPS_API_KEY}`;
+        
+        const response = await fetch(query);
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+          const nearestGym = data.results[0];
+          const gymName = nearestGym.name;
+          const gymAddress = nearestGym.vicinity;
+          const fullDescription = `${gymName}, ${gymAddress}`;
+          
+          updateField('location', fullDescription);
+          setFormData(prev => ({ 
+            ...prev, 
+            location_data: {
+              description: fullDescription,
+              main_text: gymName,
+              secondary_text: gymAddress,
+              place_id: nearestGym.place_id
+            }
+          }));
+          
+          setShowLocationModal(false);
+        } else {
+          Alert.alert('No gyms found', 'Could not find any climbing gyms nearby.');
+        }
+      } else {
+        // For outdoor, get address from coordinates using reverse geocoding
+        const query = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${userCoords.latitude},${userCoords.longitude}&key=${GOOGLE_MAPS_API_KEY}`;
+        
+        const response = await fetch(query);
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+          const address = data.results[0];
+          const formattedAddress = address.formatted_address;
+          
+          updateField('location', formattedAddress);
+          setFormData(prev => ({ 
+            ...prev, 
+            location_data: {
+              description: formattedAddress,
+              main_text: formattedAddress.split(',')[0],
+              secondary_text: formattedAddress.split(',').slice(1).join(','),
+              place_id: address.place_id || null
+            }
+          }));
+          
+          setShowLocationModal(false);
+        } else {
+          Alert.alert('Address not found', 'Could not determine your current address.');
+        }
+      }
+    } catch (error) {
+      console.error('Error getting current location:', error);
+      Alert.alert('Error', 'Failed to get your current location. Please try again.');
     } finally {
       setIsCalculatingDistances(false);
     }
@@ -3062,4 +3201,25 @@ const styles = StyleSheet.create({
   locationDisplayRow: { flexDirection: 'row', alignItems: 'center', marginTop: 0, paddingHorizontal: 4 },
   locationDisplayText: { flex: 1, fontSize: 14, color: '#000' },
   changeLinkText: { color: THEME_COLORS.bluePrimary, fontSize: 14, fontWeight: '600', marginLeft: 8 },
+  // Current Location Button
+  currentLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  currentLocationText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: THEME_COLORS.bluePrimary,
+  },
+  currentLocationTextDisabled: {
+    color: '#ccc',
+  },
  });  

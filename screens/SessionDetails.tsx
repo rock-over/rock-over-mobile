@@ -1,17 +1,17 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  InteractionManager,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    InteractionManager,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 import Slider from '@react-native-community/slider';
@@ -52,6 +52,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const [processedResults, setProcessedResults] = useState<any[]>([]);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showGradePicker, setShowGradePicker] = useState(false);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
   const [showMovementModal, setShowMovementModal] = useState(false);
   const [showGripModal, setShowGripModal] = useState(false);
   const [showFootworkModal, setShowFootworkModal] = useState(false);
@@ -63,37 +64,43 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const [tempPlace, setTempPlace] = useState<string>('');
   const [tempLocation, setTempLocation] = useState<string>('');
 
+  // Function to get user location
+  const getUserLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        setLocationPermissionGranted(true);
+        try {
+          // @ts-ignore – timeout not yet declared in Expo type definitions
+          const loc = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+          ]);
+          setUserCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+          console.log('User location obtained:', { latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+        } catch (posErr) {
+          // Fallback: try last known position (may be undefined)
+          const last = await Location.getLastKnownPositionAsync();
+          if (last) {
+            setUserCoords({ latitude: last.coords.latitude, longitude: last.coords.longitude });
+            console.log('Using last known location:', { latitude: last.coords.latitude, longitude: last.coords.longitude });
+          } else {
+            console.log('Could not retrieve position:', posErr);
+          }
+        }
+      } else {
+        console.log('Location permission denied');
+        setLocationPermissionGranted(false);
+      }
+    } catch (err) {
+      console.log('Location permission error', err);
+      setLocationPermissionGranted(false);
+    }
+  };
+
   // Get user location for distance calculations (copiado do ClimbingSessionForm)
   useEffect(() => {
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          try {
-            // @ts-ignore – timeout not yet declared in Expo type definitions
-            const loc = await Promise.race([
-              Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-              new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
-            ]);
-            setUserCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-            console.log('User location obtained:', { latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-          } catch (posErr) {
-            // Fallback: try last known position (may be undefined)
-            const last = await Location.getLastKnownPositionAsync();
-            if (last) {
-              setUserCoords({ latitude: last.coords.latitude, longitude: last.coords.longitude });
-              console.log('Using last known location:', { latitude: last.coords.latitude, longitude: last.coords.longitude });
-            } else {
-              console.log('Could not retrieve position:', posErr);
-            }
-          }
-        } else {
-          console.log('Location permission denied');
-        }
-      } catch (err) {
-        console.log('Location permission error', err);
-      }
-    })();
+    getUserLocation();
   }, []);
   
   // Refs for the location modal
@@ -182,6 +189,92 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+  };
+
+  // Function to get current location and find nearest place/address
+  const handleUseCurrentLocation = async () => {
+    if (!locationPermissionGranted) {
+      Alert.alert('Location not available', 'Please enable location services and try again.');
+      return;
+    }
+
+    // If coordinates are not available, try to get them first
+    if (!userCoords) {
+      await getUserLocation();
+    }
+
+    // Check again after trying to get location
+    if (!userCoords) {
+      Alert.alert('Location not available', 'Could not determine your current location. Please try again.');
+      return;
+    }
+
+    setIsCalculatingDistances(true);
+    
+    try {
+      const isIndoor = editedSession.place === 'Indoor';
+      
+      if (isIndoor) {
+        // For indoor, search for nearby climbing gyms
+        const query = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${userCoords.latitude},${userCoords.longitude}&radius=5000&type=establishment&keyword=climbing+gym&key=${GOOGLE_MAPS_API_KEY}`;
+        
+        const response = await fetch(query);
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+          const nearestGym = data.results[0];
+          const gymName = nearestGym.name;
+          const gymAddress = nearestGym.vicinity;
+          const fullDescription = `${gymName}, ${gymAddress}`;
+          
+          updateField('location', fullDescription);
+          updateField('location_data', {
+            description: fullDescription,
+            main_text: gymName,
+            secondary_text: gymAddress,
+            place_id: nearestGym.place_id
+          });
+          
+          setShowLocationModal(false);
+          // Clear temp states
+          setTempPlace('');
+          setTempLocation('');
+        } else {
+          Alert.alert('No gyms found', 'Could not find any climbing gyms nearby.');
+        }
+      } else {
+        // For outdoor, get address from coordinates using reverse geocoding
+        const query = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${userCoords.latitude},${userCoords.longitude}&key=${GOOGLE_MAPS_API_KEY}`;
+        
+        const response = await fetch(query);
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+          const address = data.results[0];
+          const formattedAddress = address.formatted_address;
+          
+          updateField('location', formattedAddress);
+          updateField('location_data', {
+            description: formattedAddress,
+            main_text: formattedAddress.split(',')[0],
+            secondary_text: formattedAddress.split(',').slice(1).join(','),
+            place_id: address.place_id || null
+          });
+          
+          setShowLocationModal(false);
+          // Clear temp states
+          setTempPlace('');
+          setTempLocation('');
+        } else {
+          Alert.alert('Address not found', 'Could not determine your current address.');
+        }
+      }
+    } catch (error) {
+      console.error('Error getting current location:', error);
+      Alert.alert('Error', 'Failed to get your current location. Please try again.');
+    } finally {
+      setIsCalculatingDistances(false);
+    }
   };
 
   const searchPlacesWithDistances = async (searchText: string) => {
@@ -1249,6 +1342,11 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
           setIsCalculatingDistances(false);
           setProcessedResults([]);
 
+          // Try to get user location if not already available
+          if (locationPermissionGranted && !userCoords) {
+            getUserLocation();
+          }
+
           // Aggressive keyboard opening strategy
           const forceKeyboardOpen = () => {
             // Use helper first, then main input
@@ -1341,6 +1439,26 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
                   console.log('TextInput focused');
                 }}
               />
+              
+              {/* Current Location Button */}
+              <TouchableOpacity
+                style={styles.currentLocationButton}
+                onPress={handleUseCurrentLocation}
+                disabled={isCalculatingDistances || !locationPermissionGranted}
+              >
+                <FontAwesome6 
+                  name="location-crosshairs" 
+                  size={18} 
+                  color={!locationPermissionGranted ? "#ccc" : THEME_COLORS.bluePrimary} 
+                  style={{ marginRight: 8 }} 
+                />
+                <Text style={[
+                  styles.currentLocationText,
+                  !locationPermissionGranted && styles.currentLocationTextDisabled
+                ]}>
+                  Use current location
+                </Text>
+              </TouchableOpacity>
               
               {isCalculatingDistances ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
@@ -1847,7 +1965,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         
         <ImageDisplay 
           title="Image" 
-          imagePath={isEditing ? (editedSession.tempImage || (currentSession.images && currentSession.images.length > 0 ? currentSession.images[0] : null)) : (currentSession.images && currentSession.images.length > 0 ? currentSession.images[0] : null)} 
+          imagePath={isEditing ? ((editedSession as any).tempImage || (currentSession.images && currentSession.images.length > 0 ? currentSession.images[0] : null)) : (currentSession.images && currentSession.images.length > 0 ? currentSession.images[0] : null)} 
           isEditable={isEditing}
         />
 
@@ -2291,11 +2409,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 6,
   },
-  imagePreview: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 10,
-  },
   imageUploadText: {
     marginTop: 8,
     color: '#666',
@@ -2440,7 +2553,7 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontWeight: '400',
   },
-  dropdownPlaceholderText: {
+  dropdownDisplayPlaceholder: {
     color: '#999',
   },
   // Options Display
@@ -2914,6 +3027,27 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 16,
     textAlign: 'center',
+  },
+  // Current Location Button
+  currentLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  currentLocationText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: THEME_COLORS.bluePrimary,
+  },
+  currentLocationTextDisabled: {
+    color: '#ccc',
   },
   // Snackbar
   snackbarContainer: {
