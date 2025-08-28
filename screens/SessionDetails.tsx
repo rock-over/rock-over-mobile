@@ -412,13 +412,47 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   };
 
   // Função para iniciar edição
-  const startEditing = () => {
+  const startEditing = async () => {
     setIsEditing(true);
     setEditedSession({ ...currentSession });
     
-    // Initialize edited images with current session images (as URLs from storage)
+    // Convert storage paths to signed URLs for editing mode
     const currentImages = currentSession.images || [];
-    setEditedImages(currentImages);
+    console.log('🔧 [StartEditing] Converting images for edit mode:', currentImages);
+    
+    if (currentImages.length > 0) {
+      const signedUrls: string[] = [];
+      
+      for (const imagePath of currentImages) {
+        if (imagePath.startsWith('file://') || imagePath.startsWith('content://') || imagePath.startsWith('http')) {
+          // Already a full URL, use as-is
+          signedUrls.push(imagePath);
+        } else {
+          // Storage path, convert to signed URL
+          try {
+            const { data, error } = await supabase.storage
+              .from('climbing-images')
+              .createSignedUrl(imagePath, 3600); // Valid for 1 hour
+            
+            if (!error && data) {
+              signedUrls.push(data.signedUrl);
+              console.log('✅ [StartEditing] Converted storage path to signed URL:', imagePath);
+            } else {
+              console.error('❌ [StartEditing] Failed to create signed URL for:', imagePath, error);
+              // Keep the original path as fallback
+              signedUrls.push(imagePath);
+            }
+          } catch (err) {
+            console.error('❌ [StartEditing] Error creating signed URL:', err);
+            signedUrls.push(imagePath);
+          }
+        }
+      }
+      
+      setEditedImages(signedUrls);
+    } else {
+      setEditedImages([]);
+    }
     
     setShowValidationErrors(false);
     setShowErrorsStep1(false);
@@ -479,7 +513,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
     // Calculate item width using container measurement
     const itemSpacing = 10; // spacing between items
     const totalSpacing = itemSpacing * 2; // 2 gaps for 3 columns
-    const itemWidth = containerMeasuredWidth ? (containerMeasuredWidth - totalSpacing) / 3 : 100;
+    const itemWidth = containerMeasuredWidth && containerMeasuredWidth > 0 ? (containerMeasuredWidth - totalSpacing) / 3 : 100;
 
     return (
       <View 
@@ -489,7 +523,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
           setContainerMeasuredWidth(width);
         }}
       >
-        {containerMeasuredWidth > 0 && images.map((imagePath, index) => (
+        {containerMeasuredWidth != null && containerMeasuredWidth > 0 && images.map((imagePath, index) => (
           <View key={`${imagePath}-${index}`} style={[(styles as any).gridImageContainer, { width: itemWidth, height: itemWidth }]}>
             {loading[imagePath] ? (
               <View style={[(styles as any).gridImagePreview, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -772,8 +806,36 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
 
       // Handle multiple images upload
       if (editedImages && editedImages.length > 0) {
-        // Filter only new images (those starting with file://)
-        const newImages = editedImages.filter(img => img.startsWith('file://'));
+        console.log('💾 [HandleSave] Processing images for save:', editedImages);
+        
+        // Separate new images (file://) from existing ones (signed URLs and storage paths)
+        const newImages = editedImages.filter(img => img.startsWith('file://') || img.startsWith('content://'));
+        const existingImages: string[] = [];
+        
+        // Process existing images - convert signed URLs back to storage paths
+        for (const img of editedImages) {
+          if (!img.startsWith('file://') && !img.startsWith('content://')) {
+            if (img.includes('/object/sign/')) {
+              // This is a signed URL, extract the storage path
+              try {
+                const url = new URL(img);
+                const pathMatch = url.pathname.match(/\/object\/sign\/climbing-images\/(.+)/);
+                if (pathMatch) {
+                  const storagePath = decodeURIComponent(pathMatch[1]);
+                  existingImages.push(storagePath);
+                  console.log('🔄 [HandleSave] Converted signed URL back to storage path:', storagePath);
+                } else {
+                  existingImages.push(img);
+                }
+              } catch {
+                existingImages.push(img);
+              }
+            } else {
+              // Already a storage path or other URL
+              existingImages.push(img);
+            }
+          }
+        }
         
         if (newImages.length > 0) {
           try {
@@ -781,16 +843,18 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
             const userId = session.user_email?.replace('@', '_').replace('.', '_') || 'user';
             const uploadedPaths = await uploadMultipleImagesAsync(newImages, userId);
             
-            // Combine existing uploaded images with new ones
-            const existingImages = editedImages.filter(img => !img.startsWith('file://'));
+            // Combine existing storage paths with new uploaded paths
             finalSessionData.images = [...existingImages, ...uploadedPaths];
+            console.log('✅ [HandleSave] Combined images:', finalSessionData.images);
           } catch (uploadErr) {
-            console.error('Erro ao fazer upload das imagens:', uploadErr);
-            // Continue saving without new image uploads
+            console.error('❌ [HandleSave] Error uploading new images:', uploadErr);
+            // Continue saving with existing images only
+            finalSessionData.images = existingImages.length > 0 ? existingImages : null;
           }
         } else {
-          // No new images, just keep the existing ones
-          finalSessionData.images = editedImages.length > 0 ? editedImages : null;
+          // No new images, just keep the existing storage paths
+          finalSessionData.images = existingImages.length > 0 ? existingImages : null;
+          console.log('📁 [HandleSave] Keeping existing images:', finalSessionData.images);
         }
       }
       // Handle legacy single image (backwards compatibility)
@@ -1876,7 +1940,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
           <FontAwesome6 name="xmark" size={22} color="#000" />
         </TouchableOpacity>
         <TouchableOpacity 
-          onPress={isEditing ? cancelEditing : startEditing}
+          onPress={isEditing ? cancelEditing : () => startEditing()}
           style={styles.editButton}
         >
           <Text style={styles.editButtonText}>
