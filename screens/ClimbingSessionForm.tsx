@@ -649,7 +649,9 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return; // Prevenir múltiplos cliques
+    
     if (!formData.when) {
       Alert.alert('Erro', 'A data é obrigatória');
       return;
@@ -661,29 +663,38 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       return;
     }
 
-    // Converter campos vazios para null, mas manter números e arrays como estão
-    const cleanData = Object.fromEntries(
-      Object.entries(formData).map(([key, value]) => [
-        key, 
-        key === 'difficulty' || key === 'falls' || key === 'routeRating' ? value : 
-        Array.isArray(value) ? value : 
-        (value === '' ? null : value)
-      ])
-    );
+    setIsSaving(true);
 
-    // Log para debug - remover em produção
-    console.log('Saving climbing session:', {
-      place: cleanData.place,
-      location: cleanData.location,
-      location_data: cleanData.location_data,
-      when: cleanData.when,
-      activity: cleanData.activity,
-      // ... outros campos importantes
-    });
+    try {
+      // Converter campos vazios para null, mas manter números e arrays como estão
+      const cleanData = Object.fromEntries(
+        Object.entries(formData).map(([key, value]) => [
+          key, 
+          key === 'difficulty' || key === 'falls' || key === 'routeRating' ? value : 
+          Array.isArray(value) ? value : 
+          (value === '' ? null : value)
+        ])
+      );
 
-    if (onSave) onSave(cleanData);
-    navigation.goBack();
-    setCurrentStep(1); // Reset para o primeiro passo
+      // Log para debug - remover em produção
+      console.log('Saving climbing session:', {
+        place: cleanData.place,
+        location: cleanData.location,
+        location_data: cleanData.location_data,
+        when: cleanData.when,
+        activity: cleanData.activity,
+        // ... outros campos importantes
+      });
+
+      if (onSave) await onSave(cleanData);
+      navigation.goBack();
+      setCurrentStep(1); // Reset para o primeiro passo
+    } catch (error) {
+      console.error('Error saving session:', error);
+      Alert.alert('Erro', 'Não foi possível salvar a sessão. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleClose = () => {
@@ -1958,8 +1969,16 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               
               <View style={{ width: 12 }} />
               
-              <TouchableOpacity style={styles.finalStepSaveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Salve</Text>
+              <TouchableOpacity 
+                style={[styles.finalStepSaveButton, isSaving && (styles as any).saveButtonDisabled]} 
+                onPress={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Salve</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -2141,6 +2160,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   const [isCalculatingDistances, setIsCalculatingDistances] = useState(false);
   const [processedResults, setProcessedResults] = useState<any[]>([]);
   const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
 
 
@@ -2397,6 +2417,16 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
 
       {renderLocationModal()}
+
+      {/* Loading Overlay */}
+      {isSaving && (
+        <View style={(styles as any).loadingOverlay}>
+          <View style={(styles as any).loadingContainer}>
+            <ActivityIndicator size="large" color={THEME_COLORS.bluePrimary} />
+            <Text style={(styles as any).loadingText}>Saving session...</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -3118,6 +3148,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  saveButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.7,
+  },
   snackbarContainer:{
     position:'absolute',
     bottom:30,
@@ -3201,5 +3235,35 @@ const styles = StyleSheet.create({
   },
   currentLocationTextDisabled: {
     color: '#ccc',
+  },
+  // Loading Overlay Styles
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    minWidth: 160,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
   },
  });  
