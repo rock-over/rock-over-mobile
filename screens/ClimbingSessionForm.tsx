@@ -1,7 +1,6 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
-import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -25,6 +24,7 @@ import {
 } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MultiImagePicker from '../components/MultiImagePicker';
 import { THEME_COLORS } from '../constants/Theme';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
@@ -112,7 +112,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     comments: '',
     climbingType: '',
     completion: '',
-    image: null as string | null,
+    images: [] as string[],
   });
 
   // Cores disponíveis para seleção (3 linhas de 5 cores cada)
@@ -141,24 +141,9 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  /* ------- Image Picker ------- */
-  const pickImage = async () => {
-    // Ask permission if not granted
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission required', 'We need media library permission to select a photo.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: true,
-    });
-
-    if (!result.canceled && result.assets.length > 0) {
-      updateField('image', result.assets[0].uri);
-    }
+  /* ------- Multiple Images Handling ------- */
+  const handleImagesChange = (newImages: string[]) => {
+    updateArrayField('images', newImages);
   };
 
   // -------- Auto-advance logic --------
@@ -726,7 +711,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       comments: '',
       climbingType: '',
       completion: '',
-      image: null,
+      images: [],
     });
     navigation.goBack();
   };
@@ -1932,20 +1917,15 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
                 />
               </View>
 
-              {/* Image Field */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Image</Text>
-                <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
-                  {formData.image ? (
-                    <Image source={{ uri: formData.image }} style={styles.imagePreview} />
-                  ) : (
-                    <>
-                      <FontAwesome6 name="camera" size={24} color="#666" />
-                      <Text style={styles.imageUploadText}>Add a photo</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
+              {/* Multiple Images Field */}
+              <MultiImagePicker
+                images={formData.images}
+                onImagesChange={handleImagesChange}
+                maxImages={5}
+                title="Photos"
+                placeholder="Add photos"
+                fullWidthButton={true}
+              />
             </ScrollView>
             {renderStepButtons(4)}
           </View>

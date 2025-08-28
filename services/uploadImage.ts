@@ -30,4 +30,31 @@ export async function uploadImageAsync(
   }
 
   return filePath;
+}
+
+export async function uploadMultipleImagesAsync(
+  localUris: string[],
+  userId: string,
+  bucket: string = 'climbing-images'
+): Promise<string[]> {
+  if (!localUris || localUris.length === 0) {
+    return [];
+  }
+
+  const uploadPromises = localUris.map(async (uri) => {
+    try {
+      return await uploadImageAsync(uri, userId, bucket);
+    } catch (error) {
+      console.error(`Error uploading image ${uri}:`, error);
+      throw error;
+    }
+  });
+
+  try {
+    const imagePaths = await Promise.all(uploadPromises);
+    return imagePaths;
+  } catch (error) {
+    console.error('Error uploading multiple images:', error);
+    throw error;
+  }
 } 

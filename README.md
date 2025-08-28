@@ -71,8 +71,8 @@ Join our community of developers creating universal apps.
 
 
 
-- [ ] Deletar/Editar sessão
-- [ ] Recuperação de senha
+- [X] Deletar/Editar sessão
+- [ ] Recuperação de senha (tela foi implementada porém precisa resolver o problema do deeplink (o gmail está bagunçando ele))
 - [ ] subir imagem do profile na nuvem
 - [ ] melhorar componente de selecionar imagem
 - [ ] Login do facebook funcionando com supabase

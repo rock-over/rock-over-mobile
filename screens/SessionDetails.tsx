@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
     Image,
     InteractionManager,
     Modal,
@@ -15,13 +16,15 @@ import {
 } from 'react-native';
 
 import Slider from '@react-native-community/slider';
-import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MultiImagePicker from '../components/MultiImagePicker';
 import { THEME_COLORS } from '../constants/Theme';
 import { supabase } from '../lib/supabase';
 import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
-import { uploadImageAsync } from '../services/uploadImage';
+import { uploadImageAsync, uploadMultipleImagesAsync } from '../services/uploadImage';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 // Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDhK-e-oV7ex0f0gk3R1DMnlXCYSmfgOio';
@@ -37,6 +40,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const [isEditing, setIsEditing] = useState(false);
   const [currentSession, setCurrentSession] = useState<ClimbingSession>(session);
   const [editedSession, setEditedSession] = useState<ClimbingSession>(session);
+  const [editedImages, setEditedImages] = useState<string[]>([]);
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [showErrorsStep1, setShowErrorsStep1] = useState(false);
   const [showErrorsStep2, setShowErrorsStep2] = useState(false);
@@ -402,6 +406,11 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const startEditing = () => {
     setIsEditing(true);
     setEditedSession({ ...currentSession });
+    
+    // Initialize edited images with current session images (as URLs from storage)
+    const currentImages = currentSession.images || [];
+    setEditedImages(currentImages);
+    
     setShowValidationErrors(false);
     setShowErrorsStep1(false);
     setShowErrorsStep2(false);
@@ -416,26 +425,81 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
     setShowErrorsStep2(false);
   };
 
-  /* ------- Image Picker ------- */
-  const pickImage = async () => {
-    // Ask permission if not granted
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission required', 'We need media library permission to select a photo.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: true,
-    });
-
-    if (!result.canceled && result.assets.length > 0) {
-      // Use temporary field that won't be saved to DB
-      updateField('tempImage', result.assets[0].uri);
-    }
+  /* ------- Multiple Images Handling ------- */
+  const handleImagesChange = (newImages: string[]) => {
+    setEditedImages(newImages);
   };
+
+  // Component to display images in grid for view mode
+  const ImageGridDisplay = React.memo(({ images }: { images: string[] }) => {
+    const [imageUrls, setImageUrls] = useState<{ [key: string]: string | null }>({});
+    const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
+    const [containerMeasuredWidth, setContainerMeasuredWidth] = useState<number | null>(null);
+
+    useEffect(() => {
+      const loadImages = async () => {
+        for (const imagePath of images) {
+          if (imagePath.startsWith('file://') || imagePath.startsWith('content://')) {
+            // Local image, use directly
+            setImageUrls(prev => ({ ...prev, [imagePath]: imagePath }));
+          } else {
+            // Remote image, need signed URL
+            setLoading(prev => ({ ...prev, [imagePath]: true }));
+            try {
+              const { data, error } = await supabase.storage
+                .from('climbing-images')
+                .createSignedUrl(imagePath, 3600);
+              
+              if (!error && data) {
+                setImageUrls(prev => ({ ...prev, [imagePath]: data.signedUrl }));
+              }
+            } catch (err) {
+              console.error('Error loading image:', err);
+            } finally {
+              setLoading(prev => ({ ...prev, [imagePath]: false }));
+            }
+          }
+        }
+      };
+
+      loadImages();
+    }, [images]);
+
+    // Calculate item width using container measurement
+    const itemSpacing = 10; // spacing between items
+    const totalSpacing = itemSpacing * 2; // 2 gaps for 3 columns
+    const itemWidth = containerMeasuredWidth ? (containerMeasuredWidth - totalSpacing) / 3 : 100;
+
+    return (
+      <View 
+        style={(styles as any).imageGrid}
+        onLayout={(event) => {
+          const { width } = event.nativeEvent.layout;
+          setContainerMeasuredWidth(width);
+        }}
+      >
+        {containerMeasuredWidth && images.map((imagePath, index) => (
+          <View key={`${imagePath}-${index}`} style={[(styles as any).gridImageContainer, { width: itemWidth, height: itemWidth }]}>
+            {loading[imagePath] ? (
+              <View style={[(styles as any).gridImagePreview, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator color={THEME_COLORS.bluePrimary} />
+              </View>
+            ) : imageUrls[imagePath] ? (
+              <Image 
+                source={{ uri: imageUrls[imagePath]! }} 
+                style={(styles as any).gridImagePreview}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[(styles as any).gridImagePreview, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }]}>
+                <FontAwesome6 name="image" size={24} color="#999" />
+              </View>
+            )}
+          </View>
+        ))}
+      </View>
+    );
+  });
 
   // Função para mostrar snackbar
   const triggerSnack = (message: string) => {
@@ -691,20 +755,41 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
 
       console.log('Saving session:', editedSession.id);
       
-      // Preparar dados para salvar (igual ao ClimbingSessionForm/Home.tsx)
+      // Preparar dados para salvar
       const { tempImage, ...sessionDataToSave } = editedSession as any;
       let finalSessionData = { ...sessionDataToSave };
 
-      // Se há uma nova imagem, fazer upload (similar ao Home.tsx)
-      if (tempImage && tempImage.startsWith('file://')) {
+      // Handle multiple images upload
+      if (editedImages && editedImages.length > 0) {
+        // Filter only new images (those starting with file://)
+        const newImages = editedImages.filter(img => img.startsWith('file://'));
+        
+        if (newImages.length > 0) {
+          try {
+            // Use user email as base for user ID or extract from existing session
+            const userId = session.user_email?.replace('@', '_').replace('.', '_') || 'user';
+            const uploadedPaths = await uploadMultipleImagesAsync(newImages, userId);
+            
+            // Combine existing uploaded images with new ones
+            const existingImages = editedImages.filter(img => !img.startsWith('file://'));
+            finalSessionData.images = [...existingImages, ...uploadedPaths];
+          } catch (uploadErr) {
+            console.error('Erro ao fazer upload das imagens:', uploadErr);
+            // Continue saving without new image uploads
+          }
+        } else {
+          // No new images, just keep the existing ones
+          finalSessionData.images = editedImages.length > 0 ? editedImages : null;
+        }
+      }
+      // Handle legacy single image (backwards compatibility)
+      else if (tempImage && tempImage.startsWith('file://')) {
         try {
-          // Use user email as base for user ID or extract from existing session
           const userId = session.user_email?.replace('@', '_').replace('.', '_') || 'user';
           const imagePath = await uploadImageAsync(tempImage, userId);
           finalSessionData.images = [imagePath];
         } catch (uploadErr) {
           console.error('Erro ao fazer upload da imagem:', uploadErr);
-          // Continue saving without image update
         }
       }
 
@@ -1590,113 +1675,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
     );
   };
 
-  // Componente de imagem com carregamento assíncrono - memorizado para evitar piscamento
-  const ImageDisplay = React.useMemo(() => {
-    return React.memo(({ title, imagePath, isEditable }: { title: string, imagePath: string | null, isEditable?: boolean }) => {
-      const [imageUrl, setImageUrl] = useState<string | null>(null);
-      const [loading, setLoading] = useState(false);
-      const [error, setError] = useState<string | null>(null);
 
-      useEffect(() => {
-        if (!imagePath) {
-          setImageUrl(null);
-          return;
-        }
-
-        // Se é uma imagem local (nova selecionada), usar diretamente
-        if (imagePath.startsWith('file://') || imagePath.startsWith('content://')) {
-          setImageUrl(imagePath);
-          return;
-        }
-
-        const loadImage = async () => {
-          setLoading(true);
-          setError(null);
-          
-          try {
-            // Para buckets privados, usar createSignedUrl
-            const { data, error: supabaseError } = await supabase.storage
-              .from('climbing-images')
-              .createSignedUrl(imagePath, 3600); // URL válida por 1 hora
-            
-            if (supabaseError) {
-              setError(supabaseError.message);
-              return;
-            }
-            
-            const signedUrl = data.signedUrl;
-            setImageUrl(signedUrl);
-            
-          } catch (err) {
-            setError('Failed to load image');
-          } finally {
-            setLoading(false);
-          }
-        };
-
-        loadImage();
-      }, [imagePath]);
-
-      const renderImageContent = () => {
-        if (imagePath) {
-          if (loading) {
-            return (
-              <View style={styles.imagePlaceholder}>
-                <ActivityIndicator size="small" color={THEME_COLORS.bluePrimary} />
-                <Text style={styles.imagePlaceholderText}>Loading image...</Text>
-              </View>
-            );
-          } else if (error) {
-            return (
-              <View style={styles.imagePlaceholder}>
-                <FontAwesome6 name="exclamation-triangle" size={24} color="#ff6b6b" />
-                <Text style={styles.imagePlaceholderText}>Error: {error}</Text>
-              </View>
-            );
-          } else if (imageUrl) {
-            return (
-              <Image 
-                source={{ uri: imageUrl }} 
-                style={(styles as any).imagePreview}
-                resizeMode="cover"
-              />
-            );
-          } else {
-            return (
-              <View style={styles.imagePlaceholder}>
-                <FontAwesome6 name="camera" size={24} color="#999" />
-                <Text style={styles.imagePlaceholderText}>No image URL generated</Text>
-              </View>
-            );
-          }
-        } else {
-          return (
-            <View style={styles.imagePlaceholder}>
-              <FontAwesome6 name="camera" size={24} color="#999" />
-              <Text style={styles.imagePlaceholderText}>
-                {isEditable ? 'Tap to add a photo' : 'No image added'}
-              </Text>
-            </View>
-          );
-        }
-      };
-
-      return (
-        <View style={styles.fieldContainer}>
-          <Text style={styles.label}>{title}</Text>
-          {isEditable ? (
-            <TouchableOpacity style={(styles as any).imageUploadButton} onPress={pickImage}>
-              {renderImageContent()}
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.imageContainer}>
-              {renderImageContent()}
-            </View>
-          )}
-        </View>
-      );
-    });
-  }, []);
 
   // Opções para as tags
   const movementOptions = [
@@ -1963,11 +1942,23 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         {/* Step 4: Comments and Image */}
         {renderTextDisplay('Comments/Tips', currentSession.comments || '', 'No comments logged', 'comments')}
         
-        <ImageDisplay 
-          title="Image" 
-          imagePath={isEditing ? ((editedSession as any).tempImage || (currentSession.images && currentSession.images.length > 0 ? currentSession.images[0] : null)) : (currentSession.images && currentSession.images.length > 0 ? currentSession.images[0] : null)} 
-          isEditable={isEditing}
-        />
+        {isEditing ? (
+          <MultiImagePicker
+            images={editedImages}
+            onImagesChange={handleImagesChange}
+            maxImages={5}
+            title="Photos"
+            placeholder="Add photos"
+            fullWidthButton={true}
+          />
+        ) : (
+          currentSession.images && currentSession.images.length > 0 ? (
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Photos</Text>
+              <ImageGridDisplay images={currentSession.images} />
+            </View>
+          ) : null
+        )}
 
         {/* Step 5: Technique Tags */}
         {renderTagsDisplay('Movement', currentSession.movement && currentSession.movement !== '' ? currentSession.movement.replace(/[\[\]"]/g, '').split(',').filter(tag => tag.trim() !== '') : [], 'movement')}
@@ -3068,5 +3059,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flexShrink: 1,
     flexWrap: 'wrap',
+  },
+  // Multi-image grid styles
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 0,
+  },
+  gridImageContainer: {
+    position: 'relative',
+    marginRight: 10,
+    marginBottom: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  gridImagePreview: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f5f5f5',
   },
 }); 

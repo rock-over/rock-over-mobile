@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SessionCard from '../components/SessionCard'; // Importar o novo card
 import { THEME_COLORS } from '../constants/Theme';
 import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
-import { uploadImageAsync } from '../services/uploadImage';
+import { uploadImageAsync, uploadMultipleImagesAsync } from '../services/uploadImage';
 import SessionDetails from './SessionDetails';
 
 interface HomeProps {
@@ -158,12 +158,22 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     }
 
     try {
-      const { image, ...rest } = sessionData as any;
-      let imagePath: string | null = null;
+      const { images, image, ...rest } = sessionData as any;
+      let imagePaths: string[] = [];
 
-      if (image) {
+      // Handle multiple images (new format)
+      if (images && images.length > 0) {
         try {
-          imagePath = await uploadImageAsync(image, userInfo.id);
+          imagePaths = await uploadMultipleImagesAsync(images, userInfo.id);
+        } catch (uploadErr) {
+          console.error('Erro ao fazer upload das imagens:', uploadErr);
+        }
+      } 
+      // Handle single image (backwards compatibility)
+      else if (image) {
+        try {
+          const imagePath = await uploadImageAsync(image, userInfo.id);
+          imagePaths = [imagePath];
         } catch (uploadErr) {
           console.error('Erro ao fazer upload da imagem:', uploadErr);
         }
@@ -171,7 +181,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
       const sessionWithUser = {
         ...rest,
-        images: imagePath ? [imagePath] : null,
+        images: imagePaths.length > 0 ? imagePaths : null,
         user_email: userInfo.email,
       };
 
@@ -180,7 +190,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       // attach first image for local rendering convenience
       const sessionForList = {
         ...newSession,
-        image: image ?? null,
+        image: (images && images.length > 0) ? images[0] : (image ?? null),
       };
 
       setSessions(prev => [sessionForList, ...prev]);
