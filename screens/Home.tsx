@@ -212,6 +212,13 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   };
 
   const handleCardPress = (session: ClimbingSession) => {
+    console.log('🎯 [Home] Opening session details for:', {
+      id: session.id,
+      activity: session.activity,
+      location: session.location,
+      images: session.images,
+      imageCount: session.images?.length || 0
+    });
     setSelectedSession(session);
   };
 

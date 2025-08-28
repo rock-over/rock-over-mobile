@@ -686,7 +686,9 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
         // ... outros campos importantes
       });
 
-      if (onSave) await onSave(cleanData);
+      if (onSave) {
+        await onSave(cleanData);
+      }
       navigation.goBack();
       setCurrentStep(1); // Reset para o primeiro passo
     } catch (error) {

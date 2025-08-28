@@ -36,6 +36,15 @@ interface SessionDetailsProps {
 }
 
 export default function SessionDetails({ session, onClose, onSessionDeleted }: SessionDetailsProps) {
+  console.log('🔍 [SessionDetails] Rendering with session:', {
+    id: session.id,
+    activity: session.activity,
+    location: session.location,
+    images: session.images,
+    imageCount: session.images?.length || 0,
+    hasImages: !!session.images
+  });
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentSession, setCurrentSession] = useState<ClimbingSession>(session);
@@ -432,6 +441,8 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
 
   // Component to display images in grid for view mode
   const ImageGridDisplay = React.memo(({ images }: { images: string[] }) => {
+    console.log('🖼️ [ImageGridDisplay] Rendering grid with images:', images?.length || 0);
+    
     const [imageUrls, setImageUrls] = useState<{ [key: string]: string | null }>({});
     const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
     const [containerMeasuredWidth, setContainerMeasuredWidth] = useState<number | null>(null);
@@ -478,7 +489,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
           setContainerMeasuredWidth(width);
         }}
       >
-        {containerMeasuredWidth && images.map((imagePath, index) => (
+        {containerMeasuredWidth > 0 && images.map((imagePath, index) => (
           <View key={`${imagePath}-${index}`} style={[(styles as any).gridImageContainer, { width: itemWidth, height: itemWidth }]}>
             {loading[imagePath] ? (
               <View style={[(styles as any).gridImagePreview, { justifyContent: 'center', alignItems: 'center' }]}>
