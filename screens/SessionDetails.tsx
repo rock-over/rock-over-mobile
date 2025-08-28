@@ -55,6 +55,8 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const [showErrorsStep2, setShowErrorsStep2] = useState(false);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   
@@ -510,10 +512,10 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       loadImages();
     }, [images]);
 
-    // Calculate item width using container measurement
-    const itemSpacing = 10; // spacing between items
+    // Calculate item width using container measurement for 3 columns
+    const itemSpacing = 8; // spacing between items
     const totalSpacing = itemSpacing * 2; // 2 gaps for 3 columns
-    const itemWidth = containerMeasuredWidth && containerMeasuredWidth > 0 ? (containerMeasuredWidth - totalSpacing) / 3 : 100;
+    const itemWidth = containerMeasuredWidth && containerMeasuredWidth > 0 ? Math.floor((containerMeasuredWidth - totalSpacing) / 3) : 100;
 
     return (
       <View 
@@ -524,7 +526,12 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         }}
       >
         {containerMeasuredWidth != null && containerMeasuredWidth > 0 && images.map((imagePath, index) => (
-          <View key={`${imagePath}-${index}`} style={[(styles as any).gridImageContainer, { width: itemWidth, height: itemWidth }]}>
+          <View key={`${imagePath}-${index}`} style={[(styles as any).gridImageContainer, { 
+            width: itemWidth, 
+            height: itemWidth,
+            marginRight: (index + 1) % 3 === 0 ? 0 : itemSpacing, // Remove margin da última coluna
+            marginBottom: itemSpacing
+          }]}>
             {loading[imagePath] ? (
               <View style={[(styles as any).gridImagePreview, { justifyContent: 'center', alignItems: 'center' }]}>
                 <ActivityIndicator color={THEME_COLORS.bluePrimary} />
@@ -551,6 +558,12 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
     setSnackbarMessage(message);
     setShowSnackbar(true);
     setTimeout(() => setShowSnackbar(false), 3000);
+  };
+
+  // Função para mostrar modal de sucesso
+  const showSuccessMessage = () => {
+    setShowSuccessModal(true);
+    setTimeout(() => setShowSuccessModal(false), 3000);
   };
 
 
@@ -781,24 +794,28 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
 
   // Função para salvar as alterações
   const handleSaveSession = async () => {
-    try {
-      // Validar campos obrigatórios
-      const validationErrors = validateSession();
-      if (validationErrors.length > 0) {
-        setShowErrorsStep1(true);
-        setShowErrorsStep2(true);
-        triggerSnack('Please fill in all required fields before continuing.');
-        console.log('Validation errors:', validationErrors);
-        
-        // Scroll automático para o primeiro campo com erro
-        setTimeout(() => {
-          scrollToFirstError();
-        }, 100);
-        
-        return;
-      }
+    if (isSaving) return; // Prevenir múltiplos cliques
+    
+    // Validar campos obrigatórios
+    const validationErrors = validateSession();
+    if (validationErrors.length > 0) {
+      setShowErrorsStep1(true);
+      setShowErrorsStep2(true);
+      triggerSnack('Please fill in all required fields before continuing.');
+      console.log('Validation errors:', validationErrors);
+      
+      // Scroll automático para o primeiro campo com erro
+      setTimeout(() => {
+        scrollToFirstError();
+      }, 100);
+      
+      return;
+    }
 
-      console.log('Saving session:', editedSession.id);
+    setIsSaving(true);
+    console.log('💾 [SessionDetails] Starting save process for session:', editedSession.id);
+
+    try {
       
       // Preparar dados para salvar
       const { tempImage, ...sessionDataToSave } = editedSession as any;
@@ -811,6 +828,10 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         // Separate new images (file://) from existing ones (signed URLs and storage paths)
         const newImages = editedImages.filter(img => img.startsWith('file://') || img.startsWith('content://'));
         const existingImages: string[] = [];
+        
+        console.log('🔍 [HandleSave] Processing images - Total:', editedImages.length);
+        console.log('🔍 [HandleSave] New images (file/content):', newImages.length);
+        console.log('🔍 [HandleSave] New image URIs:', newImages);
         
         // Process existing images - convert signed URLs back to storage paths
         for (const img of editedImages) {
@@ -826,35 +847,57 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
                   console.log('🔄 [HandleSave] Converted signed URL back to storage path:', storagePath);
                 } else {
                   existingImages.push(img);
+                  console.log('⚠️ [HandleSave] Could not extract storage path from signed URL:', img);
                 }
               } catch {
                 existingImages.push(img);
+                console.log('⚠️ [HandleSave] Error parsing signed URL:', img);
               }
             } else {
               // Already a storage path or other URL
               existingImages.push(img);
+              console.log('📁 [HandleSave] Keeping existing storage path:', img);
             }
           }
         }
+        
+        console.log('🔍 [HandleSave] Existing images (storage paths):', existingImages.length);
+        console.log('🔍 [HandleSave] Existing image paths:', existingImages);
         
         if (newImages.length > 0) {
           try {
             // Use user email as base for user ID or extract from existing session
             const userId = session.user_email?.replace('@', '_').replace('.', '_') || 'user';
-            const uploadedPaths = await uploadMultipleImagesAsync(newImages, userId);
+            console.log('🚀 [HandleSave] Starting upload for', newImages.length, 'new images, userId:', userId);
+            
+            // Remove any duplicate URIs that might cause conflicts
+            const uniqueNewImages = [...new Set(newImages)];
+            console.log('🔍 [HandleSave] Unique new images after deduplication:', uniqueNewImages.length);
+            
+            const uploadedPaths = await uploadMultipleImagesAsync(uniqueNewImages, userId);
             
             // Combine existing storage paths with new uploaded paths
             finalSessionData.images = [...existingImages, ...uploadedPaths];
-            console.log('✅ [HandleSave] Combined images:', finalSessionData.images);
+            console.log('✅ [HandleSave] Successfully combined images:', finalSessionData.images);
+            console.log('✅ [HandleSave] Total final image count:', finalSessionData.images.length);
           } catch (uploadErr) {
             console.error('❌ [HandleSave] Error uploading new images:', uploadErr);
+            console.error('❌ [HandleSave] Upload error details:', JSON.stringify(uploadErr, null, 2));
+            
+            // Show user-friendly error message
+            Alert.alert(
+              'Erro no Upload',
+              'Não foi possível fazer upload das novas imagens. As imagens existentes serão mantidas.',
+              [{ text: 'OK' }]
+            );
+            
             // Continue saving with existing images only
             finalSessionData.images = existingImages.length > 0 ? existingImages : null;
           }
         } else {
           // No new images, just keep the existing storage paths
           finalSessionData.images = existingImages.length > 0 ? existingImages : null;
-          console.log('📁 [HandleSave] Keeping existing images:', finalSessionData.images);
+          console.log('📁 [HandleSave] No new images, keeping existing:', finalSessionData.images);
         }
       }
       // Handle legacy single image (backwards compatibility)
@@ -885,15 +928,18 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       setShowErrorsStep1(false);
       setShowErrorsStep2(false);
       
-      // Mostrar snackbar de sucesso
-      triggerSnack('Session saved successfully! 🎉');
+      // Mostrar modal de sucesso
+      showSuccessMessage();
       
       // Chamar callback para atualizar a lista na tela pai
       onSessionDeleted?.();
       
     } catch (error) {
-      console.error('Erro ao atualizar sessão:', error);
+      console.error('❌ [SessionDetails] Error saving session:', error);
       Alert.alert('Erro', 'Não foi possível salvar as alterações. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+      console.log('🏁 [SessionDetails] Save process completed');
     }
   };
 
@@ -2048,11 +2094,18 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       <View style={styles.fixedBottomBar}>
         {isEditing ? (
           <TouchableOpacity 
-            style={styles.saveButton}
+            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
             onPress={handleSaveSession}
+            disabled={isSaving}
           >
-            <FontAwesome6 name="check" size={18} color="#fff" />
-            <Text style={styles.saveButtonText}>Save</Text>
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <FontAwesome6 name="check" size={18} color="#fff" />
+                <Text style={styles.saveButtonText}>Save</Text>
+              </>
+            )}
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
@@ -2127,6 +2180,22 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
           <FontAwesome6 name="xmark" size={16} color="#fff" />
         </TouchableOpacity>
       )}
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={(styles as any).successModalOverlay}>
+          <View style={(styles as any).successModalContainer}>
+            <FontAwesome6 name="check-circle" size={48} color="#4CAF50" />
+            <Text style={(styles as any).successModalText}>Session saved successfully!</Text>
+          </View>
+        </View>
+      </Modal>
+
+
     </SafeAreaView>
   );
 }
@@ -2956,7 +3025,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    alignItems: 'center',
   },
   deleteButton: {
     flexDirection: 'row',
@@ -2966,7 +3034,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 8,
-    minWidth: 280,
+    width: '100%', // Ocupa largura completa disponível
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -2987,7 +3055,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 8,
-    minWidth: 280,
+    width: '100%', // Ocupa largura completa disponível
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -2999,6 +3067,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.7,
   },
   // Delete Modal
   modalOverlay: {
@@ -3143,8 +3215,6 @@ const styles = StyleSheet.create({
   },
   gridImageContainer: {
     position: 'relative',
-    marginRight: 10,
-    marginBottom: 10,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -3152,5 +3222,33 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#f5f5f5',
+  },
+
+  // Success Modal Styles
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 200,
+    maxWidth: 300,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  successModalText: {
+    marginTop: 16,
+    fontSize: 18,
+    color: '#333',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 }); 
