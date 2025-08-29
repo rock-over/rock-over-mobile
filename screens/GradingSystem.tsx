@@ -1,6 +1,7 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -11,7 +12,7 @@ import {
 import { THEME_COLORS } from '../constants/Theme';
 
 interface GradingSystemProps {
-    onComplete: (gradingSystem: string) => void;
+    onComplete: (gradingSystem: string) => Promise<void>;
 }
 
 interface GradingSystemOption {
@@ -50,13 +51,24 @@ const gradingSystems: GradingSystemOption[] = [
 
 export default function GradingSystem({ onComplete }: GradingSystemProps) {
     const [selectedSystem, setSelectedSystem] = useState<string>('british');
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const handleSystemSelect = (systemId: string) => {
         setSelectedSystem(systemId);
     };
 
-    const handleComplete = () => {
-        onComplete(selectedSystem);
+    const handleComplete = async () => {
+        if (isLoading) return; // Prevenir múltiplos cliques
+        
+        setIsLoading(true);
+        
+        try {
+            await onComplete(selectedSystem);
+        } catch (error) {
+            console.error('Error completing setup:', error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -115,8 +127,16 @@ export default function GradingSystem({ onComplete }: GradingSystemProps) {
 
                 {/* Button */}
                 <View style={styles.buttonsContainer}>
-                    <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
-                        <Text style={styles.completeButtonText}>Complete Setup</Text>
+                    <TouchableOpacity 
+                        style={[styles.completeButton, isLoading && styles.completeButtonDisabled]} 
+                        onPress={handleComplete}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <Text style={styles.completeButtonText}>Complete Setup</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </View>
@@ -237,5 +257,9 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    completeButtonDisabled: {
+        backgroundColor: '#999',
+        opacity: 0.7,
     },
 }); 

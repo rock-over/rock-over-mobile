@@ -149,6 +149,8 @@ export const profileService = {
 
   // Criar ou atualizar perfil (upsert)
   async upsertProfile(profileData: ProfileCreateData): Promise<ProfileData> {
+    console.log('💾 [profileService] upsertProfile called with data:', profileData);
+    
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
@@ -165,10 +167,11 @@ export const profileService = {
       .single();
 
     if (error) {
-      console.error('Erro ao criar/atualizar perfil:', error);
+      console.error('❌ [profileService] Erro ao criar/atualizar perfil:', error);
       throw new Error('Falha ao salvar o perfil');
     }
 
+    console.log('✅ [profileService] Profile saved successfully:', data);
     return data;
   },
 

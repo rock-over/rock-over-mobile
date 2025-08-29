@@ -109,7 +109,8 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
     };
 
     const handleProfileComplete = async (profileData: { photoUri: string; gradingSystem: string }) => {
-        console.log('Profile completed with data:', profileData);
+        console.log('📝 [AuthFlow] Profile completed with data:', profileData);
+        console.log('🎯 [AuthFlow] Selected grading system:', profileData.gradingSystem);
         
         try {
             let finalProfilePhoto = profileData.photoUri;
@@ -126,9 +127,19 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 const publicUrl = await profileService.uploadAndUpdateProfilePicture(profileData.photoUri);
                 finalProfilePhoto = publicUrl;
                 
-                console.log('✅ [AuthFlow] Custom photo uploaded successfully:', publicUrl);
+                // Also update/create profile with grading system and other data
+                console.log('💾 [AuthFlow] Saving profile with grading system:', profileData.gradingSystem);
+                await profileService.upsertProfile({
+                    email: tempUser.email || '',
+                    name: tempUser.name || '',
+                    grading_system: profileData.gradingSystem,
+                    profile_picture_url: publicUrl
+                });
+                
+                console.log('✅ [AuthFlow] Custom photo uploaded and profile updated successfully:', publicUrl);
             } else {
                 // It's an illustration, create/update profile with illustration
+                console.log('🎨 [AuthFlow] Saving profile with illustration and grading system:', profileData.gradingSystem);
                 await profileService.upsertProfile({
                     email: tempUser.email || '',
                     name: tempUser.name || '',

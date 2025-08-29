@@ -3,7 +3,7 @@ import GradingSystem from './GradingSystem';
 import ProfilePhoto from './ProfilePhoto';
 
 interface ProfileSetupProps {
-    onComplete: (profileData: { photoUri: string; gradingSystem: string }) => void;
+    onComplete: (profileData: { photoUri: string; gradingSystem: string }) => Promise<void>;
     onSkip: () => void;
 }
 
@@ -27,9 +27,9 @@ export default function ProfileSetup({ onComplete, onSkip }: ProfileSetupProps) 
         setCurrentStep('grading');
     };
 
-    const handleGradingComplete = (gradingSystem: string) => {
+    const handleGradingComplete = async (gradingSystem: string) => {
         const finalData = { ...profileData, gradingSystem };
-        onComplete(finalData);
+        await onComplete(finalData);
     };
 
     if (currentStep === 'photo') {
