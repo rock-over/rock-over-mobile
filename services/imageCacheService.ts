@@ -224,26 +224,17 @@ export const imageCacheService = {
           return this.getFallbackImage();
         }
         
-        console.log('✅ [ImageCache] File exists in storage, proceeding with download...');
-        console.log('⬇️ [ImageCache] Attempting to download and cache...');
+        console.log('✅ [ImageCache] File exists in storage, proceeding with signed URL download...');
+        console.log('🔐 [ImageCache] Skipping public URL attempt - bucket is private');
         
-        const cachedPath = await this.downloadAndCacheImage(userId, profile.profile_picture_url);
-        
-        if (cachedPath) {
-          console.log('✅ [ImageCache] DOWNLOAD SUCCESS! Cached at:', cachedPath);
-          console.log('📱 [ImageCache] Returning NEWLY CACHED image source');
-          return { source: { uri: cachedPath }, isCached: true };
-        }
-        
-        // Se falhou o download mas arquivo existe, tentar signed URL e cachear
-        console.log('⚠️ [ImageCache] Download failed, trying signed URL...');
+        // Ir direto para signed URL (bucket é privado)
+        console.log('🔐 [ImageCache] Generating signed URL for download...');
         const signedUrl = await this.getSignedUrl(profile.profile_picture_url);
         
         if (signedUrl) {
-          console.log('🔐 [ImageCache] Using signed URL:', signedUrl);
-          
-          // Tentar cachear via signed URL
+          console.log('✅ [ImageCache] Signed URL generated successfully');
           console.log('💾 [ImageCache] Attempting to cache via signed URL...');
+          
           const cachedViaSigned = await this.downloadAndCacheImage(userId, signedUrl);
           
           if (cachedViaSigned) {
@@ -253,6 +244,8 @@ export const imageCacheService = {
             console.log('⚠️ [ImageCache] Cache via signed URL failed, using direct signed URL');
             return { source: { uri: signedUrl }, isCached: false };
           }
+        } else {
+          console.log('❌ [ImageCache] Failed to generate signed URL');
         }
         
         console.log('❌ [ImageCache] All URL attempts failed');
