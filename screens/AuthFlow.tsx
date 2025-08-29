@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BackHandler } from 'react-native';
+import { profileService } from '../services/profileService';
 import ForgotPassword from './ForgotPassword';
 import Login from './Login';
 import ProfileSetup from './ProfileSetup';
@@ -107,16 +108,58 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
         setCurrentScreen('login');
     };
 
-    const handleProfileComplete = (profileData: { photoUri: string; gradingSystem: string }) => {
-        // Combinar dados do usuário temporário com dados do perfil
-        const finalUser = {
-            ...tempUser,
-            profilePhoto: profileData.photoUri,
-            gradingSystem: profileData.gradingSystem
-        };
-        
+    const handleProfileComplete = async (profileData: { photoUri: string; gradingSystem: string }) => {
         console.log('Profile completed with data:', profileData);
-        onAuthSuccess?.(finalUser);
+        
+        try {
+            let finalProfilePhoto = profileData.photoUri;
+            
+            // Check if it's a custom photo (URI that starts with file://)
+            const isCustomPhoto = profileData.photoUri.startsWith('file://') || 
+                                 profileData.photoUri.startsWith('content://') ||
+                                 profileData.photoUri.includes('ImagePicker');
+            
+            if (isCustomPhoto) {
+                console.log('📤 [AuthFlow] Uploading custom profile photo to Supabase...');
+                
+                // Upload the custom photo to Supabase and get the public URL
+                const publicUrl = await profileService.uploadAndUpdateProfilePicture(profileData.photoUri);
+                finalProfilePhoto = publicUrl;
+                
+                console.log('✅ [AuthFlow] Custom photo uploaded successfully:', publicUrl);
+            } else {
+                // It's an illustration, create/update profile with illustration
+                await profileService.upsertProfile({
+                    email: tempUser.email || '',
+                    name: tempUser.name || '',
+                    grading_system: profileData.gradingSystem
+                });
+                
+                console.log('✅ [AuthFlow] Profile created with illustration');
+            }
+            
+            // Combinar dados do usuário temporário com dados do perfil
+            const finalUser = {
+                ...tempUser,
+                profilePhoto: finalProfilePhoto,
+                gradingSystem: profileData.gradingSystem
+            };
+            
+            console.log('[AuthFlow] ✅ Profile setup completed successfully');
+            onAuthSuccess?.(finalUser);
+            
+        } catch (error) {
+            console.error('[AuthFlow] ❌ Error during profile setup:', error);
+            
+            // Fallback to local URI if upload fails
+            const finalUser = {
+                ...tempUser,
+                profilePhoto: profileData.photoUri,
+                gradingSystem: profileData.gradingSystem
+            };
+            
+            onAuthSuccess?.(finalUser);
+        }
     };
 
     const handleProfileSkip = () => {

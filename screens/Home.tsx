@@ -9,6 +9,7 @@ import SessionCard from '../components/SessionCard'; // Importar o novo card
 import { THEME_COLORS } from '../constants/Theme';
 import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
 import { uploadImageAsync, uploadMultipleImagesAsync } from '../services/uploadImage';
+import ProfileSettings from './ProfileSettings';
 import SessionDetails from './SessionDetails';
 
 interface HomeProps {
@@ -88,6 +89,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
   const [isViewTransitioning, setIsViewTransitioning] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
 
 
   useEffect(() => {
@@ -149,6 +151,16 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       // Call logout anyway to clear local state
       onLogout?.();
     }
+  };
+
+  const handleProfilePress = () => {
+    setShowProfileSettings(true);
+  };
+
+  const handleProfileSettingsClose = () => {
+    setShowProfileSettings(false);
+    // Reload sessions in case profile changes affected anything
+    loadSessions();
   };
 
   const handleSaveSession = async (sessionData: any) => {
@@ -511,6 +523,11 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   const getProfileImageSource = () => {
     const profilePhoto = userInfo?.profilePhoto;
     
+    // Check if it's a URL (from Supabase)
+    if (profilePhoto && (profilePhoto.startsWith('http') || profilePhoto.startsWith('https'))) {
+      return { uri: profilePhoto };
+    }
+    
     // If no profile photo selected, use default illustration
     if (!profilePhoto) {
       return require('../assets/images/profile-illustrations/profile_illustration_1.png');
@@ -566,7 +583,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       {/* Blue Header */}
       <View style={styles.header}>
         <View style={styles.profileSection}>
-          <TouchableOpacity style={styles.profileImageContainer}>
+          <TouchableOpacity style={styles.profileImageContainer} onPress={handleProfilePress}>
             <Image source={getProfileImageSource()} style={styles.profileImage} />
           </TouchableOpacity>
           
@@ -576,8 +593,8 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
             </Text>
           </View>
           
-          <TouchableOpacity onPress={handleLogout} style={styles.profileButton}>
-            <FontAwesome6 name="user" size={20} color="#fff" solid />
+          <TouchableOpacity onPress={handleProfilePress} style={styles.profileButton}>
+            <FontAwesome6 name="gear" size={18} color="#fff" solid />
           </TouchableOpacity>
         </View>
       </View>
@@ -800,6 +817,11 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
             onSessionDeleted={loadSessions}
           />
         )}
+      </Modal>
+
+      {/* Profile Settings Modal */}
+      <Modal visible={showProfileSettings} animationType="slide" presentationStyle="fullScreen">
+        <ProfileSettings onClose={handleProfileSettingsClose} />
       </Modal>
     </SafeAreaView>
   );

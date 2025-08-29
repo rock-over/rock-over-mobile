@@ -39,6 +39,43 @@ export async function uploadImageAsync(
   return filePath;
 }
 
+export async function uploadProfilePictureAsync(
+  localUri: string,
+  userId: string
+): Promise<string> {
+  const bucket = 'profile-pics';
+  
+  // ext
+  const fileExt = localUri.split('.').pop()?.split('?')[0] || 'jpg';
+  
+  // Generate unique filename for profile picture
+  const timestamp = Date.now();
+  const fileName = `profile_${timestamp}.${fileExt}`;
+  const filePath = `${userId}/${fileName}`;
+
+  console.log('📤 [uploadProfilePictureAsync] Uploading profile picture to path:', filePath);
+
+  // Read file as base64 then convert to ArrayBuffer
+  const base64 = await FileSystem.readAsStringAsync(localUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  const arrayBuffer = Uint8Array.from(Buffer.from(base64, 'base64'));
+
+  const { error } = await supabase.storage.from(bucket).upload(filePath, arrayBuffer, {
+    contentType: `image/${fileExt}`,
+    upsert: true, // Allow overwriting existing profile pictures
+  });
+
+  if (error) {
+    console.error('❌ [uploadProfilePictureAsync] Upload error:', error);
+    throw error;
+  }
+
+  console.log('✅ [uploadProfilePictureAsync] Profile picture uploaded successfully:', filePath);
+  return filePath;
+}
+
 export async function uploadMultipleImagesAsync(
   localUris: string[],
   userId: string,
