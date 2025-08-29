@@ -235,13 +235,24 @@ export const imageCacheService = {
           return { source: { uri: cachedPath }, isCached: true };
         }
         
-        // Se falhou o download mas arquivo existe, tentar signed URL
+        // Se falhou o download mas arquivo existe, tentar signed URL e cachear
         console.log('⚠️ [ImageCache] Download failed, trying signed URL...');
         const signedUrl = await this.getSignedUrl(profile.profile_picture_url);
         
         if (signedUrl) {
           console.log('🔐 [ImageCache] Using signed URL:', signedUrl);
-          return { source: { uri: signedUrl }, isCached: false };
+          
+          // Tentar cachear via signed URL
+          console.log('💾 [ImageCache] Attempting to cache via signed URL...');
+          const cachedViaSigned = await this.downloadAndCacheImage(userId, signedUrl);
+          
+          if (cachedViaSigned) {
+            console.log('✅ [ImageCache] Successfully cached via signed URL!');
+            return { source: { uri: cachedViaSigned }, isCached: true };
+          } else {
+            console.log('⚠️ [ImageCache] Cache via signed URL failed, using direct signed URL');
+            return { source: { uri: signedUrl }, isCached: false };
+          }
         }
         
         console.log('❌ [ImageCache] All URL attempts failed');
