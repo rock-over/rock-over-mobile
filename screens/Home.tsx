@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SessionCard from '../components/SessionCard'; // Importar o novo card
 import { THEME_COLORS } from '../constants/Theme';
 import { ClimbingSession, climbingSessionService } from '../services/climbingSessionService';
+import { imageCacheService } from '../services/imageCacheService';
 import { uploadImageAsync, uploadMultipleImagesAsync } from '../services/uploadImage';
 import ProfileSettings from './ProfileSettings';
 import SessionDetails from './SessionDetails';
@@ -89,6 +90,8 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
   const [isViewTransitioning, setIsViewTransitioning] = useState(false);
+  const [profileImageSource, setProfileImageSource] = useState<any>(null);
+  const [profileImageLoading, setProfileImageLoading] = useState(true);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
 
 
@@ -97,6 +100,88 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       loadSessions();
     }
   }, [userInfo?.email]);
+
+  // Carregamento da imagem de perfil com cache
+  useEffect(() => {
+    if (userInfo?.id) {
+      loadProfileImage();
+    }
+  }, [userInfo?.id]);
+
+  const loadProfileImage = async () => {
+    if (!userInfo?.id) {
+      console.log('❌ [Home] No userInfo.id available');
+      return;
+    }
+    
+    try {
+      setProfileImageLoading(true);
+      console.log('🏠 [Home] === STARTING PROFILE IMAGE LOAD ===');
+      console.log('🆔 [Home] User ID:', userInfo.id);
+      
+      const imageResult = await imageCacheService.getProfileImage(userInfo.id);
+      
+      console.log('📊 [Home] Image result received:');
+      console.log('📊 [Home] - isCached:', imageResult.isCached);
+      console.log('📊 [Home] - source type:', typeof imageResult.source);
+      console.log('📊 [Home] - source content:', imageResult.source);
+      
+      setProfileImageSource(imageResult.source);
+      
+      const sourceType = imageResult.isCached ? 'CACHE' : 'SERVER';
+      console.log(`✅ [Home] PROFILE IMAGE SET! Source: ${sourceType}`);
+      
+      // Verificar se é uma URI
+      if (imageResult.source?.uri) {
+        console.log('🌐 [Home] Image is URI:', imageResult.source.uri);
+        
+        // Teste adicional para verificar se o arquivo local existe
+        if (imageResult.source.uri.startsWith('file://')) {
+          console.log('📁 [Home] Local file detected - checking existence...');
+          
+          import('expo-file-system').then(async (FileSystem) => {
+            try {
+              const fileInfo = await FileSystem.getInfoAsync(imageResult.source.uri);
+              console.log('📄 [Home] Local file info:', fileInfo);
+              
+              if (!fileInfo.exists) {
+                console.log('❌ [Home] LOCAL FILE DOES NOT EXIST!');
+                console.log('🎨 [Home] Applying fallback due to missing file...');
+                const fallback = require('../assets/images/profile-illustrations/profile_illustration_1.png');
+                setProfileImageSource(fallback);
+              } else if (fileInfo.size === 0 || fileInfo.size < 100) {
+                console.log('❌ [Home] LOCAL FILE IS EMPTY OR TOO SMALL!');
+                console.log('🎨 [Home] Applying fallback due to corrupted file...');
+                const fallback = require('../assets/images/profile-illustrations/profile_illustration_1.png');
+                setProfileImageSource(fallback);
+                
+                // Limpar cache corrompido
+                imageCacheService.invalidateUserCache(userInfo.id);
+              } else {
+                console.log('✅ [Home] Local file exists and has content');
+              }
+            } catch (error) {
+              console.error('❌ [Home] Error checking local file:', error);
+            }
+          });
+        }
+      } else {
+        console.log('🖼️ [Home] Image is require() asset');
+      }
+      
+    } catch (error) {
+      console.error('💥 [Home] CRITICAL ERROR loading profile image:', error);
+      
+      // Fallback para ilustração padrão
+      console.log('🎨 [Home] Applying emergency fallback...');
+      const fallback = imageCacheService.getFallbackImage();
+      setProfileImageSource(fallback.source);
+      console.log('✅ [Home] Emergency fallback applied');
+    } finally {
+      setProfileImageLoading(false);
+      console.log('🏠 [Home] === PROFILE IMAGE LOAD COMPLETE ===');
+    }
+  };
 
   useFocusEffect(
     React.useCallback(() => {
@@ -159,8 +244,9 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
   const handleProfileSettingsClose = () => {
     setShowProfileSettings(false);
-    // Reload sessions in case profile changes affected anything
+    // Reload sessions and profile image in case profile changes affected anything
     loadSessions();
+    loadProfileImage(); // Recarregar imagem de perfil
   };
 
   const handleSaveSession = async (sessionData: any) => {
@@ -519,59 +605,44 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     );
   };
 
-  // Function to get the profile image source
+  // Function to get the profile image source (now using cache)
   const getProfileImageSource = () => {
-    const profilePhoto = userInfo?.profilePhoto;
+    console.log('🖼️ [Home] getProfileImageSource called');
+    console.log('🔄 [Home] - profileImageLoading:', profileImageLoading);
+    console.log('📊 [Home] - profileImageSource:', profileImageSource);
     
-    // Check if it's a URL (from Supabase)
-    if (profilePhoto && (profilePhoto.startsWith('http') || profilePhoto.startsWith('https'))) {
-      return { uri: profilePhoto };
+    if (profileImageLoading) {
+      console.log('⏳ [Home] Still loading - using default illustration');
+      const loadingSource = require('../assets/images/profile-illustrations/profile_illustration_1.png');
+      console.log('📱 [Home] Loading source type:', typeof loadingSource);
+      return loadingSource;
     }
     
-    // If no profile photo selected, use default illustration
-    if (!profilePhoto) {
-      return require('../assets/images/profile-illustrations/profile_illustration_1.png');
-    }
-    
-    // If it's a custom photo (URI), return as URI
-    if (profilePhoto.startsWith('file://') || profilePhoto.startsWith('content://') || profilePhoto.startsWith('http')) {
-      return { uri: profilePhoto };
-    }
-    
-    // If it's an illustration ID, return the corresponding image
-    if (profilePhoto.startsWith('illustration_')) {
-      const illustrationId = profilePhoto.replace('illustration_', '');
-      try {
-        switch (illustrationId) {
-          case '1':
-            return require('../assets/images/profile-illustrations/profile_illustration_1.png');
-          case '2':
-            return require('../assets/images/profile-illustrations/profile_illustration_2.png');
-          case '3':
-            return require('../assets/images/profile-illustrations/profile_illustration_3.png');
-          case '4':
-            return require('../assets/images/profile-illustrations/profile_illustration_4.png');
-          case '5':
-            return require('../assets/images/profile-illustrations/profile_illustration_5.png');
-          case '6':
-            return require('../assets/images/profile-illustrations/profile_illustration_6.png');
-          case '7':
-            return require('../assets/images/profile-illustrations/profile_illustration_7.png');
-          case '8':
-            return require('../assets/images/profile-illustrations/profile_illustration_8.png');
-          case '9':
-            return require('../assets/images/profile-illustrations/profile_illustration_9.png');
-          default:
-            return require('../assets/images/profile-illustrations/profile_illustration_1.png');
+    if (profileImageSource) {
+      console.log('✅ [Home] Using profileImageSource:', profileImageSource);
+      if (profileImageSource.uri) {
+        console.log('🌐 [Home] Source is URI:', profileImageSource.uri);
+        
+        // Verificação extra para URIs locais
+        if (profileImageSource.uri.startsWith('file://')) {
+          console.log('📁 [Home] Local file URI detected');
+          console.log('🔗 [Home] Full URI:', profileImageSource.uri);
+          
+          // Tentar também uma versão alternativa sem file://
+          const alternativeUri = profileImageSource.uri.replace('file://', '');
+          console.log('🔄 [Home] Alternative URI (no file://):', alternativeUri);
         }
-      } catch (error) {
-        console.log('Error loading profile illustration:', error);
-        return require('../assets/images/profile-illustrations/profile_illustration_1.png');
+      } else {
+        console.log('🖼️ [Home] Source is local asset (require)');
       }
+      console.log('📤 [Home] RETURNING source:', profileImageSource);
+      return profileImageSource;
     }
     
-    // Fallback to default illustration
-    return require('../assets/images/profile-illustrations/profile_illustration_1.png');
+    console.log('🎨 [Home] No source available - using default fallback');
+    const fallbackSource = require('../assets/images/profile-illustrations/profile_illustration_1.png');
+    console.log('📱 [Home] Fallback source type:', typeof fallbackSource);
+    return fallbackSource;
   };
 
   return (
@@ -584,7 +655,41 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       <View style={styles.header}>
         <View style={styles.profileSection}>
           <TouchableOpacity style={styles.profileImageContainer} onPress={handleProfilePress}>
-            <Image source={getProfileImageSource()} style={styles.profileImage} />
+            {profileImageLoading ? (
+              <View style={[styles.profileImage, styles.profileImageLoading]}>
+                <ActivityIndicator size="small" color="#FFF" />
+              </View>
+            ) : (
+              <Image 
+                source={getProfileImageSource()} 
+                style={styles.profileImage}
+                onLoad={() => {
+                  console.log('✅ [Home] Image onLoad - SUCCESS loading image!');
+                }}
+                onError={(error) => {
+                  console.error('❌ [Home] Image onError - FAILED to load image!');
+                  console.error('❌ [Home] Native error:', error.nativeEvent?.error || 'Unknown error');
+                  
+                  // Aplicar fallback imediato quando imagem falha
+                  console.log('🎨 [Home] Applying fallback due to image error...');
+                  
+                  // Se era uma URL, invalidar dados relacionados
+                  if (profileImageSource?.uri && profileImageSource.uri.startsWith('http')) {
+                    console.log('🧹 [Home] URL failed - invalidating cache for next attempt');
+                    imageCacheService.invalidateUserCache(userInfo.id);
+                  }
+                  
+                  const fallback = require('../assets/images/profile-illustrations/profile_illustration_1.png');
+                  setProfileImageSource(fallback);
+                }}
+                onLoadStart={() => {
+                  console.log('🔄 [Home] Image onLoadStart - Started loading image...');
+                }}
+                onLoadEnd={() => {
+                  console.log('🏁 [Home] Image onLoadEnd - Finished loading attempt');
+                }}
+              />
+            )}
           </TouchableOpacity>
           
           <View style={styles.welcomeSection}>
@@ -593,8 +698,8 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
             </Text>
           </View>
           
-          <TouchableOpacity onPress={handleProfilePress} style={styles.profileButton}>
-            <FontAwesome6 name="gear" size={18} color="#fff" solid />
+          <TouchableOpacity onPress={handleLogout} style={styles.profileButton}>
+            <FontAwesome6 name="right-from-bracket" size={18} color="#fff" solid />
           </TouchableOpacity>
         </View>
       </View>
@@ -1058,6 +1163,11 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
     paddingHorizontal: 40,
+  },
+  profileImageLoading: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   floatingButton: {
     position: 'absolute',
