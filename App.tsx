@@ -12,7 +12,7 @@ import { supabase, verifyPasswordResetToken } from './lib/supabase';
 // Importar as telas
 import AuthFlow from './screens/AuthFlow';
 import ClimbingSessionForm from './screens/ClimbingSessionForm';
-import Home from './screens/Home';
+import HomeWithTabs from './screens/HomeWithTabs';
 
 const Stack = createStackNavigator();
 
@@ -264,9 +264,9 @@ function AppContent() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {session && userInfo ? (
           <>
-            {console.log('[App] 🏠 RENDERING HOME SCREEN!')}
+            {console.log('[App] 🏠 RENDERING HOME SCREEN WITH TABS!')}
             <Stack.Screen name="Home">
-              {(props) => <Home {...props} userInfo={userInfo} onLogout={handleLogout} />}
+              {(props) => <HomeWithTabs {...props} userInfo={userInfo} onLogout={handleLogout} />}
             </Stack.Screen>
             <Stack.Screen
               name="ClimbingSessionForm"

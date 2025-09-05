@@ -25,7 +25,10 @@
         "monochromeImage": "./assets/images/adaptive-icon.png"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.rockover.app"
+      "package": "com.rockover.app",
+      "navigationBar": {
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
       "bundler": "metro",
