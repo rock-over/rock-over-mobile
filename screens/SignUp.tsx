@@ -7,8 +7,9 @@ import {
 } from "@react-native-google-signin/google-signin";
 import React, { useRef, useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { AccessToken, LoginManager } from 'react-native-fbsdk-next';
 import { THEME_COLORS } from '../constants/Theme';
-import { signInWithGoogle, signUpEmail } from '../lib/supabase';
+import { signInWithFacebook, signInWithGoogle, signUpEmail } from '../lib/supabase';
 
 interface SignUpProps {
     onSignUpSuccess?: (user: any) => void;
@@ -227,8 +228,73 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
         }
     };
 
-    const handleFacebookLogin = () => {
-        Alert.alert("Facebook Login", "Facebook login functionality will be implemented soon");
+    const handleFacebookLogin = async () => {
+        try {
+            setIsSubmitting(true);
+            
+            // First, log out any existing Facebook session to force account selection
+            await LoginManager.logOut();
+            
+            // Start Facebook login with OpenID Connect for ID Token
+            const result = await LoginManager.logInWithPermissions(['openid', 'public_profile', 'email']);
+            
+            if (result.isCancelled) {
+                showMessage("Facebook login was cancelled");
+                return;
+            }
+            
+            if (!result.grantedPermissions || result.grantedPermissions.length === 0) {
+                showMessage("Required Facebook permissions not granted");
+                return;
+            }
+            
+            // Get the access token
+            const data = await AccessToken.getCurrentAccessToken();
+            
+            if (!data || !data.accessToken) {
+                showMessage("Failed to get Facebook access token");
+                return;
+            }
+            
+            console.log('Facebook Access Token obtained:', {
+                hasToken: !!data.accessToken,
+                permissions: data.permissions
+            });
+            
+            // Use Supabase Facebook OAuth (same as Google)
+            const authResult = await signInWithFacebook(data.accessToken);
+            console.log('Supabase Facebook auth result:', authResult);
+            
+            if (authResult.success && authResult.user) {
+                // Create user object with Supabase user data (same as Google approach)
+                const userInfo = {
+                    id: authResult.user.id,
+                    name: authResult.user.user_metadata?.name || authResult.user.email?.split('@')[0] || 'Facebook User',
+                    email: authResult.user.email || '',
+                    photo: authResult.user.user_metadata?.avatar_url,
+                    profilePhoto: authResult.user.user_metadata?.profilePhoto || 'illustration_1'
+                };
+                
+                console.log('Final Facebook user info:', userInfo);
+                
+                // Success - call the callback with user data
+                onSignUpSuccess?.(userInfo);
+            } else {
+                showMessage(authResult.error || "Facebook sign up failed");
+            }
+            
+        } catch (error) {
+            console.error('Facebook sign up error:', error);
+            const errorMessage = (error as any)?.message || 'An error occurred during Facebook sign up';
+            
+            if (errorMessage.includes('LoginManager') || errorMessage.includes('AccessToken')) {
+                showMessage("Facebook SDK not available in this build version. Please try standard signup.");
+            } else {
+                showMessage(errorMessage);
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const showMessage = (message: string) => {

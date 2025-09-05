@@ -4,6 +4,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
+import { AppEventsLogger } from 'react-native-fbsdk-next';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase, verifyPasswordResetToken } from './lib/supabase';
 
@@ -105,6 +107,35 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  // Facebook App Events - Condicionalmente ativo
+  useEffect(() => {
+    // Verificar se Facebook SDK está disponível
+    try {
+      if (AppEventsLogger && typeof AppEventsLogger.activateApp === 'function') {
+        AppEventsLogger.activateApp();
+        console.log('[FacebookEvents] 📊 App activation logged');
+        
+        // Rastrear quando o app fica ativo/background
+        const handleAppStateChange = (nextAppState: string) => {
+          if (nextAppState === 'active') {
+            AppEventsLogger.activateApp();
+            console.log('[FacebookEvents] 📊 App reactivation logged');
+          }
+        };
+
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+        return () => {
+          subscription?.remove();
+        };
+      } else {
+        console.log('[FacebookEvents] ⚠️ Facebook SDK not available in this build');
+      }
+    } catch (error) {
+      console.log('[FacebookEvents] ❌ Facebook SDK error:', error);
+    }
+  }, []);
+
   return (
     <AuthContext.Provider value={{ session, userInfo, setUserInfo, isLoading }}>
       {children}
@@ -113,7 +144,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 function AppContent() {
-  const { session, isLoading, userInfo } = useAuth();
+  const { session, isLoading, userInfo, setUserInfo } = useAuth();
   const [authFlowState, setAuthFlowState] = useState<{
     initialScreen: 'welcome' | 'login' | 'signup' | 'verify' | 'profile' | 'forgot-password' | 'reset-password';
     resetTokens?: { accessToken: string; refreshToken: string };
@@ -172,22 +203,52 @@ function AppContent() {
   const handleAuthSuccess = async (user: any) => {
     console.log('[App] 🎉 Auth success with user:', user);
     
+    // Check if this is a Facebook user (they don't have Supabase sessions)
+    const isFacebookUser = user.email?.includes('@facebook.') || 
+                          user.email?.includes('@rockover.app') ||
+                          user.facebook_id ||
+                          user.user_metadata?.facebook_id;
+    
     // Update user metadata in Supabase with profile setup data
     if (user.profilePhoto && user.gradingSystem) {
       console.log('[App] 💾 Updating user metadata in Supabase');
       
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          profilePhoto: user.profilePhoto,
-          gradingSystem: user.gradingSystem,
-          name: user.name
+      if (isFacebookUser) {
+        // For Facebook users, update directly in profiles table
+        console.log('[App] 🔄 Updating Facebook user profile directly in database');
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .update({
+              grading_system: user.gradingSystem,
+              profile_picture_url: user.profilePhoto.startsWith('http') ? user.profilePhoto : null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+            
+          if (error) {
+            console.error('[App] ❌ Error updating Facebook user profile:', error);
+          } else {
+            console.log('[App] ✅ Facebook user profile updated successfully');
+          }
+        } catch (error) {
+          console.error('[App] ❌ Unexpected error updating Facebook user profile:', error);
         }
-      });
-      
-      if (error) {
-        console.error('[App] ❌ Error updating user metadata:', error);
       } else {
-        console.log('[App] ✅ User metadata updated successfully');
+        // For regular Supabase users, update auth metadata
+        const { error } = await supabase.auth.updateUser({
+          data: {
+            profilePhoto: user.profilePhoto,
+            gradingSystem: user.gradingSystem,
+            name: user.name
+          }
+        });
+        
+        if (error) {
+          console.error('[App] ❌ Error updating user metadata:', error);
+        } else {
+          console.log('[App] ✅ User metadata updated successfully');
+        }
       }
     }
     

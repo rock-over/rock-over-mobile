@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BackHandler } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { profileService } from '../services/profileService';
 import ForgotPassword from './ForgotPassword';
 import Login from './Login';
@@ -34,7 +35,6 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 return true;
             } else if (currentScreen === 'profile') {
                 // On profile screen, do NOT auto-complete - let user finish setup
-                console.log('[AuthFlow] 🚫 Back button pressed on profile screen - ignoring to let user complete setup');
                 return true; // Prevent back action but don't auto-complete
             }
             // On welcome screen, allow default behavior (close app)
@@ -77,23 +77,17 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
 
     const handleSignUpSuccess = (user: any) => {
         // Após signup, ir para profile setup
-        console.log('[AuthFlow] 🎯 handleSignUpSuccess called with user:', user);
-        console.log('[AuthFlow] 🔄 Setting currentScreen to profile');
         setTempUser(user);
         setCurrentScreen('profile');
     };
 
     const handleNavigateToVerify = (info: { email: string; password: string; name: string; gradingSystem: string }) => {
-        console.log('[AuthFlow] 📧 handleNavigateToVerify called with info:', info);
-        console.log('[AuthFlow] 🔄 Setting currentScreen to verify');
         setSignUpInfo(info);
         setCurrentScreen('verify');
     };
 
     const handleVerificationSuccess = (user: any) => {
         // Após verificação bem-sucedida, seguir para profile
-        console.log('[AuthFlow] ✅ handleVerificationSuccess called with user:', user);
-        console.log('[AuthFlow] 🔄 Setting currentScreen to profile');
         setTempUser(user);
         setCurrentScreen('profile');
     };
@@ -109,8 +103,7 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
     };
 
     const handleProfileComplete = async (profileData: { photoUri: string; gradingSystem: string }) => {
-        console.log('📝 [AuthFlow] Profile completed with data:', profileData);
-        console.log('🎯 [AuthFlow] Selected grading system:', profileData.gradingSystem);
+        console.log('Profile completed with data:', profileData);
         
         try {
             let finalProfilePhoto = profileData.photoUri;
@@ -123,28 +116,84 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
             if (isCustomPhoto) {
                 console.log('📤 [AuthFlow] Uploading custom profile photo to Supabase...');
                 
-                // Upload the custom photo to Supabase and get the public URL
-                const publicUrl = await profileService.uploadAndUpdateProfilePicture(profileData.photoUri);
-                finalProfilePhoto = publicUrl;
+                // Check if this is a Facebook user
+                const isFacebookUser = tempUser.email?.includes('@facebook.') || 
+                                     tempUser.email?.includes('@rockover.app') ||
+                                     tempUser.facebook_id ||
+                                     tempUser.user_metadata?.facebook_id;
+                
+                if (isFacebookUser) {
+                    // For Facebook users, use a different approach since they don't have Supabase sessions
+                    console.log('📱 [AuthFlow] Facebook user detected - using alternative upload method');
+                    
+                    // For now, just use the local URI and let the app handle it later
+                    // We could implement a server-side upload or use a different approach
+                    finalProfilePhoto = profileData.photoUri;
+                    console.log('⚠️ [AuthFlow] Facebook user photo upload will be handled later');
+                } else {
+                    // Upload the custom photo to Supabase and get the public URL
+                    const publicUrl = await profileService.uploadAndUpdateProfilePicture(profileData.photoUri);
+                    finalProfilePhoto = publicUrl;
+                    console.log('✅ [AuthFlow] Custom photo uploaded successfully:', publicUrl);
+                }
                 
                 // Also update/create profile with grading system and other data
-                console.log('💾 [AuthFlow] Saving profile with grading system:', profileData.gradingSystem);
-                await profileService.upsertProfile({
-                    email: tempUser.email || '',
-                    name: tempUser.name || '',
-                    grading_system: profileData.gradingSystem,
-                    profile_picture_url: publicUrl
-                });
+                if (!isFacebookUser) {
+                    // Regular Supabase users
+                    await profileService.upsertProfile({
+                        email: tempUser.email || '',
+                        name: tempUser.name || '',
+                        grading_system: profileData.gradingSystem,
+                        profile_picture_url: finalProfilePhoto
+                    });
+                } else {
+                    // Facebook users - update profiles table directly
+                    console.log('📱 [AuthFlow] Updating Facebook user profile directly');
+                    try {
+                        await supabase
+                            .from('profiles')
+                            .update({
+                                grading_system: profileData.gradingSystem,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', tempUser.id);
+                        console.log('✅ [AuthFlow] Facebook user profile updated');
+                    } catch (profileError) {
+                        console.error('[AuthFlow] Facebook profile update error:', profileError);
+                    }
+                }
                 
-                console.log('✅ [AuthFlow] Custom photo uploaded and profile updated successfully:', publicUrl);
+                console.log('✅ [AuthFlow] Custom photo uploaded successfully:', publicUrl);
             } else {
                 // It's an illustration, create/update profile with illustration
-                console.log('🎨 [AuthFlow] Saving profile with illustration and grading system:', profileData.gradingSystem);
-                await profileService.upsertProfile({
-                    email: tempUser.email || '',
-                    name: tempUser.name || '',
-                    grading_system: profileData.gradingSystem
-                });
+                const isFacebookUser = tempUser.email?.includes('@facebook.') || 
+                                     tempUser.email?.includes('@rockover.app') ||
+                                     tempUser.facebook_id ||
+                                     tempUser.user_metadata?.facebook_id;
+                
+                if (!isFacebookUser) {
+                    // Regular Supabase users
+                    await profileService.upsertProfile({
+                        email: tempUser.email || '',
+                        name: tempUser.name || '',
+                        grading_system: profileData.gradingSystem
+                    });
+                } else {
+                    // Facebook users - update profiles table directly
+                    console.log('📱 [AuthFlow] Updating Facebook user profile directly (illustration)');
+                    try {
+                        await supabase
+                            .from('profiles')
+                            .update({
+                                grading_system: profileData.gradingSystem,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', tempUser.id);
+                        console.log('✅ [AuthFlow] Facebook user profile updated (illustration)');
+                    } catch (profileError) {
+                        console.error('[AuthFlow] Facebook profile update error (illustration):', profileError);
+                    }
+                }
                 
                 console.log('✅ [AuthFlow] Profile created with illustration');
             }
@@ -174,27 +223,19 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
     };
 
     const handleProfileSkip = () => {
-        console.log('[AuthFlow] 🚨 HANDLEPROFILESKIP CALLED! WHO CALLED THIS?');
-        console.log('[AuthFlow] 📍 Stack trace:');
-        console.trace();
-        
         // Usuário pulou o setup do perfil, usar padrões
         const userWithDefaults = {
             ...tempUser,
             profilePhoto: 'illustration_1',
             gradingSystem: 'yds'
         };
-        console.log('[AuthFlow] 🏠 Going to Home with defaults:', userWithDefaults);
         onAuthSuccess?.(userWithDefaults);
     };
 
-    console.log('[AuthFlow] 🎬 Current screen:', currentScreen);
-    console.log('[AuthFlow] 👤 Temp user:', tempUser);
-    console.log('[AuthFlow] 📋 SignUp info:', signUpInfo);
+
 
     switch (currentScreen) {
         case 'welcome':
-            console.log('[AuthFlow] 🏠 Rendering Welcome screen');
             return (
                 <Welcome
                     onNavigateToLogin={handleNavigateToLogin}
@@ -202,7 +243,6 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'login':
-            console.log('[AuthFlow] 🔑 Rendering Login screen');
             return (
                 <Login
                     onLoginSuccess={handleLoginSuccess}
@@ -212,7 +252,6 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'signup':
-            console.log('[AuthFlow] 📝 Rendering SignUp screen');
             return (
                 <SignUp
                     onSignUpSuccess={handleSignUpSuccess}
@@ -222,8 +261,6 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'verify':
-            console.log('[AuthFlow] 📧 Rendering VerifyEmail screen');
-            // signUpInfo should be non-null here
             return (
                 <VerifyEmail
                     info={signUpInfo!}
@@ -232,7 +269,6 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'forgot-password':
-            console.log('[AuthFlow] 🔒 Rendering ForgotPassword screen');
             return (
                 <ForgotPassword
                     onGoBack={handleGoBack}
@@ -240,7 +276,6 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'reset-password':
-            console.log('[AuthFlow] 🔑 Rendering ResetPassword screen');
             return (
                 <ResetPassword
                     accessToken={passwordResetTokens?.accessToken || ''}
@@ -250,7 +285,6 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         case 'profile':
-            console.log('[AuthFlow] 👤 Rendering ProfileSetup screen');
             return (
                 <ProfileSetup
                     onComplete={handleProfileComplete}
@@ -258,7 +292,6 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                 />
             );
         default:
-            console.log('[AuthFlow] ❓ Unknown screen, returning null');
             return null;
     }
 } 

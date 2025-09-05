@@ -73,30 +73,19 @@ export const imageCacheService = {
   // Baixar e cachear imagem do Supabase
   async downloadAndCacheImage(userId: string, supabaseUrl: string): Promise<string | null> {
     try {
-      console.log('⬇️ [ImageCache] === STARTING DOWNLOAD ===');
-      console.log('📥 [ImageCache] URL to download:', supabaseUrl);
       
       await this.initializeCache();
       
       const localPath = this.getLocalCachePath(userId);
-      console.log('📁 [ImageCache] Target local path:', localPath);
       
       // Baixar a imagem
-      console.log('🌐 [ImageCache] Starting FileSystem.downloadAsync...');
       const downloadResult = await FileSystem.downloadAsync(supabaseUrl, localPath);
       
-      console.log('📊 [ImageCache] Download result status:', downloadResult.status);
-      console.log('📊 [ImageCache] Download result headers:', downloadResult.headers);
-      
       if (downloadResult.status === 200) {
-        console.log('✅ [ImageCache] Download status OK (200)');
-        
         // Obter informações do arquivo baixado
         const fileInfo = await FileSystem.getInfoAsync(localPath);
-        console.log('📄 [ImageCache] File info:', fileInfo);
         
         if (fileInfo.exists && fileInfo.size && fileInfo.size > 100) {
-          console.log('✅ [ImageCache] File exists locally, size:', fileInfo.size);
           
           // Validar se parece ser um arquivo de imagem válido
           try {
@@ -107,7 +96,6 @@ export const imageCacheService = {
             });
             
             if (base64Sample && base64Sample.length > 0) {
-              console.log('✅ [ImageCache] File seems to be a valid image');
               
               // Atualizar metadados
               const metadata = await this.getCacheMetadata();
@@ -119,31 +107,17 @@ export const imageCacheService = {
               };
               await this.saveCacheMetadata(metadata);
               
-              console.log('✅ [ImageCache] DOWNLOAD SUCCESS! Image cached at:', localPath);
               return localPath;
-            } else {
-              console.log('❌ [ImageCache] Downloaded file appears to be corrupted');
             }
           } catch (validateError) {
-            console.log('❌ [ImageCache] Error validating downloaded file:', validateError);
+            // Validation error - file might be corrupted
           }
-        } else {
-          console.log('❌ [ImageCache] File does not exist or is too small after download!');
-        }
-      } else {
-        console.log('❌ [ImageCache] DOWNLOAD FAILED! HTTP Status:', downloadResult.status);
-        
-        // Log adicional para status 400
-        if (downloadResult.status === 400) {
-          console.log('🔍 [ImageCache] Status 400: Bad Request - URL may be invalid or expired');
-          console.log('🔍 [ImageCache] Full URL being accessed:', supabaseUrl);
         }
       }
       
       return null;
     } catch (error) {
-      console.error('💥 [ImageCache] DOWNLOAD ERROR:', error);
-      console.error('💥 [ImageCache] Error details:', JSON.stringify(error, null, 2));
+      console.error('Download error:', error);
       return null;
     }
   },
@@ -151,43 +125,30 @@ export const imageCacheService = {
   // Obter imagem de perfil com cache e fallback
   async getProfileImage(userId: string): Promise<{ source: any; isCached: boolean }> {
     try {
-      console.log('🖼️ [ImageCache] === STARTING getProfileImage for user:', userId);
       
       // 1. Verificar se existe cache local
-      console.log('🔍 [ImageCache] STEP 1: Checking local cache...');
       const isImageCached = await this.isImageCached(userId);
       
       if (isImageCached) {
         const localPath = this.getLocalCachePath(userId);
-        console.log('✅ [ImageCache] CACHE HIT! Using cached image:', localPath);
         
         // Verificar se o arquivo realmente existe e tem conteúdo
         const fileInfo = await FileSystem.getInfoAsync(localPath);
-        console.log('📄 [ImageCache] Cached file info:', fileInfo);
         
         if (fileInfo.exists && fileInfo.size && fileInfo.size > 0) {
-          console.log('✅ [ImageCache] File exists and has content (size:', fileInfo.size, 'bytes)');
           
           // Verificar se é um arquivo de imagem válido pelo tamanho mínimo
           if (fileInfo.size < 100) {
-            console.log('❌ [ImageCache] File too small, probably corrupted. Clearing cache...');
             await this.clearUserCache(userId);
-            console.log('🔄 [ImageCache] Cache cleared, falling back to download...');
           } else {
-            console.log('📱 [ImageCache] Returning CACHED image source');
             return { source: { uri: localPath }, isCached: true };
           }
         } else {
-          console.log('❌ [ImageCache] Cached file is missing or empty! Clearing cache...');
           await this.clearUserCache(userId);
-          console.log('🔄 [ImageCache] Cache cleared, falling back to download...');
         }
       }
       
-      console.log('❌ [ImageCache] CACHE MISS! No local cache found');
-      
       // 2. Buscar URL do Supabase na tabela profiles
-      console.log('🔍 [ImageCache] STEP 2: Fetching profile from Supabase database...');
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('profile_picture_url')
@@ -195,78 +156,58 @@ export const imageCacheService = {
         .single();
       
       if (error) {
-        console.error('❌ [ImageCache] DATABASE ERROR:', error);
-        console.log('🎨 [ImageCache] STEP 3: Using FALLBACK due to database error');
+        console.error('Database error:', error);
         return this.getFallbackImage();
       }
       
-      console.log('✅ [ImageCache] Database query successful. Profile data:', profile);
+
       
       // 3. Se tem URL no Supabase, tentar cachear e usar
       if (profile?.profile_picture_url) {
-        console.log('🌐 [ImageCache] STEP 3: Found profile picture URL:', profile.profile_picture_url);
         
         // Primeiro, verificar se o arquivo existe no storage
-        console.log('🔍 [ImageCache] Checking if file exists in Supabase storage...');
         const fileExists = await this.checkFileExistsInStorage(userId, profile.profile_picture_url);
         
         if (!fileExists) {
-          console.log('❌ [ImageCache] File does not exist in Supabase storage!');
-          console.log('🧹 [ImageCache] Cleaning up invalid URL from database...');
-          
           // Limpar URL inválida do banco de dados
           await supabase
             .from('profiles')
             .update({ profile_picture_url: null })
             .eq('id', userId);
             
-          console.log('🎨 [ImageCache] Using fallback due to missing file');
           return this.getFallbackImage();
         }
         
-        console.log('✅ [ImageCache] File exists in storage, proceeding with signed URL download...');
-        console.log('🔐 [ImageCache] Skipping public URL attempt - bucket is private');
+
         
         // Ir direto para signed URL (bucket é privado)
-        console.log('🔐 [ImageCache] Generating signed URL for download...');
         const signedUrl = await this.getSignedUrl(profile.profile_picture_url);
         
         if (signedUrl) {
-          console.log('✅ [ImageCache] Signed URL generated successfully');
-          console.log('💾 [ImageCache] Attempting to cache via signed URL...');
           
           const cachedViaSigned = await this.downloadAndCacheImage(userId, signedUrl);
           
           if (cachedViaSigned) {
-            console.log('✅ [ImageCache] Successfully cached via signed URL!');
             return { source: { uri: cachedViaSigned }, isCached: true };
           } else {
-            console.log('⚠️ [ImageCache] Cache via signed URL failed, using direct signed URL');
             return { source: { uri: signedUrl }, isCached: false };
           }
-        } else {
-          console.log('❌ [ImageCache] Failed to generate signed URL');
         }
         
-        console.log('❌ [ImageCache] All URL attempts failed');
         return this.getFallbackImage();
       }
       
       // 4. Sem URL no Supabase, usar fallback
-      console.log('❌ [ImageCache] No profile_picture_url found in database');
-      console.log('🎨 [ImageCache] STEP 4: Using DEFAULT ILLUSTRATION fallback');
       return this.getFallbackImage();
       
     } catch (error) {
-      console.error('💥 [ImageCache] UNEXPECTED ERROR in getProfileImage:', error);
-      console.log('🎨 [ImageCache] EMERGENCY FALLBACK: Using default illustration');
+      console.error('Error in getProfileImage:', error);
       return this.getFallbackImage();
     }
   },
 
   // Obter imagem de fallback (ilustração padrão)
   getFallbackImage(): { source: any; isCached: boolean } {
-    console.log('🎨 [ImageCache] === FALLBACK ACTIVATED ===');
     
     const illustrations = [
       require('../assets/images/profile-illustrations/profile_illustration_1.png'),
@@ -282,8 +223,6 @@ export const imageCacheService = {
     
     // Usar primeira ilustração como padrão
     const defaultIllustration = illustrations[0];
-    console.log('✅ [ImageCache] FALLBACK: Using default illustration_1');
-    console.log('📱 [ImageCache] FALLBACK: Illustration source type:', typeof defaultIllustration);
     
     return { source: defaultIllustration, isCached: true };
   },
@@ -296,7 +235,7 @@ export const imageCacheService = {
       
       if (fileInfo.exists) {
         await FileSystem.deleteAsync(localPath);
-        console.log('🗑️ [ImageCache] Cleared cache for user:', userId);
+
         
         // Remover dos metadados
         const metadata = await this.getCacheMetadata();
@@ -304,7 +243,7 @@ export const imageCacheService = {
         await this.saveCacheMetadata(metadata);
       }
     } catch (error) {
-      console.error('❌ [ImageCache] Error clearing cache:', error);
+      console.error('Error clearing cache:', error);
     }
   },
 
@@ -315,10 +254,10 @@ export const imageCacheService = {
       if (dirInfo.exists) {
         await FileSystem.deleteAsync(CACHE_DIR);
         await AsyncStorage.removeItem(CACHE_METADATA_KEY);
-        console.log('🗑️ [ImageCache] Cleared all cache');
+
       }
     } catch (error) {
-      console.error('❌ [ImageCache] Error clearing all cache:', error);
+      console.error('Error clearing all cache:', error);
     }
   },
 
@@ -341,7 +280,7 @@ export const imageCacheService = {
       
       return { totalFiles: validFiles, totalSize };
     } catch (error) {
-      console.error('❌ [ImageCache] Error getting cache stats:', error);
+      console.error('Error getting cache stats:', error);
       return { totalFiles: 0, totalSize: 0 };
     }
   },
@@ -372,7 +311,7 @@ export const imageCacheService = {
         });
       
       if (error) {
-        console.error('❌ [ImageCache] Error checking storage:', error);
+        console.error('Error checking storage:', error);
         return false;
       }
       
@@ -411,14 +350,14 @@ export const imageCacheService = {
         .createSignedUrl(filePath, 3600); // 1 hora de validade
       
       if (error) {
-        console.error('❌ [ImageCache] Error creating signed URL:', error);
+        console.error('Error creating signed URL:', error);
         return null;
       }
       
       console.log('✅ [ImageCache] Signed URL created successfully');
       return data.signedUrl;
     } catch (error) {
-      console.error('❌ [ImageCache] Error generating signed URL:', error);
+      console.error('Error generating signed URL:', error);
       return null;
     }
   },

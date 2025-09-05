@@ -121,8 +121,6 @@ export const profileService = {
     }
 
     try {
-      console.log('📤 [profileService] Starting profile picture upload for user:', user.id);
-      
       // Upload da imagem para o bucket profile-pics
       const imagePath = await uploadProfilePictureAsync(localUri, user.id);
       
@@ -130,27 +128,59 @@ export const profileService = {
       const { data: { publicUrl } } = supabase.storage
         .from('profile-pics')
         .getPublicUrl(imagePath);
-
-      console.log('🔗 [profileService] Generated public URL:', publicUrl);
       
       // Atualizar o perfil com a nova URL da imagem
       const updatedProfile = await this.updateProfile({
         profile_picture_url: publicUrl
       });
 
-      console.log('✅ [profileService] Profile picture uploaded and profile updated successfully');
-      
       return publicUrl;
     } catch (error) {
-      console.error('❌ [profileService] Error uploading profile picture:', error);
+      console.error('Error uploading profile picture:', error);
+      throw error;
+    }
+  },
+
+  // Upload e atualização da foto de perfil para usuários Facebook (sem sessão Supabase)
+  async uploadAndUpdateProfilePictureForFacebook(localUri: string, userId: string): Promise<string> {
+    try {
+      console.log('[profileService] 📤 Uploading Facebook user profile picture...');
+      
+      // Upload da imagem para o bucket profile-pics
+      const imagePath = await uploadProfilePictureAsync(localUri, userId);
+      
+      // Gerar URL pública da imagem
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-pics')
+        .getPublicUrl(imagePath);
+      
+      console.log('[profileService] 🌐 Generated public URL:', publicUrl);
+      
+      // Atualizar o perfil diretamente na tabela profiles usando o userId
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          profile_picture_url: publicUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (error) {
+        console.error('[profileService] ❌ Error updating profile in database:', error);
+        throw error;
+      }
+
+      console.log('[profileService] ✅ Facebook user profile picture updated successfully');
+      return publicUrl;
+      
+    } catch (error) {
+      console.error('[profileService] ❌ Error uploading Facebook profile picture:', error);
       throw error;
     }
   },
 
   // Criar ou atualizar perfil (upsert)
   async upsertProfile(profileData: ProfileCreateData): Promise<ProfileData> {
-    console.log('💾 [profileService] upsertProfile called with data:', profileData);
-    
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
@@ -167,11 +197,33 @@ export const profileService = {
       .single();
 
     if (error) {
-      console.error('❌ [profileService] Erro ao criar/atualizar perfil:', error);
+      console.error('Erro ao criar/atualizar perfil:', error);
       throw new Error('Falha ao salvar o perfil');
     }
 
-    console.log('✅ [profileService] Profile saved successfully:', data);
+    return data;
+  },
+
+  // Criar ou atualizar perfil para usuários Facebook (sem sessão Supabase)
+  async upsertProfileForFacebook(profileData: ProfileCreateData, userId: string): Promise<ProfileData> {
+    console.log('[profileService] 🔄 Upserting Facebook user profile...');
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert([{
+        id: userId,
+        ...profileData,
+        updated_at: new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[profileService] ❌ Error upserting Facebook profile:', error);
+      throw new Error('Falha ao salvar o perfil do Facebook');
+    }
+
+    console.log('[profileService] ✅ Facebook profile upserted successfully');
     return data;
   },
 

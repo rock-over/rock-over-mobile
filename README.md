@@ -66,15 +66,17 @@ Join our community of developers creating universal apps.
 - [X] modal de sucesso do forms
 - [X] trocar imagens (auth, forms)
 - [X] Scroll gesture on the forms to pass between steps
-- [ ] Download spread sheet
 - [ ] Splash screen
+- [ ] Empty state
+- [ ] Possibilitar a adição de movimentos customizados
+- [ ] Copiar do ultimo log
 
 
 
 - [X] Deletar/Editar sessão
 - [ ] Recuperação de senha (tela foi implementada porém precisa resolver o problema do deeplink (o gmail está bagunçando ele))
-- [ ] subir imagem do profile na nuvem
-- [ ] melhorar componente de selecionar imagem
+- [X] subir imagem do profile na nuvem
+- [X] melhorar componente de selecionar imagem
 - [ ] Login do facebook funcionando com supabase
 - [ ] Melhorar card de sessão (cada ascent type pode ser um badge // Adicionar o how it feel // Adicionar imagem // Adicionar o difficulty?)
 
@@ -88,7 +90,7 @@ Join our community of developers creating universal apps.
 - [ ] testes unitarios
 - [ ] arquitetura e boas praticas
 - [ ] segurança
-- [ ] adicionar opção de salvar antes ??
+- [ ] resolver vunerabilidades que aparecem qnd instala uma nova biblioteca
 
 
 ### Bugs
@@ -97,6 +99,6 @@ Join our community of developers creating universal apps.
 - [ ] data da session é salva errada
 
 ### Pivot
-- Possibilitar a adição de movimentos customizados
-- Copiar do ultimo log
+- [ ] Download spread sheet
+- [ ] adicionar opção de salvar antes ??
 
