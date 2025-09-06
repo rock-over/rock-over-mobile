@@ -3,11 +3,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import * as SystemUI from 'expo-system-ui';
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
+import SessionsScreen from '../app/(tabs)/sessions';
 import { THEME_COLORS } from '../constants/Theme';
 import AnalyticsScreen from './AnalyticsScreen';
 import Home from './Home';
 import ProfileScreen from './ProfileScreen';
-import SessionsScreen from './SessionsScreen';
 
 const Tab = createBottomTabNavigator();
 
