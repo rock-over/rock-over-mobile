@@ -6,7 +6,7 @@ import {
   BarChart,
   LineChart,
   PieChart,
-  ProgressChart,
+  StackedBarChart,
 } from 'react-native-chart-kit';
 import { THEME_COLORS } from '../constants/Theme';
 import { supabase } from '../lib/supabase';
@@ -22,115 +22,129 @@ const gradeToNumeric = (grade: string | null): number => {
   return isNaN(numericGrade) ? 0 : numericGrade;
 };
 
-const processGradeProgression = (sessions: ClimbingSession[]) => {
-  const sessionsByMonth = sessions.reduce((acc, session) => {
-    const month = new Date(session.when).toLocaleDateString('en-GB', { month: 'short' });
-    if (!acc[month]) acc[month] = [];
-    if (session.grade) acc[month].push(gradeToNumeric(session.grade));
-    return acc;
-  }, {} as Record<string, number[]>);
 
-  const labels = Object.keys(sessionsByMonth);
-  const avgGrades = labels.map(month => {
-    const grades = sessionsByMonth[month];
-    return grades.length ? grades.reduce((sum, grade) => sum + grade, 0) / grades.length : 0;
-  });
 
-  return {
-    labels: labels.slice(-6), // Last 6 months
-    datasets: [{
-      data: avgGrades.slice(-6),
-      color: (opacity = 1) => `${THEME_COLORS.bluePrimary}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`,
-      strokeWidth: 3,
-    }],
-  };
-};
-
-const processTimeOfDay = (sessions: ClimbingSession[]) => {
-  const timeStats = sessions.reduce((acc, session) => {
-    const time = session.timeOfDay || 'Unknown';
-    acc[time] = (acc[time] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  return {
-    labels: Object.keys(timeStats),
-    datasets: [{
-      data: Object.values(timeStats),
-    }],
-  };
-};
-
-const processClimbingTypes = (sessions: ClimbingSession[]) => {
-  const typeStats = sessions.reduce((acc, session) => {
-    const type = session.climbingType || 'Unknown';
-    acc[type] = (acc[type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const colors = [THEME_COLORS.orange, THEME_COLORS.bluePrimary, THEME_COLORS.blueSecondary, THEME_COLORS.softRed, THEME_COLORS.green];
-  return Object.entries(typeStats).map(([name, count], index) => ({
-    name,
-    population: count,
-    color: colors[index % colors.length],
-    legendFontColor: '#7F7F7F',
-    legendFontSize: 12,
-  }));
-};
-
-const processTechnicalSkills = (sessions: ClimbingSession[]) => {
-  const skills = ['movement', 'grip', 'footwork'];
-  const skillCounts = skills.map(skill => {
-    const count = sessions.filter(s => s[skill as keyof ClimbingSession]).length;
-    return count / sessions.length;
-  });
-
-  return {
-    labels: ['Movement', 'Grip', 'Footwork', 'Overall'],
-    data: [...skillCounts, skillCounts.reduce((sum, val) => sum + val, 0) / skillCounts.length],
-  };
-};
-
-const processLocationStats = (sessions: ClimbingSession[]) => {
-  const locationStats = sessions.reduce((acc, session) => {
-    const location = session.place || session.location_data?.name || 'Unknown';
-    acc[location] = (acc[location] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const topLocations = Object.entries(locationStats)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 5);
-
-  return {
-    labels: topLocations.map(([name]) => name.length > 8 ? name.substring(0, 8) + '...' : name),
-    datasets: [{
-      data: topLocations.map(([, count]) => count),
-    }],
-  };
-};
 
 const processCompletionByGrade = (sessions: ClimbingSession[]) => {
   const gradeStats = sessions.reduce((acc, session) => {
     if (session.grade && session.completion) {
       const grade = session.grade;
-      if (!acc[grade]) acc[grade] = { total: 0, completed: 0 };
-      acc[grade].total += 1;
-      if (session.completion === 'Completed') acc[grade].completed += 1;
+      if (!acc[grade]) acc[grade] = { total: 0, completed: 0, attempt: 0 };
+      if (session.completion === 'Completed') {
+        acc[grade].completed += 1;
+      } else if (session.completion === 'Attempt') {
+        acc[grade].attempt += 1;
+      }
+      acc[grade].total = acc[grade].completed + acc[grade].attempt;
     }
     return acc;
-  }, {} as Record<string, { total: number; completed: number }>);
+  }, {} as Record<string, { total: number; completed: number; attempt: number }>);
 
   const grades = Object.keys(gradeStats).sort((a, b) => gradeToNumeric(a) - gradeToNumeric(b));
-  const completionRates = grades.map(grade => 
-    gradeStats[grade].total > 0 ? (gradeStats[grade].completed / gradeStats[grade].total) * 100 : 0
-  );
+  const filteredGrades = grades.slice(-6); // Last 6 grades
+
+  if (filteredGrades.length === 0) {
+    return {
+      labels: ['No Data'],
+      legend: ['Completed', 'Attempt'],
+      data: [[0, 0]],
+      barColors: [THEME_COLORS.bluePrimary, '#FF5B30'],
+      hasData: false,
+    };
+  }
+
+  const stackedData = filteredGrades.map(grade => [
+    gradeStats[grade].completed,
+    gradeStats[grade].attempt
+  ]);
 
   return {
-    labels: grades.slice(-6), // Last 6 grades
-    datasets: [{
-      data: completionRates.slice(-6),
-    }],
+    labels: filteredGrades,
+    legend: ['Completed', 'Attempt'],
+    data: stackedData,
+    barColors: [THEME_COLORS.bluePrimary, '#FF5B30'],
+    hasData: true,
+  };
+};
+
+// Movement analytics function
+const processMovementData = (sessions: ClimbingSession[]) => {
+  const movementCount: Record<string, number> = {};
+  
+  sessions.forEach(session => {
+    // Only process sessions that have movement data
+    if (session.movement && session.movement.trim() !== '' && session.movement.trim() !== '[]') {
+      // Split by comma and clean up each movement
+      const movements = session.movement.split(',').map(m => m.trim());
+      movements.forEach(movement => {
+        // Only count non-empty movements
+        if (movement && movement !== '' && movement !== 'null' && movement !== 'undefined' && movement !== '[]') {
+          movementCount[movement] = (movementCount[movement] || 0) + 1;
+        }
+      });
+    }
+  });
+
+  // Convert to array and sort by frequency
+  const allMovements = Object.entries(movementCount)
+    .sort(([,a], [,b]) => b - a);
+  
+  // Get top 4 movements and group the rest as "Others"
+  const topMovements = allMovements.slice(0, 4);
+  const otherMovements = allMovements.slice(4);
+  
+  let movementEntries = [...topMovements];
+  
+  // Add "Others" category if there are more movements
+  if (otherMovements.length > 0) {
+    const othersCount = otherMovements.reduce((sum, [, count]) => sum + count, 0);
+    movementEntries.push(['Others', othersCount]);
+  }
+
+  if (movementEntries.length === 0) {
+    return {
+      data: [],
+      hasData: false,
+    };
+  }
+
+  // Generate colors for each movement (max 5: top 4 + Others)
+  const colors = [
+    THEME_COLORS.bluePrimary,
+    '#FF5B30',
+    '#34C759',
+    '#FF9500',
+    '#999999', // Gray for Others
+  ];
+
+  // Calculate total to get percentages
+  const totalCount = movementEntries.reduce((sum, [, count]) => sum + count, 0);
+
+  const data = movementEntries.map(([name, count], index) => {
+    // Clean the name but ensure it's not empty
+    let cleanedName = name.trim().replace(/['"[\]]/g, '');
+    
+    // If name becomes empty after cleaning, use original name
+    if (cleanedName === '') {
+      cleanedName = name.trim() || 'Unknown';
+    }
+    
+    // Calculate percentage
+    const percentage = Math.round((count / totalCount) * 100);
+    
+    return {
+      name: cleanedName,
+      population: percentage, // Use percentage for the pie chart calculation
+      count: count, // Keep original count for reference
+      color: colors[index % colors.length],
+      legendFontColor: '#999999',
+      legendFontSize: 12,
+    };
+  });
+
+  return {
+    data,
+    hasData: true,
   };
 };
 
@@ -159,64 +173,58 @@ const processRoutesByGrade = (sessions: ClimbingSession[], selectedMonth: number
   };
 };
 
-const processGradeAverageByWeek = (sessions: ClimbingSession[], selectedMonth: number, selectedYear: number) => {
-  const selectedMonthSessions = sessions.filter(session => {
-    const sessionDate = new Date(session.when);
-    return sessionDate.getMonth() === selectedMonth && sessionDate.getFullYear() === selectedYear && session.grade;
-  });
 
-  // Group sessions by week
-  const weeklyStats = selectedMonthSessions.reduce((acc, session) => {
-    const sessionDate = new Date(session.when);
-    const weekStart = new Date(sessionDate);
-    weekStart.setDate(sessionDate.getDate() - sessionDate.getDay()); // Start of week (Sunday)
-    const weekKey = `${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
+const processAttemptCompletedPercentage = (sessions: ClimbingSession[]) => {
+  // Group sessions by month
+  const sessionsByMonth = sessions.reduce((acc, session) => {
+    if (!session.completion) return acc;
     
-    if (!acc[weekKey]) acc[weekKey] = [];
-    if (session.grade) acc[weekKey].push(gradeToNumeric(session.grade));
+    const sessionDate = new Date(session.when);
+    const monthKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`;
+    const monthLabel = sessionDate.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+    
+    if (!acc[monthKey]) {
+      acc[monthKey] = {
+        label: monthLabel,
+        completed: 0,
+        attempt: 0,
+      };
+    }
+    
+    if (session.completion === 'Completed') {
+      acc[monthKey].completed += 1;
+    } else if (session.completion === 'Attempt') {
+      acc[monthKey].attempt += 1;
+    }
     
     return acc;
-  }, {} as Record<string, number[]>);
+  }, {} as Record<string, { label: string; completed: number; attempt: number }>);
 
-  const weeks = Object.keys(weeklyStats).sort();
-  const averages = weeks.map(week => {
-    const grades = weeklyStats[week];
-    return grades.length > 0 ? grades.reduce((sum, grade) => sum + grade, 0) / grades.length : 0;
-  });
+  // Sort months chronologically and get last 6 months
+  const sortedMonths = Object.entries(sessionsByMonth)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6);
+
+  if (sortedMonths.length === 0) {
+    return {
+      labels: ['No Data'],
+      legend: ['Completed', 'Attempt'],
+      data: [[0, 0]],
+      barColors: [THEME_COLORS.bluePrimary, '#FF5B30'],
+      hasData: false,
+    };
+  }
+
+  const labels = sortedMonths.map(([, data]) => data.label);
+  const stackedData = sortedMonths.map(([, data]) => [data.completed, data.attempt]);
 
   return {
-    labels: weeks.map(week => `W${week}`),
-    datasets: [{
-      data: averages,
-    }],
+    labels,
+    legend: ['Completed', 'Attempt'],
+    data: stackedData,
+    barColors: [THEME_COLORS.bluePrimary, '#FF5B30'],
+    hasData: true,
   };
-};
-
-const processAttemptCompletedPercentage = (sessions: ClimbingSession[], selectedMonth: number, selectedYear: number) => {
-  const selectedMonthSessions = sessions.filter(session => {
-    const sessionDate = new Date(session.when);
-    return sessionDate.getMonth() === selectedMonth && sessionDate.getFullYear() === selectedYear && session.completion;
-  });
-
-  const completionStats = selectedMonthSessions.reduce((acc, session) => {
-    const completion = session.completion || 'Unknown';
-    acc[completion] = (acc[completion] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const colors = {
-    'Completed': THEME_COLORS.green,
-    'Attempt': THEME_COLORS.orange,
-    'Unknown': '#E0E0E0'
-  };
-
-  return Object.entries(completionStats).map(([completion, count]) => ({
-    name: completion,
-    population: count,
-    color: colors[completion as keyof typeof colors] || '#E0E0E0',
-    legendFontColor: '#7F7F7F',
-    legendFontSize: 12,
-  }));
 };
 
 // Calculate streak of consecutive weeks with at least one session
@@ -462,7 +470,7 @@ const chartConfig = {
   strokeWidth: 2,
   barPercentage: 0.7,
   useShadowColorFromDataset: false,
-  decimalPlaces: 1,
+  decimalPlaces: 0,
   style: {
     borderRadius: 16,
   },
@@ -474,6 +482,16 @@ const chartConfig = {
   propsForBackgroundLines: {
     strokeDasharray: '',
     strokeOpacity: 0.1,
+  },
+  propsForHorizontalLabels: {
+    fontSize: 12,
+    color: '#999999',
+    fontWeight: 'bold',
+  },
+  propsForVerticalLabels: {
+    fontSize: 12,
+    color: '#999999',
+    fontWeight: 'bold',
   },
 };
 
@@ -542,13 +560,9 @@ export default function AnalyticsCharts() {
   }
 
   // Process data for charts
-  const gradeProgression = processGradeProgression(sessions);
-  const timeOfDayStats = processTimeOfDay(sessions);
-  const climbingTypesData = processClimbingTypes(sessions);
-  const technicalSkills = processTechnicalSkills(sessions);
-  const locationStats = processLocationStats(sessions);
   const completionByGrade = processCompletionByGrade(sessions);
   const sessionsTimeline = processSessionsTimeline(sessions, sessionTimelinePeriod);
+  const movementData = processMovementData(sessions);
   
   // Month navigation functions
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -604,8 +618,7 @@ export default function AnalyticsCharts() {
   
   // Process data for Performance section
   const routesByGradeData = processRoutesByGrade(sessions, selectedMonth, selectedYear);
-  const gradeAverageByWeekData = processGradeAverageByWeek(sessions, selectedMonth, selectedYear);
-  const attemptCompletedData = processAttemptCompletedPercentage(sessions, selectedMonth, selectedYear);
+  const attemptCompletedData = processAttemptCompletedPercentage(sessions);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -684,6 +697,7 @@ export default function AnalyticsCharts() {
               backgroundGradientTo: '#ffffff',
               backgroundGradientToOpacity: 1,
               color: () => THEME_COLORS.bluePrimary,
+              labelColor: () => '#999999', // Override label color to gray
               fillShadowGradientFrom: THEME_COLORS.bluePrimary,
               fillShadowGradientFromOpacity: 0.4,
               fillShadowGradientTo: THEME_COLORS.bluePrimary,
@@ -691,7 +705,7 @@ export default function AnalyticsCharts() {
               strokeWidth: 1,
               barPercentage: 1,
               useShadowColorFromDataset: false,
-              decimalPlaces: 1,
+              decimalPlaces: 0,
               style: {
                 borderRadius: 0,
                 // paddingLeft: 0, // Internal left padding of the chart
@@ -706,8 +720,10 @@ export default function AnalyticsCharts() {
                 strokeOpacity: 0.5,
                 stroke: '#E0E0E0',
               },
-              propsForVerticalLabels: {
-                fontSize: 0, // Hide vertical labels completely
+              propsForHorizontalLabels: {
+                fontSize: 12,
+                color: '#999999',
+                fontWeight: 'bold',
               },
             }}
             bezier
@@ -877,52 +893,64 @@ export default function AnalyticsCharts() {
           <Text style={styles.chartTitle}>Routes by Grade</Text>
           <Text style={styles.chartSubtitle}>Distribution of routes attempted by difficulty</Text>
           {routesByGradeData.labels.length > 0 ? (
-            <BarChart
-              data={routesByGradeData}
-              width={chartWidth} // Increase width to compensate
-              height={220}
-              yLabelsOffset={45} // Smaller offset to avoid overlap
-              // xLabelsOffset={-15} // Move X axis labels left too
-              chartConfig={{
-                backgroundGradientFrom: '#ffffff',
-                backgroundGradientFromOpacity: 1,
-                backgroundGradientTo: '#ffffff',
-                backgroundGradientToOpacity: 1,
-                color: (opacity = 1) => THEME_COLORS.bluePrimary,
-                fillShadowGradientFrom: THEME_COLORS.bluePrimary,
-                fillShadowGradientTo: THEME_COLORS.bluePrimary,
-                fillShadowGradientFromOpacity: 1,
-                fillShadowGradientToOpacity: 1,
-                strokeWidth: 2,
-                barPercentage: 1,
-                useShadowColorFromDataset: false,
-                decimalPlaces: 1,
-                style: {
+            <View style={styles.chartWrapper}>
+              <BarChart
+                data={routesByGradeData}
+                width={chartWidth} // Increase width to compensate
+                height={220}
+                yLabelsOffset={45} // Smaller offset to avoid overlap
+                // xLabelsOffset={-15} // Move X axis labels left too
+                chartConfig={{
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientFromOpacity: 1,
+                  backgroundGradientTo: '#ffffff',
+                  backgroundGradientToOpacity: 1,
+                  color: (opacity = 1) => THEME_COLORS.bluePrimary,
+                  labelColor: () => '#999999', // Override label color to gray
+                  fillShadowGradientFrom: THEME_COLORS.bluePrimary,
+                  fillShadowGradientTo: THEME_COLORS.bluePrimary,
+                  fillShadowGradientFromOpacity: 0.9,
+                  fillShadowGradientToOpacity: 1,
+                  strokeWidth: 0, // Remove stroke to clean up bars
+                  barPercentage: 0.6, // Further reduce bar width to create more rounded appearance
+                  useShadowColorFromDataset: false,
+                  decimalPlaces: 0,
+                  style: {
+                    borderRadius: 12,
+                    paddingLeft: 5, // Minimal left padding to move bars closer to Y-axis
+                    paddingRight: 40, // Add right padding to balance increased width
+                  },
+                  propsForBackgroundLines: {
+                    strokeDasharray: '5,5',
+                    strokeOpacity: 0.7,
+                    stroke: '#E0E0E0',
+                  },
+                  propsForHorizontalLabels: {
+                    fontSize: 12,
+                    color: '#999999',
+                    fontWeight: 'bold',
+                  },
+                  propsForVerticalLabels: {
+                    fontSize: 12,
+                    color: '#999999',
+                    fontWeight: 'bold',
+                  },
+                }}
+                style={{
+                  ...styles.roundedBars,
                   borderRadius: 12,
-                  paddingLeft: 5, // Minimal left padding to move bars closer to Y-axis
-                  paddingRight: 40, // Add right padding to balance increased width
-                },
-                propsForBackgroundLines: {
-                  strokeDasharray: '5,5',
-                  strokeOpacity: 0.7,
-                  stroke: '#E0E0E0',
-                },
-                propsForHorizontalLabels: {
-                  fontSize: 12,
-                  color: '#666666',
-                },
-              }}
-              style={{
-                borderRadius: 12,
-                overflow: 'hidden',
-                // marginLeft: -15, // Smaller negative margin
-              }}
-              yAxisLabel=""
-              yAxisSuffix=""
-              fromZero
-              withInnerLines={true}
-              withCustomBarColorFromData={false}
-            />
+                  overflow: 'hidden',
+                }}
+                yAxisLabel=""
+                yAxisSuffix=""
+                fromZero
+                withInnerLines={true}
+                withVerticalLabels={true}
+                withHorizontalLabels={true}
+                withCustomBarColorFromData={false}
+                segments={4} // Add segments for better grid
+              />
+            </View>
           ) : (
             <View style={styles.noDataContainer}>
               <Text style={styles.noDataText}>No routes found for this month</Text>
@@ -930,163 +958,210 @@ export default function AnalyticsCharts() {
           )}
         </View>
 
-        {/* Grade Average by Week */}
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Average Grade by Week</Text>
-          <Text style={styles.chartSubtitle}>Weekly performance trends</Text>
-          {gradeAverageByWeekData.labels.length > 0 ? (
-            <LineChart
-              data={gradeAverageByWeekData}
-              width={chartWidth}
-              height={220}
-              chartConfig={{
-                ...chartConfig,
-                color: (opacity = 1) => `${THEME_COLORS.green}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`,
-              }}
-              bezier
-              style={styles.chart}
-              yAxisSuffix=""
-              fromZero={false}
-            />
-          ) : (
-            <View style={styles.noDataContainer}>
-              <Text style={styles.noDataText}>No grade data found for this month</Text>
-            </View>
-          )}
-        </View>
 
-        {/* Attempt vs Completed Percentage */}
+        {/* Success Rate */}
         <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Success Rate</Text>
-          <Text style={styles.chartSubtitle}>Attempts vs completed routes</Text>
-          {attemptCompletedData.length > 0 ? (
-            <PieChart
-              data={attemptCompletedData}
-              width={chartWidth}
-              height={220}
-              chartConfig={chartConfig}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              style={styles.chart}
+          <Text style={styles.chartTitle}>Success Rate by Month</Text>
+          <Text style={styles.chartSubtitle}>Monthly attempts vs completed routes</Text>
+          {attemptCompletedData.hasData ? (
+            <View>
+              <StackedBarChart
+                data={attemptCompletedData}
+                width={chartWidth}
+                height={220}
+                yLabelsOffset={25}
+                hideLegend={true}
+                chartConfig={{
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientFromOpacity: 1,
+                  backgroundGradientTo: '#ffffff',
+                  backgroundGradientToOpacity: 1,
+                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  labelColor: () => '#999999',
+                  strokeWidth: 0,
+                  barPercentage: 0.7,
+                  useShadowColorFromDataset: false,
+                  decimalPlaces: 0,
+                  style: {
+                    borderRadius: 12,
+                  },
+                  propsForBackgroundLines: {
+                    strokeDasharray: '5,5',
+                    strokeOpacity: 0.5,
+                    stroke: '#E0E0E0',
+                  },
+                  propsForHorizontalLabels: {
+                    fontSize: 12,
+                    color: '#999999',
+                    fontWeight: 'bold',
+                  },
+                  propsForVerticalLabels: {
+                    fontSize: 12,
+                    color: '#999999',
+                    fontWeight: 'bold',
+                  },
+                  propsForLabels: {
+                    fontSize: 0, // Hide bar values
+                  },
+                }}
+                style={{
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                }}
+              yAxisLabel=""
+              yAxisSuffix=""
+              withHorizontalLabels={true}
+              withVerticalLabels={true}
             />
+              
+              {/* Custom Legend Below Chart */}
+              <View style={styles.legendContainerBelow}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: THEME_COLORS.bluePrimary }]} />
+                  <Text style={[styles.legendText, { color: '#999999' }]}>Completed</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: '#FF5B30' }]} />
+                  <Text style={[styles.legendText, { color: '#999999' }]}>Attempt</Text>
+                </View>
+              </View>
+            </View>
           ) : (
             <View style={styles.noDataContainer}>
-              <Text style={styles.noDataText}>No completion data found for this month</Text>
+              <Text style={styles.noDataText}>No completion data found</Text>
             </View>
           )}
         </View>
       </View>
       
-      {/* Performance Progress */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Performance Progress</Text>
-        <Text style={styles.chartSubtitle}>Grade evolution over time</Text>
-        <LineChart
-          data={gradeProgression}
-          width={chartWidth}
-          height={220}
-          chartConfig={chartConfig}
-          bezier
-          style={styles.chart}
-          yAxisSuffix=""
-          fromZero={false}
-        />
-      </View>
-
-      {/* Activity Analysis */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Activity Analysis</Text>
-        <Text style={styles.chartSubtitle}>Sessions by time of day</Text>
-        <BarChart
-          data={timeOfDayStats}
-          width={chartWidth}
-          height={220}
-          chartConfig={{
-            ...chartConfig,
-            color: (opacity = 1) => `${THEME_COLORS.green}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`,
-          }}
-          style={styles.chart}
-          yAxisLabel=""
-          yAxisSuffix=""
-          fromZero
-        />
-      </View>
-
-      {/* Technical Performance */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Technical Performance</Text>
-        <Text style={styles.chartSubtitle}>Climbing type distribution</Text>
-        <PieChart
-          data={climbingTypesData}
-          width={chartWidth}
-          height={220}
-          chartConfig={chartConfig}
-          accessor="population"
-          backgroundColor="transparent"
-          paddingLeft="15"
-          style={styles.chart}
-        />
-      </View>
-
-      {/* Technical Skills */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Technical Skills</Text>
-        <Text style={styles.chartSubtitle}>Movement, grip, and footwork analysis</Text>
-        <ProgressChart
-          data={technicalSkills}
-          width={chartWidth}
-          height={220}
-          strokeWidth={16}
-          radius={32}
-          chartConfig={{
-            ...chartConfig,
-            color: (opacity = 1, index) => {
-              const themeColors = [THEME_COLORS.orange, THEME_COLORS.bluePrimary, THEME_COLORS.blueSecondary, THEME_COLORS.softRed];
-              return themeColors[(index || 0) % themeColors.length];
-            },
-          }}
-          style={styles.chart}
-        />
-      </View>
-
-      {/* Location Analytics */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Location Analytics</Text>
-        <Text style={styles.chartSubtitle}>Most visited climbing spots</Text>
-        <BarChart
-          data={locationStats}
-          width={chartWidth}
-          height={220}
-          chartConfig={{
-            ...chartConfig,
-            color: (opacity = 1) => `${THEME_COLORS.softRed}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`,
-          }}
-          style={styles.chart}
-          yAxisLabel=""
-          yAxisSuffix=""
-          fromZero
-          showValuesOnTopOfBars
-        />
-      </View>
 
       {/* Success Metrics */}
       <View style={styles.chartContainer}>
         <Text style={styles.chartTitle}>Success Metrics</Text>
-        <Text style={styles.chartSubtitle}>Completion rate by grade (%)</Text>
-        <BarChart
-          data={completionByGrade}
-          width={chartWidth}
-          height={220}
-          chartConfig={{
-            ...chartConfig,
-            color: (opacity = 1) => `${THEME_COLORS.blueSecondary}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`,
-          }}
-          style={styles.chart}
-          yAxisLabel=""
-          yAxisSuffix="%"
-          fromZero
-        />
+        <Text style={styles.chartSubtitle}>Sessions attempted vs completed by grade</Text>
+        {completionByGrade.hasData ? (
+          <View>
+            <StackedBarChart
+              data={completionByGrade}
+              width={chartWidth}
+              height={220}
+              yLabelsOffset={25}
+              hideLegend={true}
+              chartConfig={{
+                backgroundGradientFrom: '#ffffff',
+                backgroundGradientFromOpacity: 1,
+                backgroundGradientTo: '#ffffff',
+                backgroundGradientToOpacity: 1,
+                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                labelColor: () => '#999999',
+                strokeWidth: 0,
+                barPercentage: 0.7,
+                useShadowColorFromDataset: false,
+                decimalPlaces: 0,
+                style: {
+                  borderRadius: 12,
+                },
+                propsForBackgroundLines: {
+                  strokeDasharray: '5,5',
+                  strokeOpacity: 0.5,
+                  stroke: '#E0E0E0',
+                },
+                propsForHorizontalLabels: {
+                  fontSize: 12,
+                  color: '#999999',
+                  fontWeight: 'bold',
+                },
+                propsForVerticalLabels: {
+                  fontSize: 12,
+                  color: '#999999',
+                  fontWeight: 'bold',
+                },
+                propsForLabels: {
+                  fontSize: 0, // Hide bar values
+                },
+              }}
+              style={{
+                borderRadius: 12,
+                overflow: 'hidden',
+              }}
+              yAxisLabel=""
+              yAxisSuffix=""
+              withHorizontalLabels={true}
+              withVerticalLabels={true}
+            />
+            
+            {/* Custom Legend Below Chart */}
+            <View style={styles.legendContainerBelow}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: THEME_COLORS.bluePrimary }]} />
+                <Text style={[styles.legendText, { color: '#999999' }]}>Completed</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: '#FF5B30' }]} />
+                <Text style={[styles.legendText, { color: '#999999' }]}>Attempt</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.noDataContainer}>
+            <Text style={styles.noDataText}>No completion data found</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Movement Analytics */}
+      <View style={styles.chartContainer}>
+        <Text style={styles.chartTitle}>Movement Analytics</Text>
+        <Text style={styles.chartSubtitle}>Most used climbing movements (%)</Text>
+        {movementData.hasData ? (
+          <View>
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 }}>
+              <PieChart
+                data={movementData.data}
+                width={chartWidth}
+                height={200}
+                chartConfig={{
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientFromOpacity: 1,
+                  backgroundGradientTo: '#ffffff',
+                  backgroundGradientToOpacity: 1,
+                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  strokeWidth: 2,
+                  useShadowColorFromDataset: false,
+                  decimalPlaces: 0,
+                  propsForLabels: {
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                    color: '#ffffff',
+                  },
+                }}
+                accessor="population"
+                backgroundColor="transparent"
+                absolute
+                paddingLeft="60"
+                hasLegend={false}
+                avoidFalseZero={true}
+                style={{
+                  alignSelf: 'center',
+                }}
+              />
+            </View>
+            
+            {/* Custom Legend Below Chart */}
+            <View style={styles.movementLegendContainer}>
+              {movementData.data.map((item, index) => (
+                <View key={index} style={styles.movementLegendItem}>
+                  <View style={[styles.movementLegendColor, { backgroundColor: item.color }]} />
+                  <Text style={styles.movementLegendText}>{item.name} ({item.population}%)</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : (
+          <View style={styles.noDataContainer}>
+            <Text style={styles.noDataText}>No movement data found</Text>
+          </View>
+        )}
       </View>
 
     </ScrollView>
@@ -1178,6 +1253,38 @@ const styles = StyleSheet.create({
   roundedBars: {
     borderRadius: 12,
     overflow: 'hidden',
+  },
+  chartWrapper: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 20,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#666666',
+    fontWeight: '500',
+  },
+  legendContainerBelow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 16,
+    gap: 20,
   },
   streakCard: {
     backgroundColor: 'white',
@@ -1420,5 +1527,29 @@ const styles = StyleSheet.create({
   dropdownItemTextActive: {
     color: THEME_COLORS.bluePrimary,
     fontWeight: '600',
+  },
+  movementLegendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    paddingTop: 15,
+    paddingBottom: 5,
+    gap: 15,
+  },
+  movementLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  movementLegendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 2,
+    marginRight: 8,
+  },
+  movementLegendText: {
+    fontSize: 12,
+    color: '#999999',
+    fontWeight: '500',
   },
 });
