@@ -24,7 +24,7 @@ const gradeToNumeric = (grade: string | null): number => {
 
 const processGradeProgression = (sessions: ClimbingSession[]) => {
   const sessionsByMonth = sessions.reduce((acc, session) => {
-    const month = new Date(session.when).toLocaleDateString('en-US', { month: 'short' });
+    const month = new Date(session.when).toLocaleDateString('en-GB', { month: 'short' });
     if (!acc[month]) acc[month] = [];
     if (session.grade) acc[month].push(gradeToNumeric(session.grade));
     return acc;
@@ -134,6 +134,91 @@ const processCompletionByGrade = (sessions: ClimbingSession[]) => {
   };
 };
 
+// Performance section data processing functions
+const processRoutesByGrade = (sessions: ClimbingSession[], selectedMonth: number, selectedYear: number) => {
+  const selectedMonthSessions = sessions.filter(session => {
+    const sessionDate = new Date(session.when);
+    return sessionDate.getMonth() === selectedMonth && sessionDate.getFullYear() === selectedYear;
+  });
+
+  const gradeStats = selectedMonthSessions.reduce((acc, session) => {
+    if (session.grade) {
+      const grade = session.grade;
+      acc[grade] = (acc[grade] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  const sortedGrades = Object.keys(gradeStats).sort((a, b) => gradeToNumeric(a) - gradeToNumeric(b));
+  
+  return {
+    labels: sortedGrades,
+    datasets: [{
+      data: sortedGrades.map(grade => gradeStats[grade]),
+    }],
+  };
+};
+
+const processGradeAverageByWeek = (sessions: ClimbingSession[], selectedMonth: number, selectedYear: number) => {
+  const selectedMonthSessions = sessions.filter(session => {
+    const sessionDate = new Date(session.when);
+    return sessionDate.getMonth() === selectedMonth && sessionDate.getFullYear() === selectedYear && session.grade;
+  });
+
+  // Group sessions by week
+  const weeklyStats = selectedMonthSessions.reduce((acc, session) => {
+    const sessionDate = new Date(session.when);
+    const weekStart = new Date(sessionDate);
+    weekStart.setDate(sessionDate.getDate() - sessionDate.getDay()); // Start of week (Sunday)
+    const weekKey = `${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
+    
+    if (!acc[weekKey]) acc[weekKey] = [];
+    if (session.grade) acc[weekKey].push(gradeToNumeric(session.grade));
+    
+    return acc;
+  }, {} as Record<string, number[]>);
+
+  const weeks = Object.keys(weeklyStats).sort();
+  const averages = weeks.map(week => {
+    const grades = weeklyStats[week];
+    return grades.length > 0 ? grades.reduce((sum, grade) => sum + grade, 0) / grades.length : 0;
+  });
+
+  return {
+    labels: weeks.map(week => `W${week}`),
+    datasets: [{
+      data: averages,
+    }],
+  };
+};
+
+const processAttemptCompletedPercentage = (sessions: ClimbingSession[], selectedMonth: number, selectedYear: number) => {
+  const selectedMonthSessions = sessions.filter(session => {
+    const sessionDate = new Date(session.when);
+    return sessionDate.getMonth() === selectedMonth && sessionDate.getFullYear() === selectedYear && session.completion;
+  });
+
+  const completionStats = selectedMonthSessions.reduce((acc, session) => {
+    const completion = session.completion || 'Unknown';
+    acc[completion] = (acc[completion] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const colors = {
+    'Completed': THEME_COLORS.green,
+    'Attempt': THEME_COLORS.orange,
+    'Unknown': '#E0E0E0'
+  };
+
+  return Object.entries(completionStats).map(([completion, count]) => ({
+    name: completion,
+    population: count,
+    color: colors[completion as keyof typeof colors] || '#E0E0E0',
+    legendFontColor: '#7F7F7F',
+    legendFontSize: 12,
+  }));
+};
+
 // Calculate streak of consecutive weeks with at least one session
 const calculateWeeklyStreak = (sessions: ClimbingSession[]): number => {
   if (sessions.length === 0) return 0;
@@ -167,6 +252,149 @@ const calculateWeeklyStreak = (sessions: ClimbingSession[]): number => {
   }
 
   return streak;
+};
+
+// Process sessions timeline data by selected period
+const processSessionsTimeline = (sessions: ClimbingSession[], period: '7d' | '30d' | '6m' | '1y' | 'all') => {
+  if (sessions.length === 0) return { labels: [], datasets: [{ data: [] }] };
+
+  const now = new Date();
+  let startDate = new Date();
+  let groupBy: 'day' | 'week' | 'month' = 'day';
+  let dateFormat = '';
+
+  // Set start date and grouping based on period
+  switch (period) {
+    case '7d':
+      startDate.setDate(now.getDate() - 6);
+      groupBy = 'day';
+      dateFormat = 'MM/DD';
+      break;
+    case '30d':
+      startDate.setDate(now.getDate() - 29);
+      groupBy = 'day';
+      dateFormat = 'MM/DD';
+      break;
+    case '6m':
+      startDate.setMonth(now.getMonth() - 6);
+      groupBy = 'month';
+      dateFormat = 'MMM';
+      break;
+    case '1y':
+      startDate.setFullYear(now.getFullYear() - 1);
+      groupBy = 'month';
+      dateFormat = 'MMM';
+      break;
+    case 'all':
+      if (sessions.length > 0) {
+        startDate = new Date(Math.min(...sessions.map(s => new Date(s.when).getTime())));
+        groupBy = 'month';
+        dateFormat = 'MMM YY';
+      }
+      break;
+  }
+
+  // Filter sessions within the period
+  const filteredSessions = sessions.filter(session => {
+    const sessionDate = new Date(session.when);
+    return sessionDate >= startDate && sessionDate <= now;
+  });
+
+  // Group sessions by time period
+  const groupedSessions: { [key: string]: number } = {};
+  
+  if (groupBy === 'day') {
+    // Generate all days in the range
+    for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
+      const key = d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+      groupedSessions[key] = 0;
+    }
+    
+    // Count sessions per day
+    filteredSessions.forEach(session => {
+      const sessionDate = new Date(session.when);
+      const key = sessionDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+      if (groupedSessions[key] !== undefined) {
+        groupedSessions[key]++;
+      }
+    });
+  } else if (groupBy === 'month') {
+    // Create array to maintain chronological order
+    const monthsArray: { date: Date, key: string, count: number }[] = [];
+    
+    // Generate all months in the range
+    for (let d = new Date(startDate.getFullYear(), startDate.getMonth(), 1); d <= now; d.setMonth(d.getMonth() + 1)) {
+      const key = period === 'all' 
+        ? d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
+        : (period === '1y' ? d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }) 
+           : d.toLocaleDateString('en-GB', { month: 'short' }));
+      monthsArray.push({ date: new Date(d), key, count: 0 });
+    }
+    
+    // Count sessions per month
+    filteredSessions.forEach(session => {
+      const sessionDate = new Date(session.when);
+      const key = period === 'all'
+        ? sessionDate.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
+        : (period === '1y' ? sessionDate.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
+           : sessionDate.toLocaleDateString('en-GB', { month: 'short' }));
+      
+      const monthEntry = monthsArray.find(m => m.key === key);
+      if (monthEntry) {
+        monthEntry.count++;
+      }
+    });
+    
+    // Sort by date to ensure chronological order
+    monthsArray.sort((a, b) => a.date.getTime() - b.date.getTime());
+    
+    // Use the chronologically ordered data directly
+    const orderedLabels = monthsArray.map(m => m.key);
+    const orderedData = monthsArray.map(m => m.count);
+    
+    // Apply label reduction logic for periods with many data points
+    let displayLabels = orderedLabels;
+    let displayData = orderedData;
+    if (orderedLabels.length > 5) {
+      const step = Math.ceil(orderedLabels.length / 5);
+      displayLabels = orderedLabels.map((label, index) => 
+        index % step === 0 ? label : ''
+      );
+      // Keep all data points, just hide some labels
+      displayData = orderedData;
+    }
+    
+    return {
+      labels: displayLabels,
+      datasets: [{
+        data: displayData,
+        color: () => THEME_COLORS.bluePrimary,
+        strokeWidth: 2,
+      }],
+    };
+  }
+
+  const labels = Object.keys(groupedSessions);
+  const data = Object.values(groupedSessions);
+
+  // Reduce labels to prevent overlap on X-axis
+  let displayLabels = labels;
+  if (labels.length > 5) {
+    // For periods with many data points, show only every nth label
+    const step = Math.ceil(labels.length / 5); // Show maximum 5 labels
+    displayLabels = labels.map((label, index) => 
+      index % step === 0 ? label : ''
+    );
+  }
+
+  return {
+    labels: displayLabels,
+    datasets: [{
+      data,
+      color: () => THEME_COLORS.bluePrimary,
+      strokeWidth: 2,
+    }],
+  };
 };
 
 // Calculate selected month metrics
@@ -256,6 +484,10 @@ export default function AnalyticsCharts() {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  
+  // State for session timeline filter
+  const [sessionTimelinePeriod, setSessionTimelinePeriod] = useState<'7d' | '30d' | '6m' | '1y' | 'all'>('30d');
+  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -315,6 +547,7 @@ export default function AnalyticsCharts() {
   const technicalSkills = processTechnicalSkills(sessions);
   const locationStats = processLocationStats(sessions);
   const completionByGrade = processCompletionByGrade(sessions);
+  const sessionsTimeline = processSessionsTimeline(sessions, sessionTimelinePeriod);
   
   // Month navigation functions
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -344,7 +577,18 @@ export default function AnalyticsCharts() {
   
   const getMonthLabel = () => {
     const date = new Date(selectedYear, selectedMonth);
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    return date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  };
+
+  const getPeriodLabel = () => {
+    const periodLabels = {
+      '7d': 'Last 7 days',
+      '30d': 'Last 30 days',
+      '6m': 'Last 6 months',
+      '1y': 'Last year',
+      'all': 'All time',
+    };
+    return periodLabels[sessionTimelinePeriod];
   };
   
   const canNavigateNext = () => {
@@ -356,6 +600,11 @@ export default function AnalyticsCharts() {
   const weeklyStreak = calculateWeeklyStreak(sessions);
   const selectedMonthMetrics = calculateSelectedMonthMetrics(sessions, selectedMonth, selectedYear);
   const markedDates = generateMarkedDates(sessions, selectedMonth, selectedYear);
+  
+  // Process data for Performance section
+  const routesByGradeData = processRoutesByGrade(sessions, selectedMonth, selectedYear);
+  const gradeAverageByWeekData = processGradeAverageByWeek(sessions, selectedMonth, selectedYear);
+  const attemptCompletedData = processAttemptCompletedPercentage(sessions, selectedMonth, selectedYear);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -370,6 +619,107 @@ export default function AnalyticsCharts() {
         <Text style={styles.streakNumber}>{weeklyStreak}</Text>
         <Text style={styles.streakLabel}>Week Streak</Text>
         <Text style={styles.streakSubtitle}>Consecutive weeks with sessions</Text>
+      </View>
+
+      {/* Sessions Timeline */}
+      <View style={styles.chartContainer}>
+        {/* Chart Header with Title and Period Dropdown */}
+        <View style={styles.chartHeader}>
+          <Text style={styles.chartTitle}>Session Timeline</Text>
+          <View style={styles.periodSelectorContainer}>
+            <TouchableOpacity 
+              style={styles.periodSelector}
+              onPress={() => setShowPeriodDropdown(!showPeriodDropdown)}
+            >
+              <Text style={styles.periodLabel}>{getPeriodLabel()}</Text>
+              <Text style={styles.dropdownArrow}>{'▼'}</Text>
+            </TouchableOpacity>
+            
+            {showPeriodDropdown && (
+              <View style={styles.dropdown}>
+                {[
+                  { key: '7d', label: 'Last 7 days' },
+                  { key: '30d', label: 'Last 30 days' },
+                  { key: '6m', label: 'Last 6 months' },
+                  { key: '1y', label: 'Last year' },
+                  { key: 'all', label: 'All time' },
+                ].map((period) => (
+                  <TouchableOpacity
+                    key={period.key}
+                    style={[
+                      styles.dropdownItem,
+                      sessionTimelinePeriod === period.key && styles.dropdownItemActive,
+                    ]}
+                    onPress={() => {
+                      setSessionTimelinePeriod(period.key as '7d' | '30d' | '6m' | '1y' | 'all');
+                      setShowPeriodDropdown(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        sessionTimelinePeriod === period.key && styles.dropdownItemTextActive,
+                      ]}
+                    >
+                      {period.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Timeline Chart */}
+        {sessionsTimeline.datasets[0].data.length > 0 ? (
+          <LineChart
+            data={sessionsTimeline}
+            width={chartWidth}
+            height={220}
+            chartConfig={{
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientFromOpacity: 1,
+              backgroundGradientTo: '#ffffff',
+              backgroundGradientToOpacity: 1,
+              color: () => THEME_COLORS.bluePrimary,
+              fillShadowGradientFrom: THEME_COLORS.bluePrimary,
+              fillShadowGradientFromOpacity: 0.4,
+              fillShadowGradientTo: THEME_COLORS.bluePrimary,
+              fillShadowGradientToOpacity: 0.0,
+              strokeWidth: 1,
+              barPercentage: 1,
+              useShadowColorFromDataset: false,
+              decimalPlaces: 1,
+              style: {
+                borderRadius: 0,
+              },
+              propsForDots: {
+                r: '4',
+                strokeWidth: '2',
+                stroke: THEME_COLORS.bluePrimary,
+              },
+              propsForBackgroundLines: {
+                strokeDasharray: '5,5',
+                strokeOpacity: 0.5,
+                stroke: '#E0E0E0',
+              },
+            }}
+            bezier
+            style={styles.chart}
+            yAxisSuffix=""
+            fromZero={true}
+            withShadow={true}
+            withInnerLines={true}
+            withOuterLines={true }
+            withHorizontalLabels={true}
+            withVerticalLabels={true}
+            withDots={false}
+          />
+        ) : (
+          <View style={styles.noDataContainer}>
+            <Text style={styles.noDataText}>No sessions found for this period</Text>
+          </View>
+        )}
       </View>
 
       {/* Activity Section */}
@@ -505,6 +855,107 @@ export default function AnalyticsCharts() {
               textDayHeaderFontSize: 12,
             }}
           />
+        </View>
+      </View>
+      
+      {/* Performance Section */}
+      <View style={styles.sectionContainer}>
+        <Text style={styles.sectionTitle}>Performance</Text>
+        
+        {/* Routes by Grade */}
+        <View style={[styles.chartContainer, styles.firstChartInSection]}>
+          <Text style={styles.chartTitle}>Routes by Grade</Text>
+          <Text style={styles.chartSubtitle}>Distribution of routes attempted by difficulty</Text>
+          {routesByGradeData.labels.length > 0 ? (
+            <BarChart
+              data={routesByGradeData}
+              width={chartWidth}
+              height={220}
+              chartConfig={{
+                backgroundGradientFrom: '#ffffff',
+                backgroundGradientFromOpacity: 1,
+                backgroundGradientTo: '#ffffff',
+                backgroundGradientToOpacity: 1,
+                color: (opacity = 1) => THEME_COLORS.bluePrimary,
+                fillShadowGradientFrom: THEME_COLORS.bluePrimary,
+                fillShadowGradientTo: THEME_COLORS.bluePrimary,
+                fillShadowGradientFromOpacity: 1,
+                fillShadowGradientToOpacity: 1,
+                strokeWidth: 2,
+                barPercentage: 1,
+                useShadowColorFromDataset: false,
+                decimalPlaces: 1,
+                style: {
+                  borderRadius: 12,
+                  paddingLeft: 10,
+                  paddingRight: 10,
+                },
+                propsForBackgroundLines: {
+                  strokeDasharray: '5,5',
+                  strokeOpacity: 0.7,
+                  stroke: '#E0E0E0',
+                },
+              }}
+              style={styles.roundedBars}
+              yAxisLabel=""
+              yAxisSuffix=""
+              fromZero
+              showValuesOnTopOfBars
+              withInnerLines={true}
+              withCustomBarColorFromData={false}
+            />
+          ) : (
+            <View style={styles.noDataContainer}>
+              <Text style={styles.noDataText}>No routes found for this month</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Grade Average by Week */}
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>Average Grade by Week</Text>
+          <Text style={styles.chartSubtitle}>Weekly performance trends</Text>
+          {gradeAverageByWeekData.labels.length > 0 ? (
+            <LineChart
+              data={gradeAverageByWeekData}
+              width={chartWidth}
+              height={220}
+              chartConfig={{
+                ...chartConfig,
+                color: (opacity = 1) => `${THEME_COLORS.green}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`,
+              }}
+              bezier
+              style={styles.chart}
+              yAxisSuffix=""
+              fromZero={false}
+            />
+          ) : (
+            <View style={styles.noDataContainer}>
+              <Text style={styles.noDataText}>No grade data found for this month</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Attempt vs Completed Percentage */}
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>Success Rate</Text>
+          <Text style={styles.chartSubtitle}>Attempts vs completed routes</Text>
+          {attemptCompletedData.length > 0 ? (
+            <PieChart
+              data={attemptCompletedData}
+              width={chartWidth}
+              height={220}
+              chartConfig={chartConfig}
+              accessor="population"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              style={styles.chart}
+            />
+          ) : (
+            <View style={styles.noDataContainer}>
+              <Text style={styles.noDataText}>No completion data found for this month</Text>
+            </View>
+          )}
         </View>
       </View>
       
@@ -705,6 +1156,10 @@ const styles = StyleSheet.create({
   chart: {
     borderRadius: 8,
   },
+  roundedBars: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
   streakCard: {
     backgroundColor: 'white',
     borderRadius: 12,
@@ -861,5 +1316,90 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     margin: 2,
+  },
+  firstChartInSection: {
+    marginTop: 8,
+  },
+  noDataContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#7f8c8d',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    minHeight: 32,
+  },
+  periodSelectorContainer: {
+    backgroundColor: `${THEME_COLORS.bluePrimary}20`,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-end',
+    position: 'relative',
+  },
+  periodSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 32,
+    paddingHorizontal: 8,
+  },
+  periodLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME_COLORS.bluePrimary,
+    lineHeight: 32,
+    height: 32,
+    textAlignVertical: 'center',
+  },
+  dropdownArrow: {
+    color: THEME_COLORS.bluePrimary,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  dropdown: {
+    position: 'absolute',
+    top: 40,
+    right: 0,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingVertical: 8,
+    minWidth: 150,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  dropdownItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  dropdownItemActive: {
+    backgroundColor: `${THEME_COLORS.bluePrimary}10`,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#2c3e50',
+  },
+  dropdownItemTextActive: {
+    color: THEME_COLORS.bluePrimary,
+    fontWeight: '600',
   },
 });
