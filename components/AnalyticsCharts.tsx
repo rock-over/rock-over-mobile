@@ -677,6 +677,7 @@ export default function AnalyticsCharts() {
             data={sessionsTimeline}
             width={chartWidth}
             height={220}
+            yLabelsOffset={20} 
             chartConfig={{
               backgroundGradientFrom: '#ffffff',
               backgroundGradientFromOpacity: 1,
@@ -693,6 +694,7 @@ export default function AnalyticsCharts() {
               decimalPlaces: 1,
               style: {
                 borderRadius: 0,
+                // paddingLeft: 0, // Internal left padding of the chart
               },
               propsForDots: {
                 r: '4',
@@ -704,16 +706,23 @@ export default function AnalyticsCharts() {
                 strokeOpacity: 0.5,
                 stroke: '#E0E0E0',
               },
+              propsForVerticalLabels: {
+                fontSize: 0, // Hide vertical labels completely
+              },
             }}
             bezier
-            style={styles.chart}
+            style={{
+              borderRadius: 8,
+              marginLeft: -20,
+
+            }}
             yAxisSuffix=""
             fromZero={true}
             withShadow={true}
-            withInnerLines={true}
-            withOuterLines={true }
+            withOuterLines={false}
             withHorizontalLabels={true}
-            withVerticalLabels={true}
+            withVerticalLabels={false}
+            withVerticalLines={false}
             withDots={false}
           />
         ) : (
@@ -870,8 +879,10 @@ export default function AnalyticsCharts() {
           {routesByGradeData.labels.length > 0 ? (
             <BarChart
               data={routesByGradeData}
-              width={chartWidth}
+              width={chartWidth} // Increase width to compensate
               height={220}
+              yLabelsOffset={45} // Smaller offset to avoid overlap
+              // xLabelsOffset={-15} // Move X axis labels left too
               chartConfig={{
                 backgroundGradientFrom: '#ffffff',
                 backgroundGradientFromOpacity: 1,
@@ -888,20 +899,27 @@ export default function AnalyticsCharts() {
                 decimalPlaces: 1,
                 style: {
                   borderRadius: 12,
-                  paddingLeft: 10,
-                  paddingRight: 10,
+                  paddingLeft: 5, // Minimal left padding to move bars closer to Y-axis
+                  paddingRight: 40, // Add right padding to balance increased width
                 },
                 propsForBackgroundLines: {
                   strokeDasharray: '5,5',
                   strokeOpacity: 0.7,
                   stroke: '#E0E0E0',
                 },
+                propsForHorizontalLabels: {
+                  fontSize: 12,
+                  color: '#666666',
+                },
               }}
-              style={styles.roundedBars}
+              style={{
+                borderRadius: 12,
+                overflow: 'hidden',
+                // marginLeft: -15, // Smaller negative margin
+              }}
               yAxisLabel=""
               yAxisSuffix=""
               fromZero
-              showValuesOnTopOfBars
               withInnerLines={true}
               withCustomBarColorFromData={false}
             />
