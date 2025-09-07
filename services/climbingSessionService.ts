@@ -68,7 +68,7 @@ export const climbingSessionService = {
       .from('climbing_sessions')
       .select('*')
       .eq('user_email', userEmail)
-      .order('created_at', { ascending: false });
+      .order('when', { ascending: false });
 
     if (error) {
       console.error('Erro ao buscar sessões:', error);

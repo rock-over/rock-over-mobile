@@ -234,7 +234,12 @@ export default function SessionsScreen() {
 
   const getSortedSessions = () => {
     if (!sortColumn || !sortDirection) {
-      return sessions;
+      // Por padrão, ordenar por data (mais recente primeiro)
+      return [...sessions].sort((a, b) => {
+        const dateA = new Date(a.when).getTime();
+        const dateB = new Date(b.when).getTime();
+        return dateB - dateA; // Mais recente primeiro
+      });
     }
 
     const sorted = [...sessions].sort((a, b) => {
@@ -654,7 +659,7 @@ export default function SessionsScreen() {
         ) : (
           /* Card View */
         <FlatList
-          data={sessions}
+          data={getSortedSessions()}
           renderItem={renderSessionCard}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}

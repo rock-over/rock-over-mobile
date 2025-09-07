@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   BarChart,
@@ -132,6 +133,102 @@ const processCompletionByGrade = (sessions: ClimbingSession[]) => {
   };
 };
 
+// Calculate streak of consecutive weeks with at least one session
+const calculateWeeklyStreak = (sessions: ClimbingSession[]): number => {
+  if (sessions.length === 0) return 0;
+
+  const today = new Date();
+  const currentWeekStart = new Date(today);
+  currentWeekStart.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
+  currentWeekStart.setHours(0, 0, 0, 0);
+
+  let streak = 0;
+  let checkWeek = new Date(currentWeekStart);
+
+  while (true) {
+    const weekEnd = new Date(checkWeek);
+    weekEnd.setDate(checkWeek.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    // Check if there's at least one session in this week
+    const hasSessionInWeek = sessions.some(session => {
+      const sessionDate = new Date(session.when);
+      return sessionDate >= checkWeek && sessionDate <= weekEnd;
+    });
+
+    if (hasSessionInWeek) {
+      streak++;
+      // Move to previous week
+      checkWeek.setDate(checkWeek.getDate() - 7);
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+};
+
+// Calculate current month metrics
+const calculateCurrentMonthMetrics = (sessions: ClimbingSession[]) => {
+  const now = new Date();
+  const currentMonthSessions = sessions.filter(session => {
+    const sessionDate = new Date(session.when);
+    return sessionDate.getMonth() === now.getMonth() && sessionDate.getFullYear() === now.getFullYear();
+  });
+
+  const sessionsThisMonth = currentMonthSessions.length;
+  const routesCompleted = currentMonthSessions.filter(s => s.completion === 'Completed').length;
+  const totalAttempts = currentMonthSessions.filter(s => s.completion === 'Attempt').length;
+  // Find the session with the highest completed grade
+  const completedSessions = currentMonthSessions.filter(s => s.grade && s.completion === 'Completed');
+  let maxGrade = '-';
+  if (completedSessions.length > 0) {
+    const maxSession = completedSessions.reduce((prev, current) => {
+      return gradeToNumeric(current.grade!) > gradeToNumeric(prev.grade!) ? current : prev;
+    });
+    maxGrade = maxSession.grade || '-';
+  }
+
+  return {
+    sessionsThisMonth,
+    routesCompleted,
+    totalAttempts,
+    maxGrade,
+  };
+};
+
+// Generate monthly activity calendar data
+const generateMonthlyCalendar = (sessions: ClimbingSession[]) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  
+  // Get first day and number of days in month
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  
+  // Create array of days
+  const days = [];
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    const hasSession = sessions.some(session => {
+      const sessionDate = new Date(session.when);
+      return sessionDate.getDate() === day && 
+             sessionDate.getMonth() === month && 
+             sessionDate.getFullYear() === year;
+    });
+    
+    days.push({
+      day,
+      hasSession,
+      isToday: day === now.getDate() && month === now.getMonth() && year === now.getFullYear(),
+    });
+  }
+  
+  return days;
+};
+
 const chartConfig = {
   backgroundGradientFrom: '#ffffff',
   backgroundGradientFromOpacity: 1,
@@ -160,9 +257,12 @@ export default function AnalyticsCharts() {
   const [sessions, setSessions] = useState<ClimbingSession[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadSessions();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadSessions();
+    }, [])
+  );
 
   const loadSessions = async () => {
     try {
@@ -215,6 +315,11 @@ export default function AnalyticsCharts() {
   const technicalSkills = processTechnicalSkills(sessions);
   const locationStats = processLocationStats(sessions);
   const completionByGrade = processCompletionByGrade(sessions);
+  
+  // Process data for new analytics features
+  const weeklyStreak = calculateWeeklyStreak(sessions);
+  const currentMonthMetrics = calculateCurrentMonthMetrics(sessions);
+  const monthlyCalendar = generateMonthlyCalendar(sessions);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -222,6 +327,57 @@ export default function AnalyticsCharts() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Dashboard</Text>
         <Text style={styles.headerSubtitle}>Track your climbing progress and insights</Text>
+      </View>
+      
+      {/* Weekly Streak Card */}
+      <View style={styles.streakCard}>
+        <Text style={styles.streakNumber}>{weeklyStreak}</Text>
+        <Text style={styles.streakLabel}>Week Streak</Text>
+        <Text style={styles.streakSubtitle}>Consecutive weeks with sessions</Text>
+      </View>
+
+      {/* Activity Section */}
+      <View style={styles.sectionContainer}>
+        <Text style={styles.sectionTitle}>Activity</Text>
+        
+        {/* Metrics Cards */}
+        <View style={styles.metricsRow}>
+          <View style={styles.metricCard}>
+            <Text style={styles.metricLabel}>Routes</Text>
+            <Text style={styles.metricNumber}>{currentMonthMetrics.sessionsThisMonth}</Text>
+          </View>
+          <View style={styles.metricCard}>
+            <Text style={styles.metricLabel}>Completed</Text>
+            <Text style={styles.metricNumber}>{currentMonthMetrics.routesCompleted}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.metricsRow}>
+          <View style={styles.metricCard}>
+            <Text style={styles.metricLabel}>Max grade completed</Text>
+            <Text style={styles.metricNumber}>{currentMonthMetrics.maxGrade}</Text>
+          </View>
+          <View style={styles.metricCard}>
+            <Text style={styles.metricLabel}>Attempts</Text>
+            <Text style={styles.metricNumber}>{currentMonthMetrics.totalAttempts}</Text>
+          </View>
+        </View>
+
+        {/* Monthly Activity Calendar */}
+        <View style={styles.calendarContainer}>
+          <Text style={styles.calendarTitle}>Current Month Activity</Text>
+          <View style={styles.calendarGrid}>
+            {monthlyCalendar.map((day, index) => (
+              <View key={index} style={[
+                styles.calendarDay,
+                {
+                  backgroundColor: day.hasSession ? THEME_COLORS.bluePrimary : '#E0E0E0',
+                },
+                day.isToday && styles.todayMarker
+              ]} />
+            ))}
+          </View>
+        </View>
       </View>
       
       {/* Performance Progress */}
@@ -420,5 +576,117 @@ const styles = StyleSheet.create({
   },
   chart: {
     borderRadius: 8,
+  },
+  streakCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 24,
+    marginBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  streakNumber: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: THEME_COLORS.bluePrimary,
+    marginBottom: 4,
+  },
+  streakLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 4,
+  },
+  streakSubtitle: {
+    fontSize: 12,
+    color: '#7f8c8d',
+    textAlign: 'center',
+  },
+  sectionContainer: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginBottom: 16,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  metricCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'flex-start',
+    flex: 1,
+    marginHorizontal: 6,
+    minHeight: 40,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  metricLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#7f8c8d',
+    marginBottom: 2,
+  },
+  metricNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: THEME_COLORS.bluePrimary,
+  },
+  calendarContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  calendarTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-evenly',
+    paddingHorizontal: 10,
+  },
+  calendarDay: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    margin: 4,
+  },
+  todayMarker: {
+    borderWidth: 2,
+    borderColor: THEME_COLORS.orange,
   },
 });

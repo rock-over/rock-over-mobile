@@ -62,18 +62,7 @@ export default function HomeWithTabs({ onLogout, userInfo }: HomeWithTabsProps) 
       >
         {(props) => <Home {...props} userInfo={userInfo} onLogout={onLogout} />}
       </Tab.Screen>
-      
-      <Tab.Screen
-        name="Analytics"
-        component={AnalyticsScreen}
-        options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color, size }) => (
-            <FontAwesome5 name="chart-line" size={size - 2} color={color} solid />
-          ),
-        }}
-      />
-      
+
       <Tab.Screen
         name="Sessions"
         component={SessionsScreen}
@@ -85,6 +74,19 @@ export default function HomeWithTabs({ onLogout, userInfo }: HomeWithTabsProps) 
         }}
       />
       
+      
+      <Tab.Screen
+        name="Dashboard"
+        component={AnalyticsScreen}
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesome5 name="chart-line" size={size - 2} color={color} solid />
+          ),
+        }}
+      />
+      
+
       <Tab.Screen
         name="Profile"
         options={{
