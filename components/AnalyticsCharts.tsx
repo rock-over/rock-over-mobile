@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import {
   BarChart,
@@ -169,19 +169,18 @@ const calculateWeeklyStreak = (sessions: ClimbingSession[]): number => {
   return streak;
 };
 
-// Calculate current month metrics
-const calculateCurrentMonthMetrics = (sessions: ClimbingSession[]) => {
-  const now = new Date();
-  const currentMonthSessions = sessions.filter(session => {
+// Calculate selected month metrics
+const calculateSelectedMonthMetrics = (sessions: ClimbingSession[], selectedMonth: number, selectedYear: number) => {
+  const selectedMonthSessions = sessions.filter(session => {
     const sessionDate = new Date(session.when);
-    return sessionDate.getMonth() === now.getMonth() && sessionDate.getFullYear() === now.getFullYear();
+    return sessionDate.getMonth() === selectedMonth && sessionDate.getFullYear() === selectedYear;
   });
 
-  const sessionsThisMonth = currentMonthSessions.length;
-  const routesCompleted = currentMonthSessions.filter(s => s.completion === 'Completed').length;
-  const totalAttempts = currentMonthSessions.filter(s => s.completion === 'Attempt').length;
+  const sessionsThisMonth = selectedMonthSessions.length;
+  const routesCompleted = selectedMonthSessions.filter(s => s.completion === 'Completed').length;
+  const totalAttempts = selectedMonthSessions.filter(s => s.completion === 'Attempt').length;
   // Find the session with the highest completed grade
-  const completedSessions = currentMonthSessions.filter(s => s.grade && s.completion === 'Completed');
+  const completedSessions = selectedMonthSessions.filter(s => s.grade && s.completion === 'Completed');
   let maxGrade = '-';
   if (completedSessions.length > 0) {
     const maxSession = completedSessions.reduce((prev, current) => {
@@ -199,10 +198,8 @@ const calculateCurrentMonthMetrics = (sessions: ClimbingSession[]) => {
 };
 
 // Generate marked dates for calendar
-const generateMarkedDates = (sessions: ClimbingSession[]) => {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // getMonth() returns 0-based, so add 1
+const generateMarkedDates = (sessions: ClimbingSession[], selectedMonth: number, selectedYear: number) => {
+  const targetMonth = selectedMonth + 1; // getMonth() returns 0-based, so add 1
   
   const markedDates: { [key: string]: any } = {};
   
@@ -213,8 +210,8 @@ const generateMarkedDates = (sessions: ClimbingSession[]) => {
     const sessionYear = sessionDate.getFullYear();
     const sessionMonth = sessionDate.getMonth() + 1;
     
-    // Only include sessions from current month
-    if (sessionYear === currentYear && sessionMonth === currentMonth) {
+    // Only include sessions from selected month
+    if (sessionYear === selectedYear && sessionMonth === targetMonth) {
       // Create date string in YYYY-MM-DD format with local timezone
       const dateString = `${sessionYear}-${String(sessionMonth).padStart(2, '0')}-${String(sessionDate.getDate()).padStart(2, '0')}`;
       
@@ -254,6 +251,11 @@ const chartConfig = {
 export default function AnalyticsCharts() {
   const [sessions, setSessions] = useState<ClimbingSession[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // State for month selection
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
   useFocusEffect(
     useCallback(() => {
@@ -314,10 +316,46 @@ export default function AnalyticsCharts() {
   const locationStats = processLocationStats(sessions);
   const completionByGrade = processCompletionByGrade(sessions);
   
+  // Month navigation functions
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const currentDate = new Date();
+    const isCurrentMonth = selectedMonth === currentDate.getMonth() && selectedYear === currentDate.getFullYear();
+    
+    if (direction === 'next' && isCurrentMonth) {
+      return; // Can't go to future months
+    }
+    
+    if (direction === 'prev') {
+      if (selectedMonth === 0) {
+        setSelectedMonth(11);
+        setSelectedYear(selectedYear - 1);
+      } else {
+        setSelectedMonth(selectedMonth - 1);
+      }
+    } else if (direction === 'next') {
+      if (selectedMonth === 11) {
+        setSelectedMonth(0);
+        setSelectedYear(selectedYear + 1);
+      } else {
+        setSelectedMonth(selectedMonth + 1);
+      }
+    }
+  };
+  
+  const getMonthLabel = () => {
+    const date = new Date(selectedYear, selectedMonth);
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
+  
+  const canNavigateNext = () => {
+    const currentDate = new Date();
+    return !(selectedMonth === currentDate.getMonth() && selectedYear === currentDate.getFullYear());
+  };
+
   // Process data for new analytics features
   const weeklyStreak = calculateWeeklyStreak(sessions);
-  const currentMonthMetrics = calculateCurrentMonthMetrics(sessions);
-  const markedDates = generateMarkedDates(sessions);
+  const selectedMonthMetrics = calculateSelectedMonthMetrics(sessions, selectedMonth, selectedYear);
+  const markedDates = generateMarkedDates(sessions, selectedMonth, selectedYear);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -336,78 +374,99 @@ export default function AnalyticsCharts() {
 
       {/* Activity Section */}
       <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Activity</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Activity</Text>
+          <View style={styles.monthSelectorContainer}>
+            <View style={styles.monthSelector}>
+              <TouchableOpacity 
+                style={styles.monthArrow} 
+                onPress={() => navigateMonth('prev')}
+              >
+                <Text style={styles.monthArrowText}>{'‹'}</Text>
+              </TouchableOpacity>
+              <Text style={styles.monthLabel}>{getMonthLabel()}</Text>
+              <TouchableOpacity 
+                style={[styles.monthArrow, !canNavigateNext() && styles.monthArrowDisabled]} 
+                onPress={() => canNavigateNext() && navigateMonth('next')}
+              >
+                <Text style={[styles.monthArrowText, !canNavigateNext() && styles.monthArrowTextDisabled]}>{'›'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
         
         {/* Metrics Cards */}
         <View style={styles.metricsRow}>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>Routes</Text>
-            <Text style={styles.metricNumber}>{currentMonthMetrics.sessionsThisMonth}</Text>
+            <Text style={styles.metricNumber}>{selectedMonthMetrics.sessionsThisMonth}</Text>
           </View>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>Completed</Text>
-            <Text style={styles.metricNumber}>{currentMonthMetrics.routesCompleted}</Text>
+            <Text style={styles.metricNumber}>{selectedMonthMetrics.routesCompleted}</Text>
           </View>
         </View>
         
         <View style={styles.metricsRow}>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>Max grade completed</Text>
-            <Text style={styles.metricNumber}>{currentMonthMetrics.maxGrade}</Text>
+            <Text style={styles.metricNumber}>{selectedMonthMetrics.maxGrade}</Text>
           </View>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>Attempts</Text>
-            <Text style={styles.metricNumber}>{currentMonthMetrics.totalAttempts}</Text>
+            <Text style={styles.metricNumber}>{selectedMonthMetrics.totalAttempts}</Text>
           </View>
         </View>
 
         {/* Monthly Activity Calendar */}
         <View style={styles.calendarContainer}>
           <Calendar
-            // Show current month name in English
+            key={`${selectedYear}-${selectedMonth}`}
+            // Show selected month name in English
             renderHeader={(date) => (
               <Text style={styles.calendarTitle}>
-                {new Date(date).toLocaleString('en-US', { month: 'long' })}
+                {new Date(selectedYear, selectedMonth).toLocaleString('en-US', { month: 'long' })}
               </Text>
             )}
             
-            // Custom day component - only show dots for current month days
+            // Custom day component - show dots for session days
             dayComponent={({date, marking}) => {
-              if (!date) return null;
+              if (!date) return <View style={styles.calendarDay} />;
               
-              const currentDate = new Date();
-              const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
-              const currentYear = String(currentDate.getFullYear());
+              const targetMonth = String(selectedMonth + 1).padStart(2, '0');
+              const targetYear = String(selectedYear);
               
               // Parse dateString (YYYY-MM-DD) without timezone conversion
               const [year, month, day] = date.dateString.split('-');
               
-              // Only show dots for days in the current month
-              if (month !== currentMonth || year !== currentYear) {
-                return null;
-              }
+              // Check if this day is in the selected month
+              const isSelectedMonth = month === targetMonth && year === targetYear;
               
-              const hasSession = markedDates[date.dateString]?.hasSession || false;
+              // Only check for sessions if it's the selected month
+              const hasSession = isSelectedMonth ? (markedDates[date.dateString]?.hasSession || false) : false;
               
               // Check if it's today
               const today = new Date();
               const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
               const isToday = date.dateString === todayString;
               
+              // Always render a day component, but only show session indicator for selected month
               return (
                 <View style={[
                   styles.calendarDay,
                   { 
                     backgroundColor: hasSession ? THEME_COLORS.bluePrimary : '#E0E0E0',
-                    borderWidth: isToday ? 2 : 0,
-                    borderColor: isToday ? '#FF5B30' : 'transparent'
+                    borderWidth: isToday && isSelectedMonth ? 2 : 0,
+                    borderColor: isToday && isSelectedMonth ? '#FF5B30' : 'transparent',
+                    opacity: isSelectedMonth ? 1 : 0  // Hide days from other months completely
                   }
                 ]} />
               );
             }}
             
-            // Pass marked dates
+            // Pass marked dates and set current date for selected month
             markedDates={markedDates}
+            current={`${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`}
             
             // Hide arrows to prevent navigation
             hideArrows={true}
@@ -681,11 +740,65 @@ const styles = StyleSheet.create({
   sectionContainer: {
     marginBottom: 20,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    minHeight: 32,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2c3e50',
-    marginBottom: 16,
+    lineHeight: 32,
+    textAlignVertical: 'center',
+  },
+  monthSelectorContainer: {
+    backgroundColor: `${THEME_COLORS.bluePrimary}20`,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-end',
+  },
+  monthSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 0,
+    height: 32,
+  },
+  monthArrow: {
+    width: 28,
+    height: 32,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  monthArrowDisabled: {
+    backgroundColor: 'transparent',
+  },
+  monthArrowText: {
+    color: THEME_COLORS.bluePrimary,
+    fontSize: 18,
+    fontWeight: 'bold',
+    lineHeight: 32,
+    textAlignVertical: 'center',
+    textAlign: 'center',
+  },
+  monthArrowTextDisabled: {
+    opacity: 0.3,
+  },
+  monthLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME_COLORS.bluePrimary,
+    minWidth: 70,
+    textAlign: 'center',
+    lineHeight: 32,
+    height: 32,
+    textAlignVertical: 'center',
   },
   metricsRow: {
     flexDirection: 'row',
