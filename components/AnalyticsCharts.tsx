@@ -374,6 +374,7 @@ const processSessionsTimeline = (sessions: ClimbingSession[], period: '7d' | '30
     };
   }
 
+  // For non-month groupings (day), process normally
   const labels = Object.keys(groupedSessions);
   const data = Object.values(groupedSessions);
 
