@@ -781,11 +781,12 @@ const styles = StyleSheet.create({
   },
   monthArrowText: {
     color: THEME_COLORS.bluePrimary,
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
-    lineHeight: 32,
+    lineHeight: 28,
     textAlignVertical: 'center',
     textAlign: 'center',
+    marginTop: -4,
   },
   monthArrowTextDisabled: {
     opacity: 0.3,
