@@ -1,4 +1,5 @@
 import { FontAwesome6 } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -7,6 +8,7 @@ import {
     Image,
     InteractionManager,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -71,6 +73,8 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const [showMovementModal, setShowMovementModal] = useState(false);
   const [showGripModal, setShowGripModal] = useState(false);
   const [showFootworkModal, setShowFootworkModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState<'date' | 'time'>('date');
   const [tempMovementTags, setTempMovementTags] = useState<string[]>([]);
   const [tempGripTags, setTempGripTags] = useState<string[]>([]);
   const [tempFootworkTags, setTempFootworkTags] = useState<string[]>([]);
@@ -1019,21 +1023,113 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
     );
   };
 
-  // Renderizar seletor de data e hora (somente visualização)
-  const renderDateTimeDisplay = (title: string, dateString: string) => {
+  // Renderizar seletor de data e hora (visualização ou edição)
+  const renderDateTimePicker = (title: string, dateString: string, field?: string) => {
+    const currentDate = dateString ? new Date(dateString) : new Date();
+    const isEmpty = !dateString;
+    
+    // Verificar se este campo tem erro de validação
+    const hasValidationError = showErrorsStep1 && field === 'when' && isEmpty;
+
+    const handleDateChange = (event: any, selectedDate?: Date) => {
+      if (Platform.OS === 'android') {
+        setShowDatePicker(false);
+      }
+      
+      if (selectedDate && field) {
+        if (datePickerMode === 'date') {
+          // Se selecionou data, agora mostrar seletor de hora
+          setDatePickerMode('time');
+          if (Platform.OS === 'ios') {
+            setShowDatePicker(true);
+          } else {
+            // Android: mostrar imediatamente o picker de hora
+            setTimeout(() => {
+              setShowDatePicker(true);
+            }, 100);
+          }
+          // Manter a data selecionada mas com a hora atual se não havia data anterior
+          const newDateTime = new Date(selectedDate);
+          if (!isEmpty) {
+            const currentDateTime = new Date(dateString);
+            newDateTime.setHours(currentDateTime.getHours(), currentDateTime.getMinutes());
+          }
+          updateField(field, newDateTime.toISOString());
+        } else {
+          // Se selecionou hora, finalizar
+          const existingDateTime = field && editedSession[field as keyof ClimbingSession] ? 
+            new Date(editedSession[field as keyof ClimbingSession] as string) : new Date();
+          const newDateTime = new Date(existingDateTime);
+          newDateTime.setHours(selectedDate.getHours(), selectedDate.getMinutes());
+          updateField(field, newDateTime.toISOString());
+          setDatePickerMode('date');
+        }
+      }
+    };
+
+    const showDateTimePicker = (mode: 'date' | 'time') => {
+      setDatePickerMode(mode);
+      setShowDatePicker(true);
+    };
+
+    // Se não está editando, apenas mostrar a data
+    if (!isEditing) {
+      return (
+        <View style={styles.fieldContainer}>
+          <View style={styles.dateTimeDisplayContainer}>
+            <FontAwesome6 
+              name="calendar-days" 
+              size={18} 
+              color={THEME_COLORS.bluePrimary}
+              style={styles.dateIcon}
+            />
+            <Text style={styles.dateTimeDisplayText}>
+              {dateString ? formatDateTime(dateString) : 'No date selected'}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    // Se está editando, mostrar interface editável
     return (
       <View style={styles.fieldContainer}>
-        <View style={styles.dateTimeDisplayContainer}>
-          <FontAwesome6 
-            name="calendar-days" 
-            size={18} 
-            color={THEME_COLORS.bluePrimary}
-            style={styles.dateIcon}
-          />
-          <Text style={styles.dateTimeDisplayText}>
-            {dateString ? formatDateTime(dateString) : 'No date selected'}
-          </Text>
+        <View style={styles.dateTimePickerContainer}>
+          <TouchableOpacity
+            style={[styles.dateTimeButton, hasValidationError && styles.dateTimeButtonError]}
+            onPress={() => showDateTimePicker('date')}
+          >
+            <FontAwesome6 
+              name="calendar-days" 
+              size={18} 
+              color={THEME_COLORS.bluePrimary}
+              style={styles.dateIcon}
+            />
+            <Text style={[styles.dateTimeButtonText, hasValidationError && styles.dateTimeButtonTextError]}>
+              {isEmpty ? 'Select date and time' : formatDateTime(editedSession[field as keyof ClimbingSession] as string)}
+            </Text>
+            <FontAwesome6 
+              name="chevron-down" 
+              size={14} 
+              color="#666"
+            />
+          </TouchableOpacity>
         </View>
+        
+        {hasValidationError && (
+          <Text style={styles.errorText}>This field is required</Text>
+        )}
+        
+        {showDatePicker && (
+          <DateTimePicker
+            value={currentDate}
+            mode={datePickerMode}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            minimumDate={new Date(2020, 0, 1)}
+            maximumDate={new Date(2030, 11, 31)}
+          />
+        )}
       </View>
     );
   };
@@ -2008,7 +2104,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         </Text>
 
         {/* Step 1: Basic Information */}
-        {renderDateTimeDisplay('', currentSession.when)}
+        {renderDateTimePicker('', currentSession.when, 'when')}
         
         {renderVisualSelector('Location', currentSession.place || '', locationOptions, 'place')}
         
@@ -3250,5 +3346,38 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  
+  // Date Time Picker Styles
+  dateTimePickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  dateTimeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  dateTimeButtonError: {
+    borderColor: '#ff0000',
+    backgroundColor: '#fff5f5',
+  },
+  dateTimeButtonText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+    marginLeft: 10,
+    flex: 1,
+  },
+  dateTimeButtonTextError: {
+    color: '#ff0000',
   },
 }); 
