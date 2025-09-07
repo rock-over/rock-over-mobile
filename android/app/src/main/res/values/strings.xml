@@ -4,6 +4,6 @@
   <string name="facebook_app_id">797996425909045</string>
   <string name="facebook_client_token">4e0768dd03ee206d9fb13bc9aed06a82</string>
   <string name="fb_login_protocol_scheme">fb797996425909045</string>
-  <string name="expo_splash_screen_resize_mode" translatable="false">cover</string>
+  <string name="expo_splash_screen_resize_mode" translatable="false">center</string>
   <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
 </resources>

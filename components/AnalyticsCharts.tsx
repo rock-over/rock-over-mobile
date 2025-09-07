@@ -1,6 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import {
   BarChart,
   LineChart,
@@ -197,36 +198,33 @@ const calculateCurrentMonthMetrics = (sessions: ClimbingSession[]) => {
   };
 };
 
-// Generate monthly activity calendar data
-const generateMonthlyCalendar = (sessions: ClimbingSession[]) => {
+// Generate marked dates for calendar
+const generateMarkedDates = (sessions: ClimbingSession[]) => {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // getMonth() returns 0-based, so add 1
   
-  // Get first day and number of days in month
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const daysInMonth = lastDay.getDate();
+  const markedDates: { [key: string]: any } = {};
   
-  // Create array of days
-  const days = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month, day);
-    const hasSession = sessions.some(session => {
-      const sessionDate = new Date(session.when);
-      return sessionDate.getDate() === day && 
-             sessionDate.getMonth() === month && 
-             sessionDate.getFullYear() === year;
-    });
+  // Process each session
+  sessions.forEach(session => {
+    // Convert session.when to YYYY-MM-DD format, avoiding timezone issues
+    const sessionDate = new Date(session.when);
+    const sessionYear = sessionDate.getFullYear();
+    const sessionMonth = sessionDate.getMonth() + 1;
     
-    days.push({
-      day,
-      hasSession,
-      isToday: day === now.getDate() && month === now.getMonth() && year === now.getFullYear(),
-    });
-  }
+    // Only include sessions from current month
+    if (sessionYear === currentYear && sessionMonth === currentMonth) {
+      // Create date string in YYYY-MM-DD format with local timezone
+      const dateString = `${sessionYear}-${String(sessionMonth).padStart(2, '0')}-${String(sessionDate.getDate()).padStart(2, '0')}`;
+      
+      markedDates[dateString] = {
+        hasSession: true,
+      };
+    }
+  });
   
-  return days;
+  return markedDates;
 };
 
 const chartConfig = {
@@ -319,7 +317,7 @@ export default function AnalyticsCharts() {
   // Process data for new analytics features
   const weeklyStreak = calculateWeeklyStreak(sessions);
   const currentMonthMetrics = calculateCurrentMonthMetrics(sessions);
-  const monthlyCalendar = generateMonthlyCalendar(sessions);
+  const markedDates = generateMarkedDates(sessions);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -365,18 +363,89 @@ export default function AnalyticsCharts() {
 
         {/* Monthly Activity Calendar */}
         <View style={styles.calendarContainer}>
-          <Text style={styles.calendarTitle}>Current Month Activity</Text>
-          <View style={styles.calendarGrid}>
-            {monthlyCalendar.map((day, index) => (
-              <View key={index} style={[
-                styles.calendarDay,
-                {
-                  backgroundColor: day.hasSession ? THEME_COLORS.bluePrimary : '#E0E0E0',
-                },
-                day.isToday && styles.todayMarker
-              ]} />
-            ))}
-          </View>
+          <Calendar
+            // Show current month name in English
+            renderHeader={(date) => (
+              <Text style={styles.calendarTitle}>
+                {new Date(date).toLocaleString('en-US', { month: 'long' })}
+              </Text>
+            )}
+            
+            // Custom day component - only show dots for current month days
+            dayComponent={({date, marking}) => {
+              if (!date) return null;
+              
+              const currentDate = new Date();
+              const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+              const currentYear = String(currentDate.getFullYear());
+              
+              // Parse dateString (YYYY-MM-DD) without timezone conversion
+              const [year, month, day] = date.dateString.split('-');
+              
+              // Only show dots for days in the current month
+              if (month !== currentMonth || year !== currentYear) {
+                return null;
+              }
+              
+              const hasSession = markedDates[date.dateString]?.hasSession || false;
+              
+              // Check if it's today
+              const today = new Date();
+              const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+              const isToday = date.dateString === todayString;
+              
+              return (
+                <View style={[
+                  styles.calendarDay,
+                  { 
+                    backgroundColor: hasSession ? THEME_COLORS.bluePrimary : '#E0E0E0',
+                    borderWidth: isToday ? 2 : 0,
+                    borderColor: isToday ? '#FF5B30' : 'transparent'
+                  }
+                ]} />
+              );
+            }}
+            
+            // Pass marked dates
+            markedDates={markedDates}
+            
+            // Hide arrows to prevent navigation
+            hideArrows={true}
+            
+            // Disable day press
+            disableAllTouchEventsForDisabledDays={true}
+            
+            // Hide month title (we're using custom header)
+            hideDayNames={false}
+            
+            // Calendar theme
+            theme={{
+              backgroundColor: 'transparent',
+              calendarBackground: 'transparent',
+              textSectionTitleColor: '#666666',
+              textSectionTitleDisabledColor: '#d9e1e8',
+              selectedDayBackgroundColor: THEME_COLORS.bluePrimary,
+              selectedDayTextColor: '#ffffff',
+              todayTextColor: THEME_COLORS.orange,
+              dayTextColor: 'transparent', // Hide day numbers
+              textDisabledColor: 'transparent', // Hide disabled day numbers
+              dotColor: THEME_COLORS.bluePrimary,
+              selectedDotColor: '#ffffff',
+              arrowColor: THEME_COLORS.bluePrimary,
+              disabledArrowColor: '#d9e1e8',
+              monthTextColor: '#2c3e50',
+              indicatorColor: 'transparent',
+              textDayFontFamily: 'System',
+              textMonthFontFamily: 'System',
+              textDayHeaderFontFamily: 'System',
+              textDayFontWeight: '300',
+              textMonthFontWeight: '700',
+              textDayHeaderFontWeight: '500',
+              textDayFontSize: 0, // Hide day numbers
+              textMonthFontSize: 16,
+              textDayHeaderFontSize: 12,
+            }}
+          />
         </View>
       </View>
       
@@ -622,6 +691,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
+    gap: 12,
   },
   metricCard: {
     backgroundColor: 'white',
@@ -630,7 +700,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'flex-start',
     flex: 1,
-    marginHorizontal: 6,
     minHeight: 40,
     shadowColor: '#000',
     shadowOffset: {
@@ -673,20 +742,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
   },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-evenly',
-    paddingHorizontal: 10,
-  },
   calendarDay: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    margin: 4,
-  },
-  todayMarker: {
-    borderWidth: 2,
-    borderColor: THEME_COLORS.orange,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    margin: 2,
   },
 });

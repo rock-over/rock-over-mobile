@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/rock-over-blue-letter.png",
-      "resizeMode": "cover",
+      "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
@@ -23,6 +23,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff",
         "monochromeImage": "./assets/images/adaptive-icon.png"
+      },
+      "splash": {
+        "image": "./assets/images/rock-over-blue-letter.png",
+        "resizeMode": "center",
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.rockover.app",
@@ -41,11 +46,16 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/rock-over-blue-letter.png",
-          "resizeMode": "cover",
+          "resizeMode": "contain",
           "backgroundColor": "#ffffff",
+          "android": {
+            "image": "./assets/images/rock-over-blue-letter.png",
+            "resizeMode": "center",
+            "backgroundColor": "#ffffff"
+          },
           "dark": {
             "image": "./assets/images/rock-over-blue-letter.png",
-            "resizeMode": "cover",
+            "resizeMode": "contain",
             "backgroundColor": "#ffffff"
           }
         }
