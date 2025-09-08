@@ -26,8 +26,37 @@ const gradeToNumeric = (grade: string | null): number => {
 
 
 
-const processCompletionByGrade = (sessions: ClimbingSession[]) => {
-  const gradeStats = sessions.reduce((acc, session) => {
+const processCompletionByGrade = (sessions: ClimbingSession[], period: '7d' | '30d' | '6m' | '1y' | 'all') => {
+  // Filter sessions by period
+  const now = new Date();
+  let startDate = new Date();
+  
+  switch (period) {
+    case '7d':
+      startDate.setDate(now.getDate() - 6);
+      break;
+    case '30d':
+      startDate.setDate(now.getDate() - 29);
+      break;
+    case '6m':
+      startDate.setMonth(now.getMonth() - 6);
+      break;
+    case '1y':
+      startDate.setFullYear(now.getFullYear() - 1);
+      break;
+    case 'all':
+      if (sessions.length > 0) {
+        startDate = new Date(Math.min(...sessions.map(s => new Date(s.when).getTime())));
+      }
+      break;
+  }
+
+  const filteredSessions = period === 'all' ? sessions : sessions.filter(session => {
+    const sessionDate = new Date(session.when);
+    return sessionDate >= startDate && sessionDate <= now;
+  });
+
+  const gradeStats = filteredSessions.reduce((acc, session) => {
     if (session.grade && session.completion) {
       const grade = session.grade;
       if (!acc[grade]) acc[grade] = { total: 0, completed: 0, attempt: 0 };
@@ -69,10 +98,39 @@ const processCompletionByGrade = (sessions: ClimbingSession[]) => {
 };
 
 // Movement analytics function
-const processMovementData = (sessions: ClimbingSession[]) => {
+const processMovementData = (sessions: ClimbingSession[], period: '7d' | '30d' | '6m' | '1y' | 'all') => {
+  // Filter sessions by period
+  const now = new Date();
+  let startDate = new Date();
+  
+  switch (period) {
+    case '7d':
+      startDate.setDate(now.getDate() - 6);
+      break;
+    case '30d':
+      startDate.setDate(now.getDate() - 29);
+      break;
+    case '6m':
+      startDate.setMonth(now.getMonth() - 6);
+      break;
+    case '1y':
+      startDate.setFullYear(now.getFullYear() - 1);
+      break;
+    case 'all':
+      if (sessions.length > 0) {
+        startDate = new Date(Math.min(...sessions.map(s => new Date(s.when).getTime())));
+      }
+      break;
+  }
+
+  const filteredSessions = period === 'all' ? sessions : sessions.filter(session => {
+    const sessionDate = new Date(session.when);
+    return sessionDate >= startDate && sessionDate <= now;
+  });
+
   const movementCount: Record<string, number> = {};
   
-  sessions.forEach(session => {
+  filteredSessions.forEach(session => {
     // Only process sessions that have movement data
     if (session.movement && session.movement.trim() !== '' && session.movement.trim() !== '[]') {
       // Split by comma and clean up each movement
@@ -150,13 +208,37 @@ const processMovementData = (sessions: ClimbingSession[]) => {
 };
 
 // Performance section data processing functions
-const processRoutesByGrade = (sessions: ClimbingSession[], selectedMonth: number, selectedYear: number) => {
-  const selectedMonthSessions = sessions.filter(session => {
+const processRoutesByGrade = (sessions: ClimbingSession[], period: '7d' | '30d' | '6m' | '1y' | 'all') => {
+  // Filter sessions by period
+  const now = new Date();
+  let startDate = new Date();
+  
+  switch (period) {
+    case '7d':
+      startDate.setDate(now.getDate() - 6);
+      break;
+    case '30d':
+      startDate.setDate(now.getDate() - 29);
+      break;
+    case '6m':
+      startDate.setMonth(now.getMonth() - 6);
+      break;
+    case '1y':
+      startDate.setFullYear(now.getFullYear() - 1);
+      break;
+    case 'all':
+      if (sessions.length > 0) {
+        startDate = new Date(Math.min(...sessions.map(s => new Date(s.when).getTime())));
+      }
+      break;
+  }
+
+  const filteredSessions = period === 'all' ? sessions : sessions.filter(session => {
     const sessionDate = new Date(session.when);
-    return sessionDate.getMonth() === selectedMonth && sessionDate.getFullYear() === selectedYear;
+    return sessionDate >= startDate && sessionDate <= now;
   });
 
-  const gradeStats = selectedMonthSessions.reduce((acc, session) => {
+  const gradeStats = filteredSessions.reduce((acc, session) => {
     if (session.grade) {
       const grade = session.grade;
       acc[grade] = (acc[grade] || 0) + 1;
@@ -175,38 +257,84 @@ const processRoutesByGrade = (sessions: ClimbingSession[], selectedMonth: number
 };
 
 
-const processAttemptCompletedPercentage = (sessions: ClimbingSession[]) => {
-  // Group sessions by month
-  const sessionsByMonth = sessions.reduce((acc, session) => {
+const processAttemptCompletedPercentage = (sessions: ClimbingSession[], period: '7d' | '30d' | '6m' | '1y' | 'all') => {
+  // Filter sessions by period
+  const now = new Date();
+  let startDate = new Date();
+  
+  switch (period) {
+    case '7d':
+      startDate.setDate(now.getDate() - 6);
+      break;
+    case '30d':
+      startDate.setDate(now.getDate() - 29);
+      break;
+    case '6m':
+      startDate.setMonth(now.getMonth() - 6);
+      break;
+    case '1y':
+      startDate.setFullYear(now.getFullYear() - 1);
+      break;
+    case 'all':
+      if (sessions.length > 0) {
+        startDate = new Date(Math.min(...sessions.map(s => new Date(s.when).getTime())));
+      }
+      break;
+  }
+
+  const filteredSessions = period === 'all' ? sessions : sessions.filter(session => {
+    const sessionDate = new Date(session.when);
+    return sessionDate >= startDate && sessionDate <= now;
+  });
+
+  // Group sessions by appropriate time period
+  let groupBy: 'day' | 'month' = period === '7d' || period === '30d' ? 'day' : 'month';
+  
+  const sessionsByPeriod = filteredSessions.reduce((acc, session) => {
     if (!session.completion) return acc;
     
     const sessionDate = new Date(session.when);
-    const monthKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`;
-    const monthLabel = sessionDate.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+    let periodKey: string;
+    let periodLabel: string;
     
-    if (!acc[monthKey]) {
-      acc[monthKey] = {
-        label: monthLabel,
+    if (groupBy === 'day') {
+      periodKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}-${String(sessionDate.getDate()).padStart(2, '0')}`;
+      periodLabel = sessionDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+    } else {
+      periodKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`;
+      periodLabel = sessionDate.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+    }
+    
+    if (!acc[periodKey]) {
+      acc[periodKey] = {
+        label: periodLabel,
         completed: 0,
         attempt: 0,
       };
     }
     
     if (session.completion === 'Completed') {
-      acc[monthKey].completed += 1;
+      acc[periodKey].completed += 1;
     } else if (session.completion === 'Attempt') {
-      acc[monthKey].attempt += 1;
+      acc[periodKey].attempt += 1;
     }
     
     return acc;
   }, {} as Record<string, { label: string; completed: number; attempt: number }>);
 
-  // Sort months chronologically and get last 6 months
-  const sortedMonths = Object.entries(sessionsByMonth)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-6);
+  // Sort chronologically and limit results for readability
+  const sortedPeriods = Object.entries(sessionsByPeriod)
+    .sort(([a], [b]) => a.localeCompare(b));
 
-  if (sortedMonths.length === 0) {
+  // Limit results based on period to avoid overcrowded charts
+  let finalPeriods = sortedPeriods;
+  if (groupBy === 'day' && sortedPeriods.length > 10) {
+    finalPeriods = sortedPeriods.slice(-10); // Last 10 days
+  } else if (groupBy === 'month' && sortedPeriods.length > 6) {
+    finalPeriods = sortedPeriods.slice(-6); // Last 6 months
+  }
+
+  if (finalPeriods.length === 0) {
     return {
       labels: ['No Data'],
       legend: ['Completed', 'Attempt'],
@@ -216,8 +344,8 @@ const processAttemptCompletedPercentage = (sessions: ClimbingSession[]) => {
     };
   }
 
-  const labels = sortedMonths.map(([, data]) => data.label);
-  const stackedData = sortedMonths.map(([, data]) => [data.completed, data.attempt]);
+  const labels = finalPeriods.map(([, data]) => data.label);
+  const stackedData = finalPeriods.map(([, data]) => [data.completed, data.attempt]);
 
   return {
     labels,
@@ -607,6 +735,11 @@ export default function AnalyticsCharts() {
   // State for session timeline filter
   const [sessionTimelinePeriod, setSessionTimelinePeriod] = useState<'7d' | '30d' | '6m' | '1y' | 'all'>('30d');
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
+  
+  // State for performance section filter
+  const [performancePeriod, setPerformancePeriod] = useState<'7d' | '30d' | '6m' | '1y' | 'all'>('30d');
+  const [showPerformancePeriodDropdown, setShowPerformancePeriodDropdown] = useState(false);
+  
   const [showRewardsModal, setShowRewardsModal] = useState(false);
 
   useFocusEffect(
@@ -661,9 +794,9 @@ export default function AnalyticsCharts() {
   }
 
   // Process data for charts
-  const completionByGrade = processCompletionByGrade(sessions);
+  const completionByGrade = processCompletionByGrade(sessions, performancePeriod);
   const sessionsTimeline = processSessionsTimeline(sessions, sessionTimelinePeriod);
-  const movementData = processMovementData(sessions);
+  const movementData = processMovementData(sessions, performancePeriod);
   
   // Month navigation functions
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -707,6 +840,17 @@ export default function AnalyticsCharts() {
     return periodLabels[sessionTimelinePeriod];
   };
   
+  const getPerformancePeriodLabel = () => {
+    const periodLabels = {
+      '7d': 'Last 7 days',
+      '30d': 'Last 30 days',
+      '6m': 'Last 6 months',
+      '1y': 'Last year',
+      'all': 'All time',
+    };
+    return periodLabels[performancePeriod];
+  };
+  
   const canNavigateNext = () => {
     const currentDate = new Date();
     return !(selectedMonth === currentDate.getMonth() && selectedYear === currentDate.getFullYear());
@@ -718,8 +862,8 @@ export default function AnalyticsCharts() {
   const markedDates = generateMarkedDates(sessions, selectedMonth, selectedYear);
   
   // Process data for Performance section
-  const routesByGradeData = processRoutesByGrade(sessions, selectedMonth, selectedYear);
-  const attemptCompletedData = processAttemptCompletedPercentage(sessions);
+  const routesByGradeData = processRoutesByGrade(sessions, performancePeriod);
+  const attemptCompletedData = processAttemptCompletedPercentage(sessions, performancePeriod);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -986,7 +1130,51 @@ export default function AnalyticsCharts() {
       
       {/* Performance Section */}
       <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Performance</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Performance</Text>
+          <View style={styles.periodSelectorContainer}>
+            <TouchableOpacity 
+              style={styles.periodSelector}
+              onPress={() => setShowPerformancePeriodDropdown(!showPerformancePeriodDropdown)}
+            >
+              <Text style={styles.periodLabel}>{getPerformancePeriodLabel()}</Text>
+              <Text style={styles.dropdownArrow}>{'▼'}</Text>
+            </TouchableOpacity>
+            
+            {showPerformancePeriodDropdown && (
+              <View style={styles.dropdown}>
+                {[
+                  { key: '7d', label: 'Last 7 days' },
+                  { key: '30d', label: 'Last 30 days' },
+                  { key: '6m', label: 'Last 6 months' },
+                  { key: '1y', label: 'Last year' },
+                  { key: 'all', label: 'All time' },
+                ].map((period) => (
+                  <TouchableOpacity
+                    key={period.key}
+                    style={[
+                      styles.dropdownItem,
+                      performancePeriod === period.key && styles.dropdownItemActive,
+                    ]}
+                    onPress={() => {
+                      setPerformancePeriod(period.key as '7d' | '30d' | '6m' | '1y' | 'all');
+                      setShowPerformancePeriodDropdown(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        performancePeriod === period.key && styles.dropdownItemTextActive,
+                      ]}
+                    >
+                      {period.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
         
         {/* Routes by Grade */}
         <View style={[styles.chartContainer, styles.firstChartInSection]}>
@@ -1061,8 +1249,8 @@ export default function AnalyticsCharts() {
 
         {/* Success Rate */}
         <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Success Rate by Month</Text>
-          <Text style={styles.chartSubtitle}>Monthly attempts vs completed routes</Text>
+          <Text style={styles.chartTitle}>Success Rate by Period</Text>
+          <Text style={styles.chartSubtitle}>Attempts vs completed routes over selected period</Text>
           {attemptCompletedData.hasData ? (
             <View>
               <StackedBarChart
@@ -1132,136 +1320,135 @@ export default function AnalyticsCharts() {
             </View>
           )}
         </View>
-      </View>
-      
-
-      {/* Success Metrics */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Success Metrics</Text>
-        <Text style={styles.chartSubtitle}>Sessions attempted vs completed by grade</Text>
-        {completionByGrade.hasData ? (
-          <View>
-            <StackedBarChart
-              data={completionByGrade}
-              width={chartWidth}
-              height={220}
-              yLabelsOffset={25}
-              hideLegend={true}
-              chartConfig={{
-                backgroundGradientFrom: '#ffffff',
-                backgroundGradientFromOpacity: 1,
-                backgroundGradientTo: '#ffffff',
-                backgroundGradientToOpacity: 1,
-                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                labelColor: () => '#999999',
-                strokeWidth: 0,
-                barPercentage: 0.7,
-                useShadowColorFromDataset: false,
-                decimalPlaces: 0,
-                style: {
-                  borderRadius: 12,
-                },
-                propsForBackgroundLines: {
-                  strokeDasharray: '5,5',
-                  strokeOpacity: 0.5,
-                  stroke: '#E0E0E0',
-                },
-                propsForHorizontalLabels: {
-                  fontSize: 12,
-                  color: '#999999',
-                  fontWeight: 'bold',
-                },
-                propsForVerticalLabels: {
-                  fontSize: 12,
-                  color: '#999999',
-                  fontWeight: 'bold',
-                },
-                propsForLabels: {
-                  fontSize: 0, // Hide bar values
-                },
-              }}
-              style={{
-                borderRadius: 12,
-                overflow: 'hidden',
-              }}
-              yAxisLabel=""
-              yAxisSuffix=""
-              withHorizontalLabels={true}
-              withVerticalLabels={true}
-            />
-            
-            {/* Custom Legend Below Chart */}
-            <View style={styles.legendContainerBelow}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: THEME_COLORS.bluePrimary }]} />
-                <Text style={[styles.legendText, { color: '#999999' }]}>Completed</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: '#FF5B30' }]} />
-                <Text style={[styles.legendText, { color: '#999999' }]}>Attempt</Text>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.noDataContainer}>
-            <Text style={styles.noDataText}>No completion data found</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Movement Analytics */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Movement Analytics</Text>
-        <Text style={styles.chartSubtitle}>Most used climbing movements (%)</Text>
-        {movementData.hasData ? (
-          <View>
-            <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 }}>
-              <PieChart
-                data={movementData.data}
+        
+        {/* Success Metrics */}
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>Success Metrics</Text>
+          <Text style={styles.chartSubtitle}>Sessions attempted vs completed by grade</Text>
+          {completionByGrade.hasData ? (
+            <View>
+              <StackedBarChart
+                data={completionByGrade}
                 width={chartWidth}
-                height={200}
+                height={220}
+                yLabelsOffset={25}
+                hideLegend={true}
                 chartConfig={{
                   backgroundGradientFrom: '#ffffff',
                   backgroundGradientFromOpacity: 1,
                   backgroundGradientTo: '#ffffff',
                   backgroundGradientToOpacity: 1,
                   color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  strokeWidth: 2,
+                  labelColor: () => '#999999',
+                  strokeWidth: 0,
+                  barPercentage: 0.7,
                   useShadowColorFromDataset: false,
                   decimalPlaces: 0,
-                  propsForLabels: {
-                    fontSize: 14,
+                  style: {
+                    borderRadius: 12,
+                  },
+                  propsForBackgroundLines: {
+                    strokeDasharray: '5,5',
+                    strokeOpacity: 0.5,
+                    stroke: '#E0E0E0',
+                  },
+                  propsForHorizontalLabels: {
+                    fontSize: 12,
+                    color: '#999999',
                     fontWeight: 'bold',
-                    color: '#ffffff',
+                  },
+                  propsForVerticalLabels: {
+                    fontSize: 12,
+                    color: '#999999',
+                    fontWeight: 'bold',
+                  },
+                  propsForLabels: {
+                    fontSize: 0, // Hide bar values
                   },
                 }}
-                accessor="population"
-                backgroundColor="transparent"
-                absolute
-                paddingLeft="60"
-                hasLegend={false}
-                avoidFalseZero={true}
                 style={{
-                  alignSelf: 'center',
+                  borderRadius: 12,
+                  overflow: 'hidden',
                 }}
+                yAxisLabel=""
+                yAxisSuffix=""
+                withHorizontalLabels={true}
+                withVerticalLabels={true}
               />
-            </View>
-            
-            {/* Custom Legend Below Chart */}
-            <View style={styles.movementLegendContainer}>
-              {movementData.data.map((item, index) => (
-                <View key={index} style={styles.movementLegendItem}>
-                  <View style={[styles.movementLegendColor, { backgroundColor: item.color }]} />
-                  <Text style={styles.movementLegendText}>{item.name} ({item.population}%)</Text>
+              
+              {/* Custom Legend Below Chart */}
+              <View style={styles.legendContainerBelow}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: THEME_COLORS.bluePrimary }]} />
+                  <Text style={[styles.legendText, { color: '#999999' }]}>Completed</Text>
                 </View>
-              ))}
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: '#FF5B30' }]} />
+                  <Text style={[styles.legendText, { color: '#999999' }]}>Attempt</Text>
+                </View>
+              </View>
             </View>
-          </View>
-        ) : (
-          <View style={styles.noDataContainer}>
-            <Text style={styles.noDataText}>No movement data found</Text>
-          </View>
-        )}
+          ) : (
+            <View style={styles.noDataContainer}>
+              <Text style={styles.noDataText}>No completion data found</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Movement Analytics */}
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>Movement Analytics</Text>
+          <Text style={styles.chartSubtitle}>Most used climbing movements (%)</Text>
+          {movementData.hasData ? (
+            <View>
+              <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 }}>
+                <PieChart
+                  data={movementData.data}
+                  width={chartWidth}
+                  height={200}
+                  chartConfig={{
+                    backgroundGradientFrom: '#ffffff',
+                    backgroundGradientFromOpacity: 1,
+                    backgroundGradientTo: '#ffffff',
+                    backgroundGradientToOpacity: 1,
+                    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    strokeWidth: 2,
+                    useShadowColorFromDataset: false,
+                    decimalPlaces: 0,
+                    propsForLabels: {
+                      fontSize: 14,
+                      fontWeight: 'bold',
+                      color: '#ffffff',
+                    },
+                  }}
+                  accessor="population"
+                  backgroundColor="transparent"
+                  absolute
+                  paddingLeft="60"
+                  hasLegend={false}
+                  avoidFalseZero={true}
+                  style={{
+                    alignSelf: 'center',
+                  }}
+                />
+              </View>
+              
+              {/* Custom Legend Below Chart */}
+              <View style={styles.movementLegendContainer}>
+                {movementData.data.map((item, index) => (
+                  <View key={index} style={styles.movementLegendItem}>
+                    <View style={[styles.movementLegendColor, { backgroundColor: item.color }]} />
+                    <Text style={styles.movementLegendText}>{item.name} ({item.population}%)</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.noDataContainer}>
+              <Text style={styles.noDataText}>No movement data found</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Rewards Modal */}
