@@ -992,6 +992,9 @@ export default function AnalyticsCharts() {
         )}
       </View>
 
+      {/* Spacing between Sessions Timeline and Activity Section */}
+      <View style={{ marginBottom: SPACING.SECTION_GAP }} />
+
       {/* Activity Section */}
       <View style={styles.sectionContainer}>
         <View style={styles.sectionHeader}>
@@ -1487,6 +1490,12 @@ export default function AnalyticsCharts() {
   );
 }
 
+// Spacing constants
+const SPACING = {
+  CARD_GAP: 12,      // Spacing between cards
+  SECTION_GAP: 32,   // Spacing between sections
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1545,7 +1554,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 8,
     padding: 20,
-    marginBottom: 20,
+    marginBottom: SPACING.CARD_GAP,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1564,7 +1573,7 @@ const styles = StyleSheet.create({
   chartSubtitle: {
     fontSize: 12,
     color: '#7f8c8d',
-    marginBottom: 15,
+    marginBottom: SPACING.CARD_GAP,
   },
   chart: {
     borderRadius: 8,
@@ -1602,7 +1611,7 @@ const styles = StyleSheet.create({
   legendContainerBelow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: SPACING.CARD_GAP,
     gap: 20,
   },
   // Week Streak Display Component Styles
@@ -1610,7 +1619,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: SPACING.CARD_GAP,
     alignItems: 'stretch', // Changed from 'center' to allow left alignment
     shadowColor: '#000',
     shadowOffset: {
@@ -1690,7 +1699,7 @@ const styles = StyleSheet.create({
   // Rewards Info Component Styles
   rewardsCard: {
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: SPACING.CARD_GAP,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1811,13 +1820,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   sectionContainer: {
-    marginBottom: 20,
+    marginBottom: SPACING.SECTION_GAP,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.CARD_GAP,
     minHeight: 32,
   },
   sectionTitle: {
@@ -1877,7 +1886,7 @@ const styles = StyleSheet.create({
   metricsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: SPACING.CARD_GAP,
     gap: 12,
   },
   metricCard: {
@@ -1912,7 +1921,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 20,
-    marginTop: 8,
+    marginTop: 0, // Removed extra spacing since metricsRow already has marginBottom
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1936,7 +1945,7 @@ const styles = StyleSheet.create({
     margin: 2,
   },
   firstChartInSection: {
-    marginTop: 8,
+    marginTop: 0, // Removed extra spacing since sectionHeader already has marginBottom
   },
   noDataContainer: {
     flex: 1,
@@ -1954,7 +1963,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: SPACING.CARD_GAP,
     minHeight: 32,
   },
   periodSelectorContainer: {
@@ -2024,7 +2033,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    paddingTop: 15,
+    paddingTop: SPACING.CARD_GAP,
     paddingBottom: 5,
     gap: 15,
   },
