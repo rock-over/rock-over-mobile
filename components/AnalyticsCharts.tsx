@@ -1701,10 +1701,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: SPACING.CARD_GAP,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
@@ -1741,17 +1738,15 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   rewardsText: {
-    fontSize: 13,
+    fontSize: 14,
     color: 'white',
     marginBottom: 8,
     lineHeight: 18,
-    opacity: 0.9,
   },
   rewardsLink: {
-    fontSize: 12,
+    fontSize: 13,
     color: 'white',
     fontWeight: '600',
-    opacity: 0.8,
   },
   modalOverlay: {
     flex: 1,

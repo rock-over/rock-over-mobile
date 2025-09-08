@@ -89,6 +89,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   const [profileImageSource, setProfileImageSource] = useState<any>(null);
   const [profileImageLoading, setProfileImageLoading] = useState(true);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [showRewardsModal, setShowRewardsModal] = useState(false);
 
 
   useEffect(() => {
@@ -819,6 +820,25 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
             </View>
           </View>
 
+          {/* Earn Rewards Section */}
+          <View style={styles.earnRewardsSection}>
+            <TouchableOpacity style={styles.rewardsCard} onPress={() => setShowRewardsModal(true)}>
+              <View style={styles.rewardsBackground}>
+                <Image 
+                  source={require('../assets/images/rewards-trophy-full.png')}
+                  style={styles.rewardsBackgroundImage}
+                />
+                <View style={styles.rewardsContainer}>
+                  <View style={styles.rewardsTextContainer}>
+                    <Text style={styles.rewardsTitle}>Earn Rewards!</Text>
+                    <Text style={styles.rewardsText}>Reach milestones to unlock{'\n'}exclusive gear</Text>
+                    <Text style={styles.rewardsLink}>Tap to learn more →</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+
           {/* Empty State for no sessions */}
           {sessions.length === 0 && (
             <View style={styles.emptyStateDashboard}>
@@ -863,6 +883,70 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
       {/* Profile Settings Modal */}
       <Modal visible={showProfileSettings} animationType="slide" presentationStyle="fullScreen">
         <ProfileSettings onClose={handleProfileSettingsClose} />
+      </Modal>
+
+      {/* Rewards Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showRewardsModal}
+        onRequestClose={() => setShowRewardsModal(false)}
+      >
+        <View style={styles.rewardsModalOverlay}>
+          <View style={styles.rewardsModalContent}>
+            <View style={styles.rewardsModalHeader}>
+              <Text style={styles.rewardsModalTitle}>Streak Rewards</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowRewardsModal(false)}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.rewardsModalBody}>
+              <Text style={styles.rewardsModalSubtitle}>
+                Build your climbing streak to unlock exclusive rewards!
+              </Text>
+              
+              <View style={styles.milestonesList}>
+                <View style={styles.milestoneItem}>
+                  <View style={[styles.milestoneIcon, calculateWeeklyStreak(sessions) >= 4 ? styles.milestoneUnlocked : styles.milestoneLocked]}>
+                    <FontAwesome6 name="fire" size={16} color={calculateWeeklyStreak(sessions) >= 4 ? "#FF6B35" : "#ccc"} />
+                  </View>
+                  <View style={styles.milestoneInfo}>
+                    <Text style={styles.milestoneTitle}>4 Week Streak</Text>
+                    <Text style={styles.milestoneDesc}>Climbing gear discount</Text>
+                  </View>
+                </View>
+
+                <View style={styles.milestoneItem}>
+                  <View style={[styles.milestoneIcon, calculateWeeklyStreak(sessions) >= 8 ? styles.milestoneUnlocked : styles.milestoneLocked]}>
+                    <FontAwesome6 name="trophy" size={16} color={calculateWeeklyStreak(sessions) >= 8 ? "#FFD700" : "#ccc"} />
+                  </View>
+                  <View style={styles.milestoneInfo}>
+                    <Text style={styles.milestoneTitle}>8 Week Streak</Text>
+                    <Text style={styles.milestoneDesc}>Exclusive climbing chalk bag</Text>
+                  </View>
+                </View>
+
+                <View style={styles.milestoneItem}>
+                  <View style={[styles.milestoneIcon, calculateWeeklyStreak(sessions) >= 12 ? styles.milestoneUnlocked : styles.milestoneLocked]}>
+                    <FontAwesome6 name="crown" size={16} color={calculateWeeklyStreak(sessions) >= 12 ? "#9C27B0" : "#ccc"} />
+                  </View>
+                  <View style={styles.milestoneInfo}>
+                    <Text style={styles.milestoneTitle}>12 Week Streak</Text>
+                    <Text style={styles.milestoneDesc}>Premium climbing shoes</Text>
+                  </View>
+                </View>
+              </View>
+              
+              <Text style={styles.rewardsModalNote}>
+                Current streak: {calculateWeeklyStreak(sessions)} weeks
+              </Text>
+            </View>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1058,6 +1142,161 @@ const styles = StyleSheet.create({
   },
   recentSessionsContainer: {
     paddingHorizontal: 0, // SessionCard já tem suas próprias margens de 20px
+  },
+  // Earn Rewards Section Styles
+  earnRewardsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  rewardsCard: {
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  rewardsBackground: {
+    width: '100%',
+    height: 120,
+    justifyContent: 'flex-end',
+    position: 'relative',
+  },
+  rewardsBackgroundImage: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  rewardsContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    padding: 20,
+  },
+  rewardsTextContainer: {
+    flex: 1,
+  },
+  rewardsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 6,
+  },
+  rewardsText: {
+    fontSize: 14,
+    color: 'white',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  rewardsLink: {
+    fontSize: 13,
+    color: 'white',
+    fontWeight: '600',
+  },
+  // Rewards Modal Styles
+  rewardsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  rewardsModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 0,
+    width: '100%',
+    maxHeight: '80%',
+  },
+  rewardsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  rewardsModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME_COLORS.text.primary,
+  },
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    fontSize: 18,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  rewardsModalBody: {
+    padding: 20,
+  },
+  rewardsModalSubtitle: {
+    fontSize: 16,
+    color: THEME_COLORS.text.secondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  milestonesList: {
+    gap: 16,
+  },
+  milestoneItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 12,
+  },
+  milestoneIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  milestoneUnlocked: {
+    backgroundColor: '#e8f5e8',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  milestoneLocked: {
+    backgroundColor: '#f0f0f0',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+  },
+  milestoneInfo: {
+    flex: 1,
+  },
+  milestoneTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: THEME_COLORS.text.primary,
+    marginBottom: 4,
+  },
+  milestoneDesc: {
+    fontSize: 14,
+    color: THEME_COLORS.text.secondary,
+  },
+  rewardsModalNote: {
+    fontSize: 14,
+    color: THEME_COLORS.bluePrimary,
+    textAlign: 'center',
+    marginTop: 20,
+    fontWeight: '600',
   },
   // Achievements Section Styles
   achievementsSection: {
