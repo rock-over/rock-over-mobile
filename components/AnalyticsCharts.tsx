@@ -279,17 +279,18 @@ const WeekStreakDisplay = ({ streak }: { streak: number }) => {
 const RewardsInfo = ({ onPress }: { onPress: () => void }) => {
   return (
     <TouchableOpacity style={styles.rewardsCard} onPress={onPress}>
-      <View style={styles.rewardsContainer}>
-        <View style={styles.textContainer}>
-          <Text style={styles.rewardsTitle}>Earn Rewards!</Text>
-          <Text style={styles.rewardsText}>Reach milestones to unlock exclusive gear</Text>
-          <Text style={styles.rewardsLink}>Tap to learn more →</Text>
-        </View>
+      <View style={styles.rewardsBackground}>
         <Image 
-          source={require('../assets/images/rewards.png')} 
-          style={styles.rewardsImage}
-          resizeMode="contain"
+          source={require('../assets/images/rewards-trophy-full.png')}
+          style={styles.rewardsBackgroundImage}
         />
+        <View style={styles.rewardsContainer}>
+          <View style={styles.textContainer}>
+            <Text style={styles.rewardsTitle}>Earn Rewards!</Text>
+            <Text style={styles.rewardsText}>Reach milestones to unlock{'\n'}exclusive gear</Text>
+            <Text style={styles.rewardsLink}>Tap to learn more →</Text>
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -1501,9 +1502,7 @@ const styles = StyleSheet.create({
   
   // Rewards Info Component Styles
   rewardsCard: {
-    backgroundColor: 'white',
     borderRadius: 12,
-    padding: 20,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {
@@ -1513,36 +1512,50 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+    overflow: 'hidden',
+  },
+  rewardsBackground: {
+    width: '100%',
+    height: 120,
+    justifyContent: 'flex-end',
+    position: 'relative',
+  },
+  rewardsBackgroundImage: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   rewardsContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    padding: 20,
   },
   textContainer: {
     flex: 1,
-    marginRight: 16,
-  },
-  rewardsImage: {
-    width: 100,
-    height: 100,
   },
   rewardsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: 'white',
     marginBottom: 6,
   },
   rewardsText: {
     fontSize: 13,
-    color: '#7f8c8d',
+    color: 'white',
     marginBottom: 8,
     lineHeight: 18,
+    opacity: 0.9,
   },
   rewardsLink: {
     fontSize: 12,
-    color: THEME_COLORS.bluePrimary,
+    color: 'white',
     fontWeight: '600',
+    opacity: 0.8,
   },
   modalOverlay: {
     flex: 1,
