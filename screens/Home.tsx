@@ -186,8 +186,8 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   useFocusEffect(
     React.useCallback(() => {
       // Garantir que a StatusBar seja sempre configurada corretamente quando a tela for focada
-      StatusBar.setBarStyle('light-content');
-      StatusBar.setBackgroundColor(THEME_COLORS.bluePrimary);
+      StatusBar.setBarStyle('dark-content');
+      StatusBar.setBackgroundColor('#F8F9FA');
     }, [])
   );
 
@@ -195,8 +195,8 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     const handleAppStateChange = (nextAppState: string) => {
       if (nextAppState === 'active') {
         // App voltou do background, forçar configuração da StatusBar
-        StatusBar.setBarStyle('light-content');
-        StatusBar.setBackgroundColor(THEME_COLORS.bluePrimary);
+        StatusBar.setBarStyle('dark-content');
+        StatusBar.setBackgroundColor('#F8F9FA');
       }
     };
 
@@ -533,10 +533,93 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     );
   };
 
-  const getFirstName = (str: string | null | undefined) => {
-    if (!str) return 'Climber';
-    return str.split(' ')[0].charAt(0).toUpperCase() + str.split(' ')[0].slice(1).toLowerCase();
+const getFirstName = (str: string | null | undefined) => {
+  if (!str) return 'Climber';
+  return str.split(' ')[0].charAt(0).toUpperCase() + str.split(' ')[0].slice(1).toLowerCase();
+};
+
+// Calculate streak of consecutive weeks with at least one session
+const calculateWeeklyStreak = (sessions: ClimbingSession[]): number => {
+  if (sessions.length === 0) return 0;
+
+  const today = new Date();
+  const currentWeekStart = new Date(today);
+  currentWeekStart.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
+  currentWeekStart.setHours(0, 0, 0, 0);
+
+  // Helper function to check if a week has sessions
+  const hasSessionsInWeek = (weekStart: Date) => {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    return sessions.some(session => {
+      const sessionDate = new Date(session.when);
+      return sessionDate >= weekStart && sessionDate <= weekEnd;
+    });
   };
+
+  // Check current week
+  const currentWeekHasSessions = hasSessionsInWeek(currentWeekStart);
+  
+  // Check previous week
+  const previousWeekStart = new Date(currentWeekStart);
+  previousWeekStart.setDate(currentWeekStart.getDate() - 7);
+  const previousWeekHasSessions = hasSessionsInWeek(previousWeekStart);
+
+  // If both current and previous week have no sessions, streak is 0
+  if (!currentWeekHasSessions && !previousWeekHasSessions) {
+    return 0;
+  }
+
+  // If current week has sessions but previous doesn't, streak is 1
+  if (currentWeekHasSessions && !previousWeekHasSessions) {
+    return 1;
+  }
+
+  // If previous week has sessions (regardless of current week), calculate full streak
+  let streak = 0;
+  let checkWeek = new Date(currentWeekStart);
+
+  // Count current week if it has sessions
+  if (currentWeekHasSessions) {
+    streak++;
+  }
+
+  // Check previous weeks
+  checkWeek.setDate(checkWeek.getDate() - 7); // Move to previous week
+  
+  while (true) {
+    const hasSessionInWeek = hasSessionsInWeek(checkWeek);
+    
+    if (hasSessionInWeek) {
+      streak++;
+      // Move to previous week
+      checkWeek.setDate(checkWeek.getDate() - 7);
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+};
+
+// Generate motivational subtitle based on week streak
+const getStreakSubtitle = (streak: number): string => {
+  if (streak === 0) {
+    return "Your next climb awaits!";
+  } else if (streak === 1) {
+    return "Great start! Keep the momentum going";
+  } else if (streak <= 3) {
+    return "You're building a habit, keep it up!";
+  } else if (streak <= 6) {
+    return "Amazing consistency, you're on fire!";
+  } else if (streak <= 10) {
+    return "Incredible streak! You're unstoppable";
+  } else {
+    return "Legend mode! Keep crushing it";
+  }
+};
 
   const renderSessionCard = ({ item }: { item: ClimbingSession }) => {
     return (
@@ -558,7 +641,7 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
         onRequestClose={handleBackToHome}
         animationType="slide"
       >
-        <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
+        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
         
         {/* Full screen overlay - clickable to close */}
         <TouchableOpacity 
@@ -652,11 +735,11 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME_COLORS.bluePrimary} />
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
       
 
       
-      {/* Blue Header */}
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.profileSection}>
           <TouchableOpacity style={styles.profileImageContainer} onPress={handleProfilePress}>
@@ -699,13 +782,13 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
           
           <View style={styles.welcomeSection}>
             <Text style={styles.welcomeText} numberOfLines={1}>
-              Welcome, {getFirstName(userInfo?.name)}
+              Hello, {getFirstName(userInfo?.name)}
+            </Text>
+            <Text style={styles.subtitleText} numberOfLines={1}>
+              {getStreakSubtitle(calculateWeeklyStreak(sessions))}
             </Text>
           </View>
           
-          <TouchableOpacity onPress={handleLogout} style={styles.profileButton}>
-            <FontAwesome6 name="right-from-bracket" size={18} color="#fff" solid />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -943,7 +1026,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
   },
   header: {
-    backgroundColor: THEME_COLORS.bluePrimary,
+    backgroundColor: '#F8F9FA',
     paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 20,
@@ -951,7 +1034,7 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
   profileImageContainer: {
     // Remover marginRight
@@ -961,7 +1044,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: THEME_COLORS.bluePrimary,
   },
   defaultProfileImage: {
     width: 56,
@@ -980,19 +1063,13 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: THEME_COLORS.text.primary,
   },
   subtitleText: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: 14,
+    color: THEME_COLORS.text.secondary,
+    fontWeight: '400',
+    marginTop: 2,
   },
   content: {
     flex: 1,
