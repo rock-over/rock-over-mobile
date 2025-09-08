@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import {
   BarChart,
@@ -227,6 +227,66 @@ const processAttemptCompletedPercentage = (sessions: ClimbingSession[]) => {
   };
 };
 
+// Week Streak Display Component
+const WeekStreakDisplay = ({ streak }: { streak: number }) => {
+  const maxMilestone = 30; // Maximum milestone for progress calculation
+  
+  // Calculate progress percentage (cap at 100%)
+  const progressPercentage = Math.min((streak / maxMilestone) * 100, 100);
+  
+  return (
+    <View style={styles.weekStreakCard}>
+      <Text style={styles.streakLabel}>Week Streak</Text>
+      
+      {/* Progress Section */}
+      <View style={styles.progressSection}>
+        
+        {/* Progress Bar Container */}
+        <View style={styles.progressBarContainer}>
+          {/* Background Bar */}
+          <View style={styles.progressBarBackground}>
+            {/* Progress Fill with Gradient Effect */}
+            {progressPercentage > 0 && (
+              <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]}>
+                {/* Base gradient layer */}
+                <View style={styles.progressBarGradientBase} />
+                {/* Middle highlight layer */}
+                <View style={styles.progressBarGradientMiddle} />
+                {/* Pattern Overlay */}
+                <View style={styles.progressBarPattern} />
+              </View>
+            )}
+          </View>
+          
+          {/* Streak Circle - Rendered outside/above the bar */}
+          {progressPercentage > 0 && (
+            <View style={[
+              styles.streakCircleContainer, 
+              { left: `${Math.min(progressPercentage, 95)}%` }
+            ]}>
+              <View style={styles.streakCircle}>
+                <Text style={styles.streakCircleText}>{streak}</Text>
+              </View>
+            </View>
+          )}
+          
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// Rewards Info Component
+const RewardsInfo = ({ onPress }: { onPress: () => void }) => {
+  return (
+    <TouchableOpacity style={styles.rewardsCard} onPress={onPress}>
+      <Text style={styles.rewardsTitle}>Earn Rewards!</Text>
+      <Text style={styles.rewardsText}>Reach milestones to unlock exclusive gear</Text>
+      <Text style={styles.rewardsLink}>Tap to learn more →</Text>
+    </TouchableOpacity>
+  );
+};
+
 // Calculate streak of consecutive weeks with at least one session
 const calculateWeeklyStreak = (sessions: ClimbingSession[]): number => {
   if (sessions.length === 0) return 0;
@@ -236,20 +296,51 @@ const calculateWeeklyStreak = (sessions: ClimbingSession[]): number => {
   currentWeekStart.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
   currentWeekStart.setHours(0, 0, 0, 0);
 
+  // Helper function to check if a week has sessions
+  const hasSessionsInWeek = (weekStart: Date) => {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    return sessions.some(session => {
+      const sessionDate = new Date(session.when);
+      return sessionDate >= weekStart && sessionDate <= weekEnd;
+    });
+  };
+
+  // Check current week
+  const currentWeekHasSessions = hasSessionsInWeek(currentWeekStart);
+  
+  // Check previous week
+  const previousWeekStart = new Date(currentWeekStart);
+  previousWeekStart.setDate(currentWeekStart.getDate() - 7);
+  const previousWeekHasSessions = hasSessionsInWeek(previousWeekStart);
+
+  // If both current and previous week have no sessions, streak is 0
+  if (!currentWeekHasSessions && !previousWeekHasSessions) {
+    return 0;
+  }
+
+  // If current week has sessions but previous doesn't, streak is 1
+  if (currentWeekHasSessions && !previousWeekHasSessions) {
+    return 1;
+  }
+
+  // If previous week has sessions (regardless of current week), calculate full streak
   let streak = 0;
   let checkWeek = new Date(currentWeekStart);
 
+  // Count current week if it has sessions
+  if (currentWeekHasSessions) {
+    streak++;
+  }
+
+  // Check previous weeks
+  checkWeek.setDate(checkWeek.getDate() - 7); // Move to previous week
+  
   while (true) {
-    const weekEnd = new Date(checkWeek);
-    weekEnd.setDate(checkWeek.getDate() + 6);
-    weekEnd.setHours(23, 59, 59, 999);
-
-    // Check if there's at least one session in this week
-    const hasSessionInWeek = sessions.some(session => {
-      const sessionDate = new Date(session.when);
-      return sessionDate >= checkWeek && sessionDate <= weekEnd;
-    });
-
+    const hasSessionInWeek = hasSessionsInWeek(checkWeek);
+    
     if (hasSessionInWeek) {
       streak++;
       // Move to previous week
@@ -507,6 +598,7 @@ export default function AnalyticsCharts() {
   // State for session timeline filter
   const [sessionTimelinePeriod, setSessionTimelinePeriod] = useState<'7d' | '30d' | '6m' | '1y' | 'all'>('30d');
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
+  const [showRewardsModal, setShowRewardsModal] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -628,12 +720,11 @@ export default function AnalyticsCharts() {
         <Text style={styles.headerSubtitle}>Track your climbing progress and insights</Text>
       </View>
       
-      {/* Weekly Streak Card */}
-      <View style={styles.streakCard}>
-        <Text style={styles.streakNumber}>{weeklyStreak}</Text>
-        <Text style={styles.streakLabel}>Week Streak</Text>
-        <Text style={styles.streakSubtitle}>Consecutive weeks with sessions</Text>
-      </View>
+      {/* Week Streak Display */}
+      <WeekStreakDisplay streak={weeklyStreak} />
+      
+      {/* Rewards Info */}
+      <RewardsInfo onPress={() => setShowRewardsModal(true)} />
 
       {/* Sessions Timeline */}
       <View style={styles.chartContainer}>
@@ -1164,6 +1255,38 @@ export default function AnalyticsCharts() {
         )}
       </View>
 
+      {/* Rewards Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showRewardsModal}
+        onRequestClose={() => setShowRewardsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Under Construction</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowRewardsModal(false)}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.constructionContent}>
+              <Text style={styles.constructionTitle}>Rewards System Coming Soon!</Text>
+              <Text style={styles.constructionText}>
+                We're working hard to bring you an amazing rewards system where you can earn exclusive climbing gear and prizes based on your streak milestones.
+              </Text>
+              <Text style={styles.constructionSubtext}>
+                Keep climbing and building your streak!
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
   );
 }
@@ -1286,12 +1409,134 @@ const styles = StyleSheet.create({
     marginTop: 16,
     gap: 20,
   },
-  streakCard: {
+  // Week Streak Display Component Styles
+  weekStreakCard: {
     backgroundColor: 'white',
     borderRadius: 12,
-    padding: 24,
-    marginBottom: 20,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'stretch', // Changed from 'center' to allow left alignment
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    overflow: 'visible', // Ensure circle is not clipped by card boundaries
+  },
+  streakLabel: {
+    fontSize: 16, // Changed to match chartTitle size (Session Timeline)
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 0, // Reduced margin to bring title closer to bar
+    textAlign: 'left', // Align title to the left
+  },
+  
+  // Progress Section Styles
+  progressSection: {
+    width: '100%',
     alignItems: 'center',
+    overflow: 'visible', // Ensure circle is not clipped
+  },
+  progressBarContainer: {
+    width: '100%',
+    height: 50, // Increased further to accommodate circle above bar
+    position: 'relative',
+    overflow: 'visible', // Ensure circle is not clipped
+  },
+  progressBarBackground: {
+    width: '100%',
+    height: 16, // Increased from 8 to 16
+    backgroundColor: '#e0e0e0',
+    borderRadius: 8,
+    marginTop: 28, // Increased more to center bar and give space above for circle
+    marginBottom: 0, // Add bottom margin to center in taller container
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 8,
+    minWidth: 12, // Increased minimum visible width
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: THEME_COLORS.bluePrimary,
+  },
+  progressBarGradientBase: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#4A90E2', // Lighter blue for gradient effect
+    borderRadius: 8,
+    opacity: 0.6,
+  },
+  progressBarGradientMiddle: {
+    position: 'absolute',
+    top: '25%',
+    left: 0,
+    right: 0,
+    height: '50%',
+    backgroundColor: '#5BA3F5', // Even lighter blue for center highlight
+    borderRadius: 8,
+    opacity: 0.4,
+  },
+  progressBarPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 8,
+    // Create texture effect using shadow
+    shadowColor: 'rgba(255, 255, 255, 0.3)',
+    shadowOffset: {
+      width: 0,
+      height: -1,
+    },
+    shadowOpacity: 0.8,
+    shadowRadius: 1,
+    elevation: 1,
+  },
+  streakCircleContainer: {
+    position: 'absolute',
+    top: 16, // Position circle centered with bar (35px marginTop + 8px bar center - 20px circle center)
+    transform: [{ translateX: -20 }], // Center the even larger circle
+    zIndex: 100, // Much higher z-index to ensure it's on top
+  },
+  streakCircle: {
+    width: 40, // Increased from 32
+    height: 40, // Increased from 32
+    borderRadius: 20, // Adjusted for new size
+    backgroundColor: 'white',
+    borderWidth: 2, // Added blue border
+    borderColor: THEME_COLORS.bluePrimary, // Blue border color
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4, // Increased shadow offset
+    },
+    shadowOpacity: 0.3, // Increased shadow opacity
+    shadowRadius: 6, // Increased shadow radius
+    elevation: 15, // Much higher elevation for Android
+  },
+  streakCircleText: {
+    fontSize: 20, // Increased from 14
+    fontWeight: 'bold', // Already bold, but ensuring it
+    color: THEME_COLORS.bluePrimary,
+  },
+  
+  // Rewards Info Component Styles
+  rewardsCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1301,21 +1546,87 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  streakNumber: {
-    fontSize: 48,
+  rewardsTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
-    color: THEME_COLORS.bluePrimary,
-    marginBottom: 4,
-  },
-  streakLabel: {
-    fontSize: 16,
-    fontWeight: '600',
     color: '#2c3e50',
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  streakSubtitle: {
-    fontSize: 12,
+  rewardsText: {
+    fontSize: 13,
     color: '#7f8c8d',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  rewardsLink: {
+    fontSize: 12,
+    color: THEME_COLORS.bluePrimary,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    margin: 20,
+    maxWidth: 350,
+    width: '90%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+  },
+  closeButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#666666',
+    fontWeight: 'bold',
+  },
+  constructionContent: {
+    alignItems: 'center',
+  },
+  constructionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  constructionText: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  constructionSubtext: {
+    fontSize: 12,
+    color: THEME_COLORS.bluePrimary,
+    fontWeight: '600',
     textAlign: 'center',
   },
   sectionContainer: {
