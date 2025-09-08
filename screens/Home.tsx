@@ -1,9 +1,9 @@
-import { FontAwesome, FontAwesome5, FontAwesome6, Ionicons } from '@expo/vector-icons';
+import { FontAwesome6, Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, FlatList, Image, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Image, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SessionCard from '../components/SessionCard'; // Importar o novo card
 import { THEME_COLORS } from '../constants/Theme';
@@ -86,10 +86,6 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<ClimbingSession | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [isTableView, setIsTableView] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
-  const [isViewTransitioning, setIsViewTransitioning] = useState(false);
   const [profileImageSource, setProfileImageSource] = useState<any>(null);
   const [profileImageLoading, setProfileImageLoading] = useState(true);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
@@ -320,86 +316,14 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
     setSelectedSession(session);
   };
 
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      // Cycle through: asc -> desc -> none
-      if (sortDirection === 'asc') {
-        setSortDirection('desc');
-      } else if (sortDirection === 'desc') {
-        setSortColumn(null);
-        setSortDirection(null);
-      }
-    } else {
-      // New column, start with ascending
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-  };
 
   const getSortedSessions = () => {
-    if (!sortColumn || !sortDirection) {
-      // Por padrão, ordenar por data (mais recente primeiro)
-      return [...sessions].sort((a, b) => {
-        const dateA = new Date(a.when).getTime();
-        const dateB = new Date(b.when).getTime();
-        return dateB - dateA; // Mais recente primeiro
-      });
-    }
-
-    const sorted = [...sessions].sort((a, b) => {
-      let valueA: any;
-      let valueB: any;
-
-      switch (sortColumn) {
-        case 'route':
-          valueA = getTitle(a).toLowerCase();
-          valueB = getTitle(b).toLowerCase();
-          break;
-        case 'grade':
-          valueA = a.grade || '';
-          valueB = b.grade || '';
-          break;
-        case 'location':
-          valueA = getLocationText(a).toLowerCase();
-          valueB = getLocationText(b).toLowerCase();
-          break;
-        case 'date':
-          valueA = new Date(a.when).getTime();
-          valueB = new Date(b.when).getTime();
-          break;
-        case 'rating':
-          valueA = parseInt(a.routeRating || '0');
-          valueB = parseInt(b.routeRating || '0');
-          break;
-        case 'status':
-          valueA = a.completion?.toLowerCase() || '';
-          valueB = b.completion?.toLowerCase() || '';
-          break;
-        default:
-          return 0;
-      }
-
-      if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
-      if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
+    // Por padrão, ordenar por data (mais recente primeiro)
+    return [...sessions].sort((a, b) => {
+      const dateA = new Date(a.when).getTime();
+      const dateB = new Date(b.when).getTime();
+      return dateB - dateA; // Mais recente primeiro
     });
-
-    return sorted;
-  };
-
-  const renderSortIcon = (column: string) => {
-    if (sortColumn !== column) {
-      return null;
-    }
-    
-    return (
-      <Ionicons 
-        name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'} 
-        size={12} 
-        color={THEME_COLORS.text.primary}
-        style={tableStyles.sortIcon}
-      />
-    );
   };
 
 
@@ -410,128 +334,9 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
 
 
 
-  const handleViewToggle = (newView: boolean) => {
-    setIsViewTransitioning(true);
-    
-    // Simulate a small delay for smooth transition
-    setTimeout(() => {
-      setIsTableView(newView);
-      setIsViewTransitioning(false);
-    }, 300);
-  };
-
-  const capitalizeWords = (str: string | null) => {
-    if (!str) return '';
-    return str.split(' ').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ');
-  };
-
-  const renderStars = (session: ClimbingSession) => {
-    const numRating = session.routeRating ? parseInt(session.routeRating, 10) : 0;
-    if (isNaN(numRating) || numRating <= 0) {
-      return <Text style={tableStyles.notRatedText}>Not Rated</Text>;
-    }
-    const stars = Array.from({ length: 5 }, (_, i) => (
-      <FontAwesome
-        key={i}
-        name={i < numRating ? 'star' : 'star-o'}
-        size={14}
-        color="#FFC700"
-      />
-    ));
-    return <View style={tableStyles.starsContainer}>{stars}</View>;
-  };
-
-  const renderTableRow = (session: ClimbingSession, index: number) => {
-    const sessionColor = getSessionColor(session);
-    const completionStatus = session.completion?.toLowerCase() ?? '';
-    const isCompleted = completionStatus === 'completed' || completionStatus === 'flash' || completionStatus === 'onsight';
-
-    return (
-      <View 
-        key={session.id} 
-        style={[tableStyles.tableRow, index % 2 === 0 ? tableStyles.evenRow : tableStyles.oddRow]}
-      >
-        {/* Name Column with Fixed Layout */}
-        <View style={tableStyles.nameColumn}>
-          {/* Color indicator */}
-          <View style={[tableStyles.colorIndicator, { backgroundColor: sessionColor }]} />
-          
-          {/* Spacing after color */}
-          <View style={tableStyles.spacingAfterColor} />
-          
-          {/* Name area */}
-          <View style={tableStyles.nameArea}>
-            <TouchableOpacity onPress={() => handleCardPress(session)}>
-              <Text 
-                style={[tableStyles.cellTitle, tableStyles.clickableTitle]}
-                numberOfLines={2}
-                ellipsizeMode="tail"
-              >
-                {getTitle(session)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          
-          {/* Spacing before button */}
-          <View style={tableStyles.spacingBeforeButton} />
-          
-          {/* Open button */}
-          <TouchableOpacity 
-            style={tableStyles.openButton}
-            onPress={() => handleCardPress(session)}
-          >
-            <Text style={tableStyles.openButtonText}>OPEN</Text>
-          </TouchableOpacity>
-          
-          {/* Spacing after button */}
-          <View style={tableStyles.spacingAfterButton} />
-        </View>
-
-        {/* Grade */}
-        <View style={tableStyles.gradeCell}>
-          <Ionicons name="speedometer-outline" size={14} color={sessionColor} />
-          <Text style={tableStyles.cellGrade}>{session.grade || 'N/A'}</Text>
-        </View>
-
-        {/* Location */}
-        <View style={tableStyles.locationCell}>
-          <Ionicons name="location" size={14} color={sessionColor} />
-          <Text style={tableStyles.cellLocation} numberOfLines={2} ellipsizeMode="tail">
-            {getLocationText(session)}
-          </Text>
-        </View>
-
-        {/* Date */}
-        <View style={tableStyles.dateCell}>
-          <Ionicons name="calendar-outline" size={14} color={sessionColor} />
-          <Text style={tableStyles.cellDate}>{formatDate(session.when)}</Text>
-        </View>
-
-        {/* Rating */}
-        <View style={tableStyles.ratingCell}>
-          {renderStars(session)}
-        </View>
-
-        {/* Completion */}
-        <View style={tableStyles.completionCell}>
-          {isCompleted ? (
-            <FontAwesome5 name="check-circle" size={14} color={THEME_COLORS.success} />
-          ) : completionStatus === 'attempt' ? (
-            <Ionicons name="trending-up" size={14} color={THEME_COLORS.bluePrimary} />
-          ) : (
-            <FontAwesome5 name="times-circle" size={14} color={THEME_COLORS.error} />
-          )}
-          <Text style={tableStyles.completionText}>
-            {completionStatus === 'attempt' || !session.completion ? 'Attempting' : session.completion}
-          </Text>
-        </View>
 
 
-      </View>
-    );
-  };
+
 
 const getFirstName = (str: string | null | undefined) => {
   if (!str) return 'Climber';
@@ -609,16 +414,69 @@ const getStreakSubtitle = (streak: number): string => {
   if (streak === 0) {
     return "Your next climb awaits!";
   } else if (streak === 1) {
-    return "Great start! Keep the momentum going";
+    return "Keep the momentum going!";
   } else if (streak <= 3) {
-    return "You're building a habit, keep it up!";
+    return "Keep it up!";
   } else if (streak <= 6) {
-    return "Amazing consistency, you're on fire!";
+    return "You're on fire!";
   } else if (streak <= 10) {
-    return "Incredible streak! You're unstoppable";
+    return "You're unstoppable!";
   } else {
-    return "Legend mode! Keep crushing it";
+    return "Keep crushing it!";
   }
+};
+
+// Generate personalized greeting based on time of day
+const getPersonalizedGreeting = (name: string | null | undefined): string => {
+  const hour = new Date().getHours();
+  const firstName = getFirstName(name);
+  
+  if (hour < 6) {
+    return `Good night, ${firstName}`;
+  } else if (hour < 12) {
+    return `Good morning, ${firstName}`;
+  } else if (hour < 18) {
+    return `Good afternoon, ${firstName}`;
+  } else {
+    return `Good evening, ${firstName}`;
+  }
+};
+
+// Calculate statistics for dashboard
+const getClimbingStats = (sessions: ClimbingSession[]) => {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
+  // Sessions this month
+  const thisMonthSessions = sessions.filter(session => {
+    const sessionDate = new Date(session.when);
+    return sessionDate.getMonth() === currentMonth && sessionDate.getFullYear() === currentYear;
+  });
+
+  // Success rate calculation (completed/flash/onsight vs attempts)
+  const completedSessions = sessions.filter(session => {
+    const status = session.completion?.toLowerCase();
+    return status === 'completed' || status === 'flash' || status === 'onsight';
+  });
+  const successRate = sessions.length > 0 ? Math.round((completedSessions.length / sessions.length) * 100) : 0;
+
+  // Average rating calculation
+  const ratingsArray = sessions.map(s => s.routeRating).filter(Boolean).map(r => parseInt(r as string, 10)).filter(r => !isNaN(r) && r > 0);
+  const avgRating = ratingsArray.length > 0 ? (ratingsArray.reduce((a, b) => a + b, 0) / ratingsArray.length).toFixed(1) : 'N/A';
+
+  // Highest grade achieved
+  const grades = sessions.map(s => s.grade).filter(Boolean);
+  const uniqueGrades = [...new Set(grades)];
+  
+  return {
+    monthlyCount: thisMonthSessions.length,
+    successRate: successRate,
+    avgRating: avgRating,
+    highestGrade: uniqueGrades.length > 0 ? uniqueGrades[uniqueGrades.length - 1] : 'N/A',
+    totalSessions: sessions.length,
+    uniqueLocations: [...new Set(sessions.map(s => s.location || s.place))].filter(Boolean).length
+  };
 };
 
   const renderSessionCard = ({ item }: { item: ClimbingSession }) => {
@@ -762,7 +620,7 @@ const getStreakSubtitle = (streak: number): string => {
                   console.log('🎨 [Home] Applying fallback due to image error...');
                   
                   // Se era uma URL, invalidar dados relacionados
-                  if (profileImageSource?.uri && profileImageSource.uri.startsWith('http')) {
+                  if (profileImageSource?.uri && profileImageSource.uri.startsWith('http') && userInfo?.id) {
                     console.log('🧹 [Home] URL failed - invalidating cache for next attempt');
                     imageCacheService.invalidateUserCache(userInfo.id);
                   }
@@ -782,207 +640,197 @@ const getStreakSubtitle = (streak: number): string => {
           
           <View style={styles.welcomeSection}>
             <Text style={styles.welcomeText} numberOfLines={1}>
-              Hello, {getFirstName(userInfo?.name)}
+              {getPersonalizedGreeting(userInfo?.name)}
             </Text>
-            <Text style={styles.subtitleText} numberOfLines={1}>
-              {getStreakSubtitle(calculateWeeklyStreak(sessions))}
-            </Text>
+            <View style={styles.streakContainer}>
+              {calculateWeeklyStreak(sessions) > 0 && (
+                <View style={styles.streakBadge}>
+                  <FontAwesome6 name="fire" size={12} color="#FF6B35" />
+                  <Text style={styles.streakText}>{calculateWeeklyStreak(sessions)}</Text>
+                </View>
+              )}
+              <View style={styles.subtitleContainer}>
+                <Text style={styles.subtitleText} numberOfLines={2}>
+                  {getStreakSubtitle(calculateWeeklyStreak(sessions))}
+                </Text>
+              </View>
+            </View>
           </View>
           
         </View>
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        {/* View Toggle Switch */}
-        <View style={styles.viewToggleContainer}>
-          <View style={styles.viewToggleContent}>
-            {/* Title and Subtitle */}
-            <View style={styles.titleContainer}>
-              <Text style={styles.titleText}>Your logs</Text>
-              <Text style={styles.logsSubtitleText}>
-                {sessions.length} sessions up to today
-              </Text>
-            </View>
-            
-            {/* View Toggle */}
-            <View style={styles.toggleSwitchContainer}>
-              <TouchableOpacity 
-                style={[styles.toggleButton, !isTableView && styles.activeToggleButton]}
-                onPress={() => handleViewToggle(false)}
-                disabled={isViewTransitioning}
-              >
-                <Ionicons 
-                  name="list" 
-                  size={18} 
-                  color={!isTableView ? THEME_COLORS.bluePrimary : THEME_COLORS.text.secondary} 
-                />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.toggleButton, isTableView && styles.activeToggleButton]}
-                onPress={() => handleViewToggle(true)}
-                disabled={isViewTransitioning}
-              >
-                <Ionicons 
-                  name="grid" 
-                  size={18} 
-                  color={isTableView ? THEME_COLORS.bluePrimary : THEME_COLORS.text.secondary} 
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
+      {/* Dashboard Content */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator 
+            size="large" 
+            color={THEME_COLORS.bluePrimary} 
+            style={styles.loadingSpinner}
+          />
         </View>
-        
-        {/* Content based on view type */}
-        {isViewTransitioning ? (
-          /* Loading State - Full Screen */
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator 
-              size="large" 
-              color={THEME_COLORS.bluePrimary} 
-              style={styles.loadingSpinner}
-            />
-          </View>
-        ) : isTableView ? (
-          /* Table View */
-          <ScrollView 
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContainer}
-          >
-            {sessions.length === 0 ? (
-              loading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator 
-                    size="large" 
-                    color={THEME_COLORS.bluePrimary} 
-                    style={styles.loadingSpinner}
-                  />
-                </View>
-              ) : (
-                <View style={styles.emptyState}>
-                  <FontAwesome6 name="mountain" size={48} color="#ccc" />
-                  <Text style={styles.emptyText}>
-                    No climbing sessions yet
-                  </Text>
-                  <Text style={styles.emptySubtext}>
-                    Tap the + button to log your first climb!
-                  </Text>
-                </View>
-              )
-            ) : (
-              <View style={tableStyles.tableContainer}>
-                {/* Horizontal Scrollable Table */}
-                <ScrollView 
-                  horizontal={true}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={tableStyles.scrollContainer}
-                >
-                  <View style={tableStyles.tableContent}>
-                    {/* Table Header */}
-                    <View style={tableStyles.tableHeader}>
-                      <View style={tableStyles.nameColumnHeader}>
-                        <View style={tableStyles.headerColorIndicator} />
-                        <View style={tableStyles.spacingAfterColor} />
-                        <TouchableOpacity 
-                          style={tableStyles.nameHeaderArea}
-                          onPress={() => handleSort('route')}
-                        >
-                          <View style={tableStyles.headerTextContainer}>
-                            <Text style={tableStyles.headerText}>Route</Text>
-                            {renderSortIcon('route')}
-                          </View>
-                        </TouchableOpacity>
-                        <View style={tableStyles.spacingBeforeButton} />
-                        <View style={tableStyles.openButtonHeaderSpace}>
-                        </View>
-                        <View style={tableStyles.spacingAfterButton} />
+      ) : (
+        <ScrollView 
+          style={styles.dashboardContainer}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.dashboardContent}
+        >
+          {/* Progress Stats Section */}
+          <View style={styles.statsSection}>
+            <Text style={styles.sectionTitle}>Your Progress</Text>
+            <View style={styles.statsGrid}>
+              {(() => {
+                const stats = getClimbingStats(sessions);
+                return (
+                  <>
+                    <View style={styles.modernStatCard}>
+                      <View style={[styles.iconCircle, { backgroundColor: '#E3F2FD' }]}>
+                        <FontAwesome6 name="calendar-days" size={18} color="#1976D2" />
                       </View>
-                      <TouchableOpacity 
-                        style={tableStyles.gradeHeader}
-                        onPress={() => handleSort('grade')}
-                      >
-                        <View style={tableStyles.headerTextContainer}>
-                          <Text style={tableStyles.headerText}>Grade</Text>
-                          {renderSortIcon('grade')}
-                        </View>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={tableStyles.locationHeader}
-                        onPress={() => handleSort('location')}
-                      >
-                        <View style={tableStyles.headerTextContainer}>
-                          <Text style={tableStyles.headerText}>Location</Text>
-                          {renderSortIcon('location')}
-                        </View>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={tableStyles.dateHeader}
-                        onPress={() => handleSort('date')}
-                      >
-                        <View style={tableStyles.headerTextContainer}>
-                          <Text style={tableStyles.headerText}>Date</Text>
-                          {renderSortIcon('date')}
-                        </View>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={tableStyles.ratingHeader}
-                        onPress={() => handleSort('rating')}
-                      >
-                        <View style={tableStyles.headerTextContainer}>
-                          <Text style={tableStyles.headerText}>Rating</Text>
-                          {renderSortIcon('rating')}
-                        </View>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={tableStyles.completionHeader}
-                        onPress={() => handleSort('status')}
-                      >
-                        <View style={tableStyles.headerTextContainer}>
-                          <Text style={tableStyles.headerText}>Status</Text>
-                          {renderSortIcon('status')}
-                        </View>
-                      </TouchableOpacity>
+                      <View style={styles.statContent}>
+                        <Text style={styles.modernStatNumber}>{stats.monthlyCount}</Text>
+                        <Text style={styles.modernStatLabel}>This Month</Text>
+                      </View>
                     </View>
                     
-                    {/* Table Rows */}
-                    {getSortedSessions().map((session, index) => renderTableRow(session, index))}
-                  </View>
-                </ScrollView>
+                    <View style={styles.modernStatCard}>
+                      <View style={[styles.iconCircle, { backgroundColor: '#F3E5F5' }]}>
+                        <FontAwesome6 name="bullseye" size={18} color="#7B1FA2" />
+                      </View>
+                      <View style={styles.statContent}>
+                        <Text style={styles.modernStatNumber}>{stats.successRate}%</Text>
+                        <Text style={styles.modernStatLabel}>Success Rate</Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.modernStatCard}>
+                      <View style={[styles.iconCircle, { backgroundColor: '#E8F5E8' }]}>
+                        <FontAwesome6 name="trophy" size={18} color="#388E3C" />
+                      </View>
+                      <View style={styles.statContent}>
+                        <Text style={styles.modernStatNumber}>{stats.highestGrade}</Text>
+                        <Text style={styles.modernStatLabel}>Best Grade</Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.modernStatCard}>
+                      <View style={[styles.iconCircle, { backgroundColor: '#FFF3E0' }]}>
+                        <FontAwesome6 name="star" size={18} color="#F57C00" solid />
+                      </View>
+                      <View style={styles.statContent}>
+                        <Text style={styles.modernStatNumber}>{stats.avgRating}</Text>
+                        <Text style={styles.modernStatLabel}>Avg Rating</Text>
+                      </View>
+                    </View>
+                  </>
+                );
+              })()}
+            </View>
+          </View>
+
+          {/* Recent Sessions Preview */}
+          {sessions.length > 0 && (
+            <View style={styles.recentSection}>
+              <View style={[styles.sectionHeader, styles.recentSectionHeader, { paddingHorizontal: 20 }]}>
+                <Text style={styles.sectionTitle}>Recent Sessions</Text>
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('Sessions')}
+                  style={styles.viewAllButton}
+                >
+                  <Text style={styles.viewAllText}>View All</Text>
+                  <Ionicons name="chevron-forward" size={16} color={THEME_COLORS.bluePrimary} />
+                </TouchableOpacity>
               </View>
-            )}
-          </ScrollView>
-        ) : (
-          /* Card View */
-        <FlatList
-          data={getSortedSessions()}
-          renderItem={renderSessionCard}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={
-            loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator 
-                  size="large" 
-                  color={THEME_COLORS.bluePrimary} 
-                  style={styles.loadingSpinner}
-                />
+              
+              <View style={styles.recentSessionsContainer}>
+                {getSortedSessions().slice(0, 3).map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    onPress={() => handleCardPress(session)}
+                  />
+                ))}
               </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <FontAwesome6 name="mountain" size={48} color="#ccc" />
-                <Text style={styles.emptyText}>
-                  No climbing sessions yet
-                </Text>
-                <Text style={styles.emptySubtext}>
-                  Tap the + button to log your first climb!
-                </Text>
-              </View>
-            )
-          }
-        />
-        )}
-      </View>
+            </View>
+          )}
+
+          {/* Achievements Section */}
+          <View style={styles.achievementsSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Achievements</Text>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('Dashboard')}
+                style={styles.viewAllButton}
+              >
+                <Text style={styles.viewAllText}>Dashboard</Text>
+                <Ionicons name="chevron-forward" size={16} color={THEME_COLORS.bluePrimary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.achievementsContainer}>
+              {(() => {
+                const streak = calculateWeeklyStreak(sessions);
+                const stats = getClimbingStats(sessions);
+                
+                return (
+                  <>
+                    {/* Weekly Streak Achievement */}
+                    {streak > 0 && (
+                      <View style={[styles.achievementCard, streak >= 4 ? styles.achievementUnlocked : styles.achievementLocked]}>
+                        <FontAwesome6 name="fire" size={24} color={streak >= 4 ? "#FF6B35" : "#ccc"} />
+                        <View style={styles.achievementInfo}>
+                          <Text style={styles.achievementTitle}>
+                            {streak >= 4 ? "On Fire!" : "Building Streak"}
+                          </Text>
+                          <Text style={styles.achievementDesc}>
+                            {streak >= 4 ? `${streak} weeks in a row!` : `${streak}/4 weeks to unlock`}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Total Sessions Achievement */}
+                    <View style={[styles.achievementCard, stats.totalSessions >= 10 ? styles.achievementUnlocked : styles.achievementLocked]}>
+                      <FontAwesome6 name="mountain" size={24} color={stats.totalSessions >= 10 ? "#4CAF50" : "#ccc"} />
+                      <View style={styles.achievementInfo}>
+                        <Text style={styles.achievementTitle}>
+                          {stats.totalSessions >= 10 ? "Dedicated Climber" : "Getting Started"}
+                        </Text>
+                        <Text style={styles.achievementDesc}>
+                          {stats.totalSessions >= 10 ? "10+ sessions completed!" : `${stats.totalSessions}/10 sessions`}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Locations Explorer Achievement */}
+                    <View style={[styles.achievementCard, stats.uniqueLocations >= 5 ? styles.achievementUnlocked : styles.achievementLocked]}>
+                      <FontAwesome6 name="globe" size={24} color={stats.uniqueLocations >= 5 ? "#2196F3" : "#ccc"} />
+                      <View style={styles.achievementInfo}>
+                        <Text style={styles.achievementTitle}>
+                          {stats.uniqueLocations >= 5 ? "Explorer" : "Local Climber"}
+                        </Text>
+                        <Text style={styles.achievementDesc}>
+                          {stats.uniqueLocations >= 5 ? "5+ different spots!" : `${stats.uniqueLocations}/5 locations`}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                );
+              })()}
+            </View>
+          </View>
+
+          {/* Empty State for no sessions */}
+          {sessions.length === 0 && (
+            <View style={styles.emptyStateDashboard}>
+              <FontAwesome6 name="mountain" size={64} color="#E0E0E0" />
+              <Text style={styles.emptyTitle}>Ready to Start Climbing?</Text>
+              <Text style={styles.emptyDesc}>
+                Log your first session to see your progress and achievements here!
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
 
       {/* Floating Action Button */}
       <TouchableOpacity 
@@ -1069,37 +917,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: THEME_COLORS.text.secondary,
     fontWeight: '400',
-    marginTop: 2,
+    lineHeight: 18,
   },
-  content: {
-    flex: 1,
-    paddingTop: 10,
-  },
-  viewToggleContainer: {
-    paddingLeft: 0,
-    paddingRight: 0,
-    paddingVertical: 8,
-  },
-  viewToggleContent: {
+  streakContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingLeft: 20,
-    paddingRight: 20,
+    marginTop: 2,
+    flexWrap: 'wrap',
   },
-  titleContainer: {
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  streakText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FF6B35',
+    marginLeft: 4,
+  },
+  subtitleContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  dashboardContainer: {
     flex: 1,
   },
-  titleText: {
+  dashboardContent: {
+    paddingBottom: 100,
+  },
+  sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: THEME_COLORS.text.primary,
-    marginBottom: 4,
+    marginBottom: 0, // Remover margin bottom do título
+    lineHeight: 24, // Definir line-height específico
   },
-  logsSubtitleText: {
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    minHeight: 24, // Garantir altura mínima consistente
+  },
+  recentSectionHeader: {
+    alignItems: 'center', // Centralizar verticalmente o botão com o título
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 2, // Pequeno padding para melhor touch target
+  },
+  viewAllText: {
     fontSize: 14,
-    color: THEME_COLORS.text.secondary,
-    fontWeight: '400',
+    color: THEME_COLORS.bluePrimary,
+    fontWeight: '600',
+    marginRight: 4,
+    lineHeight: 20, // Line-height específico para o texto do botão
   },
   loadingContainer: {
     flex: 1,
@@ -1111,140 +989,138 @@ const styles = StyleSheet.create({
   loadingSpinner: {
     transform: [{ scale: 1.5 }],
   },
-  toggleSwitchContainer: {
+  // Stats Section Styles
+  statsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24, // Aumentar espaçamento entre Your Progress e próxima seção
+  },
+  statsGrid: {
     flexDirection: 'row',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
-    padding: 2,
-    borderWidth: 1,
-    borderColor: THEME_COLORS.border.light,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 16,
   },
-  toggleButton: {
-    width: 40,
-    height: 32,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  activeToggleButton: {
+  modernStatCard: {
+    width: '48%',
     backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.06)',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 4,
     elevation: 2,
   },
-  listContainer: {
-    paddingBottom: 100,
+  statContent: {
+    flex: 1,
   },
-  card: {
+  modernStatNumber: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: THEME_COLORS.text.primary,
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  modernStatLabel: {
+    fontSize: 10,
+    color: THEME_COLORS.text.secondary,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    lineHeight: 12,
+  },
+  // Recent Sessions Styles
+  recentSection: {
+    paddingHorizontal: 0, // Remover padding para que SessionCard use o padding correto
+    marginBottom: 24,
+  },
+  recentSessionsContainer: {
+    paddingHorizontal: 0, // SessionCard já tem suas próprias margens de 20px
+  },
+  // Achievements Section Styles
+  achievementsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  achievementsContainer: {
+    gap: 12,
+  },
+  achievementCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    overflow: 'hidden',
-    paddingBottom: 16,
   },
-  cardMainContent: {
-    flexDirection: 'row',
-    paddingTop: 20,
-    paddingLeft: 20,
+  achievementUnlocked: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
   },
-  gradeSection: {
-    width: 60,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 12,
+  achievementLocked: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#E0E0E0',
   },
-  gradeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  cardRightContent: {
+  achievementInfo: {
     flex: 1,
-    paddingLeft: 16,
-    paddingRight: 10,
-    paddingTop: 0,
+    marginLeft: 12,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  titleSection: {
-    flex: 1,
-    marginRight: 8,
-  },
-  cardTitle: {
+  achievementTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 2,
+    color: THEME_COLORS.text.primary,
+    marginBottom: 4,
   },
-  cardTime: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'right',
+  achievementDesc: {
+    fontSize: 14,
+    color: THEME_COLORS.text.secondary,
   },
-  cardSubtitle: {
-    fontSize: 13,
-    color: '#555',
-    fontWeight: '500',
-  },
-  additionalInfo: {
-    marginBottom: 12,
-    marginTop: 4,
-  },
-  infoText: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-    lineHeight: 16,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 6,
-  },
-  tagText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '500',
-  },
-  emptyState: {
+  // Empty State Styles
+  emptyStateDashboard: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
+    paddingHorizontal: 40,
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME_COLORS.text.primary,
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999',
+  emptyDesc: {
+    fontSize: 16,
+    color: THEME_COLORS.text.secondary,
     textAlign: 'center',
-    paddingHorizontal: 40,
+    lineHeight: 22,
   },
   profileImageLoading: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -1350,236 +1226,3 @@ const successStyles = StyleSheet.create({
   },
 });
 
-const tableStyles = StyleSheet.create({
-  tableContainer: {
-    backgroundColor: '#fff',
-    marginTop: 5,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  scrollContainer: {
-    // No padding needed since table takes full width
-  },
-  tableContent: {
-    minWidth: 860, // Adjusted for new name column layout
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    paddingVertical: 12,
-    paddingLeft: 20,
-    paddingRight: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME_COLORS.border.light,
-  },
-  nameColumnHeader: {
-    width: 180, // Total width for name column
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-    borderRightWidth: 1,
-    borderRightColor: THEME_COLORS.border.light,
-    paddingRight: 16,
-  },
-  headerColorIndicator: {
-    width: 6,
-  },
-  headerText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME_COLORS.text.primary,
-    textTransform: 'uppercase',
-  },
-  spacingAfterColor: {
-    width: 8,
-  },
-  nameHeaderArea: {
-    flex: 1,
-  },
-  spacingBeforeButton: {
-    width: 8,
-  },
-  openButtonHeaderSpace: {
-    width: 50,
-    alignItems: 'center',
-  },
-  spacingAfterButton: {
-    width: 8,
-  },
-  headerTextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  sortIcon: {
-    marginLeft: 2,
-  },
-  gradeHeader: {
-    width: 80,
-    alignItems: 'center',
-    marginRight: 16,
-    borderRightWidth: 1,
-    borderRightColor: THEME_COLORS.border.light,
-    paddingRight: 16,
-  },
-  locationHeader: {
-    width: 180,
-    marginRight: 16,
-    borderRightWidth: 1,
-    borderRightColor: THEME_COLORS.border.light,
-    paddingRight: 16,
-  },
-  dateHeader: {
-    width: 80,
-    alignItems: 'center',
-    marginRight: 16,
-    borderRightWidth: 1,
-    borderRightColor: THEME_COLORS.border.light,
-    paddingRight: 16,
-  },
-  ratingHeader: {
-    width: 120,
-    alignItems: 'center',
-    marginRight: 16,
-    borderRightWidth: 1,
-    borderRightColor: THEME_COLORS.border.light,
-    paddingRight: 16,
-  },
-  completionHeader: {
-    width: 120,
-    alignItems: 'center',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingLeft: 20,
-    paddingRight: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  evenRow: {
-    backgroundColor: '#FAFAFA',
-  },
-  oddRow: {
-    backgroundColor: '#fff',
-  },
-  nameColumn: {
-    width: 180, // Same as header
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-    borderRightWidth: 1,
-    borderRightColor: THEME_COLORS.border.light,
-    paddingRight: 16,
-  },
-  colorIndicator: {
-    width: 6,
-    height: 32,
-    borderRadius: 3,
-  },
-  nameArea: {
-    flex: 1,
-    paddingVertical: 2,
-  },
-  cellTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: THEME_COLORS.text.primary,
-  },
-  clickableTitle: {
-    textDecorationLine: 'underline',
-    color: THEME_COLORS.text.primary, // Changed to black
-  },
-  openButton: {
-    backgroundColor: THEME_COLORS.bluePrimary,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 4,
-    width: 50,
-    alignItems: 'center',
-  },
-  openButtonText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  gradeCell: {
-    width: 80,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginRight: 16,
-    borderRightWidth: 1,
-    borderRightColor: THEME_COLORS.border.light,
-    paddingRight: 16,
-  },
-  cellGrade: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: THEME_COLORS.text.primary,
-  },
-  locationCell: {
-    width: 180,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginRight: 16,
-    borderRightWidth: 1,
-    borderRightColor: THEME_COLORS.border.light,
-    paddingRight: 16,
-  },
-  cellLocation: {
-    fontSize: 12,
-    color: THEME_COLORS.text.secondary,
-    flex: 1,
-  },
-  dateCell: {
-    width: 80,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    marginRight: 16,
-    borderRightWidth: 1,
-    borderRightColor: THEME_COLORS.border.light,
-    paddingRight: 16,
-  },
-  cellDate: {
-    fontSize: 11,
-    color: THEME_COLORS.text.secondary,
-  },
-  ratingCell: {
-    width: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-    borderRightWidth: 1,
-    borderRightColor: THEME_COLORS.border.light,
-    paddingRight: 16,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  notRatedText: {
-    fontSize: 10,
-    fontStyle: 'italic',
-    color: THEME_COLORS.text.light,
-  },
-  completionCell: {
-    width: 120,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  completionText: {
-    fontSize: 11,
-    color: THEME_COLORS.text.secondary,
-    textTransform: 'capitalize',
-  },
-});
