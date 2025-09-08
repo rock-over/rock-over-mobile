@@ -1,6 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import {
   BarChart,
@@ -247,14 +248,12 @@ const WeekStreakDisplay = ({ streak }: { streak: number }) => {
           <View style={styles.progressBarBackground}>
             {/* Progress Fill with Gradient Effect */}
             {progressPercentage > 0 && (
-              <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]}>
-                {/* Base gradient layer */}
-                <View style={styles.progressBarGradientBase} />
-                {/* Middle highlight layer */}
-                <View style={styles.progressBarGradientMiddle} />
-                {/* Pattern Overlay */}
-                <View style={styles.progressBarPattern} />
-              </View>
+              <LinearGradient
+                colors={['#4A90E2', THEME_COLORS.bluePrimary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.progressBarFill, { width: `${progressPercentage}%` }]}
+              />
             )}
           </View>
           
@@ -280,9 +279,18 @@ const WeekStreakDisplay = ({ streak }: { streak: number }) => {
 const RewardsInfo = ({ onPress }: { onPress: () => void }) => {
   return (
     <TouchableOpacity style={styles.rewardsCard} onPress={onPress}>
-      <Text style={styles.rewardsTitle}>Earn Rewards!</Text>
-      <Text style={styles.rewardsText}>Reach milestones to unlock exclusive gear</Text>
-      <Text style={styles.rewardsLink}>Tap to learn more →</Text>
+      <View style={styles.rewardsContainer}>
+        <View style={styles.textContainer}>
+          <Text style={styles.rewardsTitle}>Earn Rewards!</Text>
+          <Text style={styles.rewardsText}>Reach milestones to unlock exclusive gear</Text>
+          <Text style={styles.rewardsLink}>Tap to learn more →</Text>
+        </View>
+        <Image 
+          source={require('../assets/images/rewards.png')} 
+          style={styles.rewardsImage}
+          resizeMode="contain"
+        />
+      </View>
     </TouchableOpacity>
   );
 };
@@ -1459,47 +1467,7 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 8,
     minWidth: 12, // Increased minimum visible width
-    position: 'relative',
     overflow: 'hidden',
-    backgroundColor: THEME_COLORS.bluePrimary,
-  },
-  progressBarGradientBase: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#4A90E2', // Lighter blue for gradient effect
-    borderRadius: 8,
-    opacity: 0.6,
-  },
-  progressBarGradientMiddle: {
-    position: 'absolute',
-    top: '25%',
-    left: 0,
-    right: 0,
-    height: '50%',
-    backgroundColor: '#5BA3F5', // Even lighter blue for center highlight
-    borderRadius: 8,
-    opacity: 0.4,
-  },
-  progressBarPattern: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 8,
-    // Create texture effect using shadow
-    shadowColor: 'rgba(255, 255, 255, 0.3)',
-    shadowOffset: {
-      width: 0,
-      height: -1,
-    },
-    shadowOpacity: 0.8,
-    shadowRadius: 1,
-    elevation: 1,
   },
   streakCircleContainer: {
     position: 'absolute',
@@ -1545,6 +1513,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+  },
+  rewardsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  textContainer: {
+    flex: 1,
+    marginRight: 16,
+  },
+  rewardsImage: {
+    width: 100,
+    height: 100,
   },
   rewardsTitle: {
     fontSize: 18,
