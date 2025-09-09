@@ -7,7 +7,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { AppEventsLogger } from 'react-native-fbsdk-next';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { supabase, verifyPasswordResetToken } from './lib/supabase';
+import { supabase, signOut, verifyPasswordResetToken } from './lib/supabase';
 
 // Importar as telas
 import AuthFlow from './screens/AuthFlow';
@@ -19,125 +19,66 @@ const Stack = createStackNavigator();
 // Criar o contexto de autenticação
 const AuthContext = createContext<{
   session: Session | null;
-  userInfo: any | null;
-  setUserInfo: (userInfo: any) => void;
   isLoading: boolean;
+  userInfo: any;
+  setUserInfo: (user: any) => void;
 }>({
   session: null,
+  isLoading: true,
   userInfo: null,
   setUserInfo: () => {},
-  isLoading: true,
 });
 
-// Hook customizado para usar o contexto de autenticação
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);
 
-// Provedor de autenticação
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [userInfo, setUserInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userInfo, setUserInfo] = useState<any>(null);
 
   useEffect(() => {
-    // Restaurar a sessão e ouvir por mudanças
-    const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
+    // Facebook Analytics (se disponível)
+    try {
+      AppEventsLogger.logEvent('AppOpen');
+    } catch (error) {
+      console.log('[FacebookEvents] ⚠️ Facebook SDK not available in this build');
+    }
 
-      if (session) {
-        // Se houver uma sessão, podemos buscar informações adicionais do usuário aqui
-        const user = session.user;
-        const finalUser = {
-          id: user.id,
-          name: user.user_metadata?.name || user.email?.split('@')[0],
-          email: user.email,
-          photo: user.user_metadata?.avatar_url,
-          profilePhoto: user.user_metadata?.profilePhoto || 'illustration_1',
-        };
-        setUserInfo(finalUser);
-      }
+    // Monitorar mudanças de estado da sessão
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[App] 🔄 Initial session check:', session ? 'session found' : 'no session');
+      setSession(session);
       setIsLoading(false);
-    };
-
-    fetchSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('[App] 🔄 onAuthStateChange triggered:', _event, session ? 'session exists' : 'no session');
-      
-      setSession(session);
-      if (session) {
-        const user = session.user;
-        
-        // Check if user has completed profile setup
-        const hasCompletedProfile = user.user_metadata?.profilePhoto && 
-                                   user.user_metadata?.gradingSystem &&
-                                   user.user_metadata?.profilePhoto !== 'illustration_1';
-        
-        console.log('[App] 🔍 Profile completion check:', {
-          profilePhoto: user.user_metadata?.profilePhoto,
-          gradingSystem: user.user_metadata?.gradingSystem,
-          hasCompletedProfile
-        });
-        
-        if (hasCompletedProfile) {
-          const finalUser = {
-            id: user.id,
-            name: user.user_metadata?.name || user.email?.split('@')[0],
-            email: user.email,
-            photo: user.user_metadata?.avatar_url,
-            profilePhoto: user.user_metadata?.profilePhoto,
-            gradingSystem: user.user_metadata?.gradingSystem,
-          };
-          console.log('[App] ✅ User has completed profile, setting userInfo:', finalUser);
-          setUserInfo(finalUser);
-        } else {
-          console.log('[App] ⏳ User has NOT completed profile setup, staying in AuthFlow');
-          setUserInfo(null); // Keep in AuthFlow
-        }
-      } else {
-        console.log('[App] 🚫 No session, clearing userInfo');
-        setUserInfo(null);
-      }
     });
 
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, []);
-
-  // Facebook App Events - Condicionalmente ativo
-  useEffect(() => {
-    // Verificar se Facebook SDK está disponível
-    try {
-      if (AppEventsLogger && typeof AppEventsLogger.activateApp === 'function') {
-        AppEventsLogger.activateApp();
-        console.log('[FacebookEvents] 📊 App activation logged');
-        
-        // Rastrear quando o app fica ativo/background
-        const handleAppStateChange = (nextAppState: string) => {
-          if (nextAppState === 'active') {
-            AppEventsLogger.activateApp();
-            console.log('[FacebookEvents] 📊 App reactivation logged');
-          }
-        };
-
-        const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-        return () => {
-          subscription?.remove();
-        };
-      } else {
-        console.log('[FacebookEvents] ⚠️ Facebook SDK not available in this build');
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[App] 🔄 onAuthStateChange triggered:', event, session ? 'session exists' : 'no session');
+      
+      if (event === 'SIGNED_OUT' || !session) {
+        console.log('[App] 🚫 No session, clearing userInfo');
+        setSession(null);
+        setUserInfo(null);
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.log('[App] ✅ Session active, updating state');
+        setSession(session);
       }
-    } catch (error) {
-      console.log('[FacebookEvents] ❌ Facebook SDK error:', error);
-    }
+      
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  // Log render decisions for debugging
+  useEffect(() => {
+    console.log('[App] 🎬 Render decision - session:', !!session, 'userInfo:', !!userInfo);
+    console.log('[App] 📊 UserInfo details:', userInfo);
+  }, [session, userInfo]);
 
   return (
-    <AuthContext.Provider value={{ session, userInfo, setUserInfo, isLoading }}>
+    <AuthContext.Provider value={{ session, isLoading, userInfo, setUserInfo }}>
       {children}
     </AuthContext.Provider>
   );
@@ -159,9 +100,6 @@ function AppContent() {
       iosClientId: "783345722479-m8mlc36nshvu46svuvjld0m234ec61kq.apps.googleusercontent.com",
       profileImageSize: 150,
       forceCodeForRefreshToken: true,
-      // // iOS specific settings to prevent nonce issues
-      // offlineAccess: true,
-      // hostedDomain: '',
     });
 
     // Lógica para deep links de redefinição de senha
@@ -197,9 +135,26 @@ function AppContent() {
   }
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error logging out:', error);
+    console.log('[App] 🚪 Starting logout process...');
+    
+    try {
+      // Use nossa nova função de logout que suporta iOS
+      const { error } = await signOut();
+      
+      if (error) {
+        console.error('[App] ❌ Error during logout:', error);
+      } else {
+        console.log('[App] ✅ Logout successful');
+      }
+      
+      // Sempre limpar o estado local, independente de erros
+      setUserInfo(null);
+      console.log('[App] 🧹 Local state cleared');
+      
+    } catch (error: any) {
+      console.error('[App] ❌ Logout exception:', error);
+      // Ainda assim, limpar o estado local
+      setUserInfo(null);
     }
   };
 
@@ -212,92 +167,62 @@ function AppContent() {
                           user.facebook_id ||
                           user.user_metadata?.facebook_id;
     
-    // Update user metadata in Supabase with profile setup data
-    if (user.profilePhoto && user.gradingSystem) {
-      console.log('[App] 💾 Updating user metadata in Supabase');
-      
-      if (isFacebookUser) {
-        // For Facebook users, update directly in profiles table
-        console.log('[App] 🔄 Updating Facebook user profile directly in database');
-        try {
-          const { error } = await supabase
-            .from('profiles')
-            .update({
-              grading_system: user.gradingSystem,
-              profile_picture_url: user.profilePhoto.startsWith('http') ? user.profilePhoto : null,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
-            
-          if (error) {
-            console.error('[App] ❌ Error updating Facebook user profile:', error);
-          } else {
-            console.log('[App] ✅ Facebook user profile updated successfully');
-          }
-        } catch (error) {
-          console.error('[App] ❌ Unexpected error updating Facebook user profile:', error);
-        }
-      } else {
-        // For regular Supabase users, update auth metadata
-        const { error } = await supabase.auth.updateUser({
-          data: {
-            profilePhoto: user.profilePhoto,
-            gradingSystem: user.gradingSystem,
-            name: user.name
-          }
-        });
-        
-        if (error) {
-          console.error('[App] ❌ Error updating user metadata:', error);
-        } else {
-          console.log('[App] ✅ User metadata updated successfully');
-        }
-      }
+    if (isFacebookUser) {
+      console.log('[App] 📱 Facebook user detected');
+      // For Facebook users, we don't expect a Supabase session
+      // They use their own authentication system
+    } else {
+      console.log('[App] 👤 Regular user (Email/Google) detected');
     }
     
-    // Set userInfo to trigger Home screen
     setUserInfo(user);
+    console.log('[App] ✅ User info set in context');
   };
 
-  console.log('[App] 🎬 Render decision - session:', !!session, 'userInfo:', !!userInfo);
-  console.log('[App] 📊 UserInfo details:', userInfo);
+  // Se tem userInfo, mostrar app logado
+  if (userInfo) {
+    console.log('[App] 🏠 RENDERING MAIN APP!');
+    return (
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="HomeWithTabs">
+            {(props) => <HomeWithTabs {...props} userInfo={userInfo} onLogout={handleLogout} />}
+          </Stack.Screen>
+          <Stack.Screen 
+            name="ClimbingSessionForm" 
+            component={ClimbingSessionForm}
+            options={{
+              headerShown: true,
+              title: 'Log Session',
+              headerBackTitle: 'Back',
+            }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
+  }
 
+  // Se não tem userInfo, mostrar fluxo de autenticação
+  console.log('[App] 🔐 RENDERING AUTHFLOW SCREEN!');
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {session && userInfo ? (
-          <>
-            {console.log('[App] 🏠 RENDERING HOME SCREEN WITH TABS!')}
-            <Stack.Screen name="Home">
-              {(props) => <HomeWithTabs {...props} userInfo={userInfo} onLogout={handleLogout} />}
-            </Stack.Screen>
-            <Stack.Screen
-              name="ClimbingSessionForm"
-              component={ClimbingSessionForm}
-              options={{ headerShown: false }}
+        <Stack.Screen name="AuthFlow">
+          {(props) => (
+            <AuthFlow
+              {...props}
+              onAuthSuccess={handleAuthSuccess}
+              initialScreen={authFlowState.initialScreen}
+              resetTokens={authFlowState.resetTokens}
             />
-          </>
-        ) : (
-          <>
-            {console.log('[App] 🔐 RENDERING AUTHFLOW SCREEN!')}
-            <Stack.Screen name="AuthFlow">
-              {(props) => (
-                <AuthFlow 
-                  {...props}
-                  initialScreen={authFlowState.initialScreen}
-                  resetTokens={authFlowState.resetTokens}
-                  onAuthSuccess={handleAuthSuccess}
-                />
-              )}
-            </Stack.Screen>
-          </>
-        )}
+          )}
+        </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
@@ -306,5 +231,3 @@ function App() {
     </SafeAreaProvider>
   );
 }
-
-export default App;
