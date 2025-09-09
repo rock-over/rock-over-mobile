@@ -1,8 +1,15 @@
-import { FontAwesome, FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { FontAwesome, FontAwesome5, FontAwesome6, Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { THEME_COLORS } from '../constants/Theme';
 import { imageCacheService } from '../services/imageCacheService';
+
+interface ClimbingSession {
+  id: string;
+  when: string;
+  where: string;
+  // Add other session properties as needed
+}
 
 interface ProfileScreenProps {
   userInfo?: {
@@ -14,12 +21,18 @@ interface ProfileScreenProps {
     gradingSystem?: string;
   } | null;
   onLogout?: () => void;
+  sessions?: ClimbingSession[];
 }
 
-export default function ProfileScreen({ userInfo, onLogout }: ProfileScreenProps) {
+export default function ProfileScreen({ 
+  userInfo, 
+  onLogout, 
+  sessions = [] 
+}: ProfileScreenProps) {
   const [profileImageSource, setProfileImageSource] = useState<any>(null);
   const [profileImageLoading, setProfileImageLoading] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showRewardsModal, setShowRewardsModal] = useState(false);
 
   // Carregamento da imagem de perfil
   useEffect(() => {
@@ -56,6 +69,19 @@ export default function ProfileScreen({ userInfo, onLogout }: ProfileScreenProps
     );
   };
 
+  const handleSettings = () => {
+    Alert.alert(
+      'Settings',
+      'Choose what you want to configure',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Grade System', onPress: () => handleChangeGradeSystem() },
+        { text: 'Notifications', onPress: () => console.log('Notifications') },
+        { text: 'Privacy', onPress: () => console.log('Privacy') },
+      ]
+    );
+  };
+
   const handleChangeGradeSystem = () => {
     Alert.alert(
       'Change Grade System',
@@ -82,9 +108,49 @@ export default function ProfileScreen({ userInfo, onLogout }: ProfileScreenProps
     setShowLogoutModal(false);
   };
 
+  // Calculate streak of consecutive weeks with at least one session
+  const calculateWeeklyStreak = (sessions: ClimbingSession[]): number => {
+    if (sessions.length === 0) return 0;
+
+    const today = new Date();
+    const currentWeekStart = new Date(today);
+    currentWeekStart.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
+    currentWeekStart.setHours(0, 0, 0, 0);
+
+    // Helper function to check if a week has sessions
+    const hasSessionsInWeek = (weekStart: Date) => {
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      
+      return sessions.some(session => {
+        const sessionDate = new Date(session.when);
+        return sessionDate >= weekStart && sessionDate <= weekEnd;
+      });
+    };
+
+    // Check current week
+    if (!hasSessionsInWeek(currentWeekStart)) {
+      return 0;
+    }
+
+    let streak = 1;
+    let checkWeek = new Date(currentWeekStart);
+    checkWeek.setDate(checkWeek.getDate() - 7); // Previous week
+
+    // Count backward consecutive weeks
+    while (hasSessionsInWeek(checkWeek)) {
+      streak++;
+      checkWeek.setDate(checkWeek.getDate() - 7);
+    }
+
+    return streak;
+  };
+
   const getFirstName = (name: string | null | undefined) => {
     if (!name) return 'User';
-    return name.split(' ')[0];
+    const firstName = name.split(' ')[0];
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
   };
 
   const getProfileImageSource = () => {
@@ -153,16 +219,32 @@ export default function ProfileScreen({ userInfo, onLogout }: ProfileScreenProps
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
-          {/* Change Grade System Action */}
-          <TouchableOpacity style={styles.actionItem} onPress={handleChangeGradeSystem}>
+          {/* Settings Action */}
+          <TouchableOpacity style={styles.actionItem} onPress={handleSettings}>
             <View style={styles.actionLeft}>
               <View style={[styles.actionIcon, { backgroundColor: '#F3E5F5' }]}>
-                <FontAwesome5 name="mountain" size={18} color="#9C27B0" />
+                <FontAwesome5 name="cog" size={18} color="#9C27B0" />
               </View>
               <View style={styles.actionText}>
-                <Text style={styles.actionTitle}>Grade System</Text>
+                <Text style={styles.actionTitle}>Settings</Text>
                 <Text style={styles.actionSubtitle}>
-                  Current: {userInfo?.gradingSystem || 'V-Scale'}
+                  Manage your preferences
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+
+          {/* Rewards Action */}
+          <TouchableOpacity style={styles.actionItem} onPress={() => setShowRewardsModal(true)}>
+            <View style={styles.actionLeft}>
+              <View style={[styles.actionIcon, { backgroundColor: '#FFF3E0' }]}>
+                <FontAwesome5 name="trophy" size={18} color="#FF9800" />
+              </View>
+              <View style={styles.actionText}>
+                <Text style={styles.actionTitle}>Rewards</Text>
+                <Text style={styles.actionSubtitle}>
+                  Current streak: {calculateWeeklyStreak(sessions)} weeks
                 </Text>
               </View>
             </View>
@@ -182,6 +264,7 @@ export default function ProfileScreen({ userInfo, onLogout }: ProfileScreenProps
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
+
         </View>
       </ScrollView>
 
@@ -226,6 +309,70 @@ export default function ProfileScreen({ userInfo, onLogout }: ProfileScreenProps
           </View>
         </View>
       </Modal>
+
+      {/* Rewards Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showRewardsModal}
+        onRequestClose={() => setShowRewardsModal(false)}
+      >
+        <View style={rewardsModalStyles.overlay}>
+          <View style={rewardsModalStyles.content}>
+            <View style={rewardsModalStyles.header}>
+              <Text style={rewardsModalStyles.title}>Streak Rewards</Text>
+              <TouchableOpacity
+                style={rewardsModalStyles.closeButton}
+                onPress={() => setShowRewardsModal(false)}
+              >
+                <Text style={rewardsModalStyles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={rewardsModalStyles.body}>
+              <Text style={rewardsModalStyles.subtitle}>
+                Build your climbing streak to unlock exclusive rewards!
+              </Text>
+              
+              <View style={rewardsModalStyles.milestonesList}>
+                <View style={rewardsModalStyles.milestoneItem}>
+                  <View style={[rewardsModalStyles.milestoneIcon, calculateWeeklyStreak(sessions) >= 4 ? rewardsModalStyles.milestoneUnlocked : rewardsModalStyles.milestoneLocked]}>
+                    <FontAwesome6 name="fire" size={16} color={calculateWeeklyStreak(sessions) >= 4 ? "#FF6B35" : "#ccc"} />
+                  </View>
+                  <View style={rewardsModalStyles.milestoneInfo}>
+                    <Text style={rewardsModalStyles.milestoneTitle}>4 Week Streak</Text>
+                    <Text style={rewardsModalStyles.milestoneDesc}>Digital Badge</Text>
+                  </View>
+                </View>
+
+                <View style={rewardsModalStyles.milestoneItem}>
+                  <View style={[rewardsModalStyles.milestoneIcon, calculateWeeklyStreak(sessions) >= 8 ? rewardsModalStyles.milestoneUnlocked : rewardsModalStyles.milestoneLocked]}>
+                    <FontAwesome5 name="trophy" size={16} color={calculateWeeklyStreak(sessions) >= 8 ? "#FFD700" : "#ccc"} />
+                  </View>
+                  <View style={rewardsModalStyles.milestoneInfo}>
+                    <Text style={rewardsModalStyles.milestoneTitle}>8 Week Streak</Text>
+                    <Text style={rewardsModalStyles.milestoneDesc}>10% Gear Discount</Text>
+                  </View>
+                </View>
+
+                <View style={rewardsModalStyles.milestoneItem}>
+                  <View style={[rewardsModalStyles.milestoneIcon, calculateWeeklyStreak(sessions) >= 12 ? rewardsModalStyles.milestoneUnlocked : rewardsModalStyles.milestoneLocked]}>
+                    <FontAwesome5 name="crown" size={16} color={calculateWeeklyStreak(sessions) >= 12 ? "#9C27B0" : "#ccc"} />
+                  </View>
+                  <View style={rewardsModalStyles.milestoneInfo}>
+                    <Text style={rewardsModalStyles.milestoneTitle}>12 Week Streak</Text>
+                    <Text style={rewardsModalStyles.milestoneDesc}>Premium climbing shoes</Text>
+                  </View>
+                </View>
+              </View>
+              
+              <Text style={rewardsModalStyles.note}>
+                Current streak: {calculateWeeklyStreak(sessions)} weeks
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -239,7 +386,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileSection: {
-    backgroundColor: THEME_COLORS.bluePrimary,
+    backgroundColor: '#fff',
     alignItems: 'center',
     paddingVertical: 20,
     paddingTop: 60,
@@ -255,7 +402,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 4,
-    borderColor: '#fff',
+    borderColor: THEME_COLORS.bluePrimary,
   },
   profileImageLoading: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -276,15 +423,15 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   userName: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#fff',
+    color: THEME_COLORS.text.primary,
     marginBottom: 0,
     textAlign: 'center',
   },
   userEmail: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    color: THEME_COLORS.text.secondary,
     textAlign: 'center',
   },
   actionsSection: {
@@ -401,5 +548,103 @@ const modalStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+});
+
+const rewardsModalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  content: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 0,
+    width: '100%',
+    maxHeight: '80%',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME_COLORS.text.primary,
+  },
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    fontSize: 18,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  body: {
+    padding: 20,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: THEME_COLORS.text.secondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  milestonesList: {
+    gap: 16,
+  },
+  milestoneItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+  },
+  milestoneIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  milestoneUnlocked: {
+    backgroundColor: '#E8F5E8',
+  },
+  milestoneLocked: {
+    backgroundColor: '#f5f5f5',
+  },
+  milestoneInfo: {
+    flex: 1,
+  },
+  milestoneTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: THEME_COLORS.text.primary,
+    marginBottom: 2,
+  },
+  milestoneDesc: {
+    fontSize: 14,
+    color: THEME_COLORS.text.secondary,
+  },
+  note: {
+    fontSize: 14,
+    color: THEME_COLORS.bluePrimary,
+    textAlign: 'center',
+    marginTop: 20,
+    fontWeight: '600',
   },
 });
