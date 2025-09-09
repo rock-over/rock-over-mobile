@@ -359,9 +359,10 @@ const processAttemptCompletedPercentage = (sessions: ClimbingSession[], period: 
 
 // Week Streak Display Component
 const WeekStreakDisplay = ({ streak }: { streak: number }) => {
-  const maxMilestone = 30; // Maximum milestone for progress calculation
+  const maxMilestone = 12; // Maximum milestone for progress calculation
+  const milestones = [4, 8, 12]; // Milestone markers
   
-  // Calculate progress percentage (cap at 100%)
+  // Calculate progress percentage (cap at 100% for display)
   const progressPercentage = Math.min((streak / maxMilestone) * 100, 100);
   
   return (
@@ -385,6 +386,46 @@ const WeekStreakDisplay = ({ streak }: { streak: number }) => {
               />
             )}
           </View>
+          
+          {/* Milestone Markers - Same level as bar */}
+          {milestones.map((milestone, index) => {
+            const milestonePosition = (milestone / maxMilestone) * 100;
+            const isReached = streak >= milestone;
+            
+            return (
+              <View
+                key={milestone}
+                style={[
+                  styles.milestoneContainer,
+                  { left: `${milestonePosition}%` }
+                ]}
+              >
+                {/* Milestone Dashed Line */}
+                <View style={styles.milestoneLineContainer}>
+                  {Array.from({ length: 6 }).map((_, dashIndex) => (
+                    <View
+                      key={dashIndex}
+                      style={[
+                        styles.milestoneDash,
+                        {
+                          backgroundColor: '#FF9500',
+                          opacity: isReached ? 1 : 0.5,
+                        }
+                      ]}
+                    />
+                  ))}
+                </View>
+                
+                {/* Milestone Number Below */}
+                <Text style={[
+                  styles.milestoneText,
+                  { color: isReached ? THEME_COLORS.bluePrimary : '#999999' }
+                ]}>
+                  {milestone}
+                </Text>
+              </View>
+            );
+          })}
           
           {/* Streak Circle - Rendered outside/above the bar */}
           {progressPercentage > 0 && (
@@ -1680,7 +1721,7 @@ const styles = StyleSheet.create({
   },
   progressBarContainer: {
     width: '100%',
-    height: 50, // Increased further to accommodate circle above bar
+    height: 80, // Increased to accommodate milestone text below bar
     position: 'relative',
     overflow: 'visible', // Ensure circle is not clipped
   },
@@ -1727,6 +1768,38 @@ const styles = StyleSheet.create({
     fontSize: 20, // Increased from 14
     fontWeight: 'bold', // Already bold, but ensuring it
     color: THEME_COLORS.bluePrimary,
+  },
+  
+  // Milestone Marker Styles
+  milestoneContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateX: -1 }], // Center the line (1px width)
+    zIndex: 50, // Below the streak circle but above the bar
+    height: 80, // Full height to contain both line and text
+  },
+  milestoneLineContainer: {
+    position: 'absolute',
+    top: 20, // Align with bar position (marginTop of progressBarBackground)
+    width: 2,
+    height: 32, // Line height (extends below bar)
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 2, // Small padding for better spacing
+  },
+  milestoneDash: {
+    width: 2,
+    height: 4, // Each dash is 4px tall
+    borderRadius: 1,
+  },
+  milestoneText: {
+    position: 'absolute',
+    top: 56, // Position below the line (20 + 32 + 4 spacing)
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    width: 20, // Fixed width for centering
   },
   
   // Rewards Info Component Styles
