@@ -1,3 +1,4 @@
+import { FontAwesome6 } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useState } from 'react';
@@ -1461,10 +1462,10 @@ export default function AnalyticsCharts() {
         visible={showRewardsModal}
         onRequestClose={() => setShowRewardsModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Under Construction</Text>
+        <View style={styles.rewardsModalOverlay}>
+          <View style={styles.rewardsModalContent}>
+            <View style={styles.rewardsModalHeader}>
+              <Text style={styles.rewardsModalTitle}>Streak Rewards</Text>
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setShowRewardsModal(false)}
@@ -1473,13 +1474,45 @@ export default function AnalyticsCharts() {
               </TouchableOpacity>
             </View>
             
-            <View style={styles.constructionContent}>
-              <Text style={styles.constructionTitle}>Rewards System Coming Soon!</Text>
-              <Text style={styles.constructionText}>
-                We're working hard to bring you an amazing rewards system where you can earn exclusive climbing gear and prizes based on your streak milestones.
+            <View style={styles.rewardsModalBody}>
+              <Text style={styles.rewardsModalSubtitle}>
+                Build your climbing streak to unlock exclusive rewards!
               </Text>
-              <Text style={styles.constructionSubtext}>
-                Keep climbing and building your streak!
+              
+              <View style={styles.milestonesList}>
+                <View style={styles.milestoneItem}>
+                  <View style={[styles.milestoneIcon, weeklyStreak >= 4 ? styles.milestoneUnlocked : styles.milestoneLocked]}>
+                    <FontAwesome6 name="fire" size={16} color={weeklyStreak >= 4 ? "#FF6B35" : "#ccc"} />
+                  </View>
+                  <View style={styles.milestoneInfo}>
+                    <Text style={styles.milestoneTitle}>4 Week Streak</Text>
+                    <Text style={styles.milestoneDesc}>Climbing gear discount</Text>
+                  </View>
+                </View>
+
+                <View style={styles.milestoneItem}>
+                  <View style={[styles.milestoneIcon, weeklyStreak >= 8 ? styles.milestoneUnlocked : styles.milestoneLocked]}>
+                    <FontAwesome6 name="trophy" size={16} color={weeklyStreak >= 8 ? "#FFD700" : "#ccc"} />
+                  </View>
+                  <View style={styles.milestoneInfo}>
+                    <Text style={styles.milestoneTitle}>8 Week Streak</Text>
+                    <Text style={styles.milestoneDesc}>Exclusive climbing chalk bag</Text>
+                  </View>
+                </View>
+
+                <View style={styles.milestoneItem}>
+                  <View style={[styles.milestoneIcon, weeklyStreak >= 12 ? styles.milestoneUnlocked : styles.milestoneLocked]}>
+                    <FontAwesome6 name="crown" size={16} color={weeklyStreak >= 12 ? "#9C27B0" : "#ccc"} />
+                  </View>
+                  <View style={styles.milestoneInfo}>
+                    <Text style={styles.milestoneTitle}>12 Week Streak</Text>
+                    <Text style={styles.milestoneDesc}>Premium climbing shoes</Text>
+                  </View>
+                </View>
+              </View>
+              
+              <Text style={styles.rewardsModalNote}>
+                Current streak: {weeklyStreak} weeks
               </Text>
             </View>
           </View>
@@ -1746,6 +1779,93 @@ const styles = StyleSheet.create({
   rewardsLink: {
     fontSize: 13,
     color: 'white',
+    fontWeight: '600',
+  },
+  // Rewards Modal Styles
+  rewardsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  rewardsModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 0,
+    width: '100%',
+    maxHeight: '80%',
+  },
+  rewardsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  rewardsModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME_COLORS.text.primary,
+  },
+  rewardsModalBody: {
+    padding: 20,
+  },
+  rewardsModalSubtitle: {
+    fontSize: 16,
+    color: THEME_COLORS.text.secondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  milestonesList: {
+    gap: 16,
+  },
+  milestoneItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 12,
+  },
+  milestoneIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  milestoneUnlocked: {
+    backgroundColor: '#e8f5e8',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  milestoneLocked: {
+    backgroundColor: '#f0f0f0',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+  },
+  milestoneInfo: {
+    flex: 1,
+  },
+  milestoneTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: THEME_COLORS.text.primary,
+    marginBottom: 4,
+  },
+  milestoneDesc: {
+    fontSize: 14,
+    color: THEME_COLORS.text.secondary,
+  },
+  rewardsModalNote: {
+    fontSize: 14,
+    color: THEME_COLORS.bluePrimary,
+    textAlign: 'center',
+    marginTop: 20,
     fontWeight: '600',
   },
   modalOverlay: {
