@@ -1764,8 +1764,8 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
               
               {isCalculatingDistances ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-                  <Text style={{ marginTop: 16, color: '#666', fontSize: 16 }}>Calculating distances...</Text>
-                  <Text style={{ marginTop: 4, color: '#999', fontSize: 14 }}>Please wait while we find the best matches</Text>
+                  <ActivityIndicator size="large" color={THEME_COLORS.bluePrimary} />
+                  <Text style={{ marginTop: 16, color: '#666', fontSize: 16 }}>Searching locations</Text>
                 </View>
               ) : (
                 <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} keyboardShouldPersistTaps="always">
