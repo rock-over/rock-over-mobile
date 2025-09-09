@@ -192,9 +192,7 @@ function AppContent() {
             name="ClimbingSessionForm" 
             component={ClimbingSessionForm}
             options={{
-              headerShown: true,
-              title: 'Log Session',
-              headerBackTitle: 'Back',
+              headerShown: false,
             }}
           />
         </Stack.Navigator>

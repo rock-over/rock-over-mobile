@@ -2442,7 +2442,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
+    paddingTop: Platform.OS === 'ios' ? 10 : 15, // Ajuste para ficar no topo
+    paddingHorizontal: 10,
+    paddingBottom: 10,
     backgroundColor: '#fff',
   },
   closeButton: {
