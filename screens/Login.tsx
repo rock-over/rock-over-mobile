@@ -193,7 +193,7 @@ export default function Login({ onLoginSuccess, onNavigateToSignUp, onNavigateTo
                     name: authResult.user.user_metadata?.name || name || 'Unknown User',
                     email: authResult.user.email || email,
                     photo: authResult.user.user_metadata?.avatar_url || photo,
-                    profilePhoto: authResult.user.user_metadata?.profilePhoto || 'illustration_1'
+                    profilePhoto: (authResult.user.user_metadata as any)?.profilePhoto || 'illustration_1'
                 };
                 
                 console.log('Final user info:', userInfo);
@@ -467,7 +467,15 @@ const styles = StyleSheet.create({
         backgroundColor: THEME_COLORS.background.input,
         borderRadius: 8,
         paddingHorizontal: 15,
-        paddingVertical: 0,
+        ...Platform.select({
+            ios: {
+                paddingVertical: 12, // iOS precisa de padding vertical explícito
+                minHeight: 48, // Altura mínima para consistência
+            },
+            android: {
+                paddingVertical: 0, // Android funciona bem sem padding
+            },
+        }),
     },
     inputIcon: {
         marginRight: 12,
@@ -477,6 +485,14 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#000000',
         fontWeight: '400',
+        ...Platform.select({
+            ios: {
+                paddingVertical: 0, // Remove padding interno no iOS
+            },
+            android: {
+                // Mantém comportamento padrão do Android
+            },
+        }),
     },
     eyeButton: {
         padding: 4,

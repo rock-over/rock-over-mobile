@@ -182,7 +182,7 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
             
             if (authResult.success && authResult.user) {
                 console.log('[SignUp Google] 📊 User metadata:', authResult.user.user_metadata);
-                console.log('[SignUp Google] 🆕 Is new user:', !authResult.user.user_metadata?.profilePhoto);
+                console.log('[SignUp Google] 🆕 Is new user:', !(authResult.user.user_metadata as any)?.profilePhoto);
                 console.log('[SignUp Google] 📅 Created at:', authResult.user.created_at);
                 
                 // Create user object with Supabase user data
@@ -586,7 +586,15 @@ const styles = StyleSheet.create({
         backgroundColor: THEME_COLORS.background.input,
         borderRadius: 8,
         paddingHorizontal: 15,
-        paddingVertical: 0,
+        ...Platform.select({
+            ios: {
+                paddingVertical: 12, // iOS precisa de padding vertical explícito
+                minHeight: 48, // Altura mínima para consistência
+            },
+            android: {
+                paddingVertical: 0, // Android funciona bem sem padding
+            },
+        }),
     },
     inputWrapperError: {
         borderColor: '#ff0000',
@@ -600,6 +608,14 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#000000',
         fontWeight: '400',
+        ...Platform.select({
+            ios: {
+                paddingVertical: 0, // Remove padding interno no iOS
+            },
+            android: {
+                // Mantém comportamento padrão do Android
+            },
+        }),
     },
     eyeButton: {
         padding: 4,
