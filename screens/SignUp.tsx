@@ -297,8 +297,13 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
         }
     };
 
-    const showMessage = (message: string) => {
-        setMessage(message);
+    const showMessage = (message: string | Error | any) => {
+        // Ensure we convert any error objects to strings for safe rendering
+        const messageText = typeof message === 'string' ? message : 
+                           message?.message || 
+                           String(message) || 
+                           'An error occurred';
+        setMessage(messageText);
         setTimeout(() => {
             setMessage("");
         }, 5000);

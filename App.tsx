@@ -159,6 +159,9 @@ function AppContent() {
       iosClientId: "783345722479-m8mlc36nshvu46svuvjld0m234ec61kq.apps.googleusercontent.com",
       profileImageSize: 150,
       forceCodeForRefreshToken: true,
+      // // iOS specific settings to prevent nonce issues
+      // offlineAccess: true,
+      // hostedDomain: '',
     });
 
     // Lógica para deep links de redefinição de senha

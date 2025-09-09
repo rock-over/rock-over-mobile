@@ -64,6 +64,8 @@
     <string>4e0768dd03ee206d9fb13bc9aed06a82</string>
     <key>FacebookDisplayName</key>
     <string>Rock Over</string>
+    <key>GIDClientID</key>
+    <string>783345722479-m8mlc36nshvu46svuvjld0m234ec61kq.apps.googleusercontent.com</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>
       <string>fbapi</string>
