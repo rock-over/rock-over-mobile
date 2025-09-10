@@ -7,9 +7,8 @@ import {
 } from "@react-native-google-signin/google-signin";
 import React, { useRef, useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { AccessToken, LoginManager } from 'react-native-fbsdk-next';
 import { THEME_COLORS } from '../constants/Theme';
-import { signInWithFacebook, signInWithGoogle, signUpEmail } from '../lib/supabase';
+import { signInWithGoogle, signUpEmail } from '../lib/supabase';
 
 interface SignUpProps {
     onSignUpSuccess?: (user: any) => void;
@@ -228,74 +227,6 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
         }
     };
 
-    const handleFacebookLogin = async () => {
-        try {
-            setIsSubmitting(true);
-            
-            // First, log out any existing Facebook session to force account selection
-            await LoginManager.logOut();
-            
-            // Start Facebook login with OpenID Connect for ID Token
-            const result = await LoginManager.logInWithPermissions(['openid', 'public_profile', 'email']);
-            
-            if (result.isCancelled) {
-                showMessage("Facebook login was cancelled");
-                return;
-            }
-            
-            if (!result.grantedPermissions || result.grantedPermissions.length === 0) {
-                showMessage("Required Facebook permissions not granted");
-                return;
-            }
-            
-            // Get the access token
-            const data = await AccessToken.getCurrentAccessToken();
-            
-            if (!data || !data.accessToken) {
-                showMessage("Failed to get Facebook access token");
-                return;
-            }
-            
-            console.log('Facebook Access Token obtained:', {
-                hasToken: !!data.accessToken,
-                permissions: data.permissions
-            });
-            
-            // Use Supabase Facebook OAuth (same as Google)
-            const authResult = await signInWithFacebook(data.accessToken);
-            console.log('Supabase Facebook auth result:', authResult);
-            
-            if (authResult.success && authResult.user) {
-                // Create user object with Supabase user data (same as Google approach)
-                const userInfo = {
-                    id: authResult.user.id,
-                    name: authResult.user.user_metadata?.name || authResult.user.email?.split('@')[0] || 'Facebook User',
-                    email: authResult.user.email || '',
-                    photo: authResult.user.user_metadata?.avatar_url,
-                    profilePhoto: authResult.user.user_metadata?.profilePhoto || 'illustration_1'
-                };
-                
-                console.log('Final Facebook user info:', userInfo);
-                
-                // Success - call the callback with user data
-                onSignUpSuccess?.(userInfo);
-            } else {
-                showMessage(authResult.error || "Facebook sign up failed");
-            }
-            
-        } catch (error) {
-            console.error('Facebook sign up error:', error);
-            const errorMessage = (error as any)?.message || 'An error occurred during Facebook sign up';
-            
-            if (errorMessage.includes('LoginManager') || errorMessage.includes('AccessToken')) {
-                showMessage("Facebook SDK not available in this build version. Please try standard signup.");
-            } else {
-                showMessage(errorMessage);
-            }
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
 
     const showMessage = (message: string | Error | any) => {
         // Ensure we convert any error objects to strings for safe rendering
@@ -476,23 +407,15 @@ export default function SignUp({ onSignUpSuccess, onGoBack, onNavigateToLogin, o
                             <View style={styles.separatorLine} />
                         </View>
 
-                        {/* Social Login Buttons */}
-                        <View style={styles.socialButtonsContainer}>
-                            <TouchableOpacity 
-                                style={styles.socialButton} 
-                                onPress={handleGoogleSignIn}
-                                disabled={isSubmitting}
-                            >
-                                <FontAwesome6 name="google" size={20} color="#4285F4" />
-                            </TouchableOpacity>
-
-                            <TouchableOpacity 
-                                style={styles.socialButton} 
-                                onPress={handleFacebookLogin}
-                            >
-                                <FontAwesome6 name="facebook" size={20} color="#1877F2" />
-                            </TouchableOpacity>
-                        </View>
+                        {/* Google Login Button */}
+                        <TouchableOpacity 
+                            style={[styles.googleButton, isSubmitting ? styles.googleButtonDisabled : null]} 
+                            onPress={handleGoogleSignIn}
+                            disabled={isSubmitting}
+                        >
+                            <FontAwesome6 name="google" size={20} color="#4285F4" style={styles.googleIcon} />
+                            <Text style={styles.googleButtonText}>Continue with Google</Text>
+                        </TouchableOpacity>
 
                         {/* Error Message */}
                         {message ? (
@@ -729,19 +652,15 @@ const styles = StyleSheet.create({
         color: '#999',
         marginHorizontal: 16,
     },
-    socialButtonsContainer: {
+    googleButton: {
         flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 20,
-        marginBottom: 32,
-    },
-    socialButton: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: '#FFF',
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: '#FFF',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+        marginBottom: 32,
         borderWidth: 1,
         borderColor: '#E9ECEF',
         shadowColor: '#000',
@@ -749,6 +668,17 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 2,
+    },
+    googleButtonDisabled: {
+        opacity: 0.6,
+    },
+    googleIcon: {
+        marginRight: 12,
+    },
+    googleButtonText: {
+        color: '#333',
+        fontSize: 16,
+        fontWeight: '500',
     },
     message: {
         marginTop: 16,

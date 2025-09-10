@@ -5,7 +5,6 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppEventsLogger } from 'react-native-fbsdk-next';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { signOut, supabase, verifyPasswordResetToken } from './lib/supabase';
 
@@ -79,12 +78,6 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      // Facebook Analytics (se disponível)
-      try {
-        AppEventsLogger.logEvent('AppOpen');
-      } catch (error) {
-        console.log('[FacebookEvents] ⚠️ Facebook SDK not available in this build');
-      }
 
       // 1. Primeiro, tentar carregar dados salvos localmente
       console.log('[Auth] 🔄 Loading saved user session...');
@@ -97,7 +90,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('[Auth] 📭 No saved user session found');
       }
 
-      // 2. Verificar se há sessão ativa no Supabase (para usuários não-Facebook)
+      // 2. Verificar se há sessão ativa no Supabase
       supabase.auth.getSession().then(({ data: { session } }) => {
         console.log('[Auth] 🔄 Initial session check:', session ? 'session found' : 'no session');
         setSession(session);
@@ -223,20 +216,6 @@ function AppContent() {
 
   const handleAuthSuccess = async (user: any) => {
     console.log('[App] 🎉 Auth success with user:', user);
-    
-    // Check if this is a Facebook user (they don't have Supabase sessions)
-    const isFacebookUser = user.email?.includes('@facebook.') || 
-                          user.email?.includes('@rockover.app') ||
-                          user.facebook_id ||
-                          user.user_metadata?.facebook_id;
-    
-    if (isFacebookUser) {
-      console.log('[App] 📱 Facebook user detected');
-      // For Facebook users, we don't expect a Supabase session
-      // They use their own authentication system
-    } else {
-      console.log('[App] 👤 Regular user (Email/Google) detected');
-    }
     
     // Salvar usuário no estado local e AsyncStorage
     setUserInfo(user);

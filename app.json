@@ -65,18 +65,6 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.783345722479-m8mlc36nshvu46svuvjld0m234ec61kq"
         }
-      ],
-      [
-        "react-native-fbsdk-next",
-        {
-          "appID": "797996425909045",
-          "clientToken": "4e0768dd03ee206d9fb13bc9aed06a82",
-          "displayName": "Rock Over",
-          "scheme": "fb797996425909045",
-          "advertiserIDCollectionEnabled": false,
-          "autoLogAppEventsEnabled": false,
-          "isAutoInitEnabled": true
-        }
       ]
     ],
     "experiments": {
