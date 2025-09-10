@@ -286,21 +286,27 @@ export const imageCacheService = {
   },
 
   // Verificar se arquivo existe no storage do Supabase
-  async checkFileExistsInStorage(userId: string, fileUrl: string): Promise<boolean> {
+  async checkFileExistsInStorage(userId: string, filePath: string): Promise<boolean> {
     try {
-      console.log('🔍 [ImageCache] Checking file existence...');
+      console.log('🔍 [ImageCache] Checking file existence for path:', filePath);
       
-      // Extrair o path do arquivo da URL
-      const urlParts = fileUrl.split('/');
-      const bucketIndex = urlParts.findIndex(part => part === 'profile-pics');
+      // Se filePath já é um path direto, usar ele; se for URL completa, extrair o path
+      let actualFilePath = filePath;
       
-      if (bucketIndex === -1) {
-        console.log('❌ [ImageCache] Invalid URL format - no bucket found');
-        return false;
+      // Se parece ser uma URL completa, extrair o path
+      if (filePath.includes('supabase.co') || filePath.includes('profile-pics/')) {
+        const urlParts = filePath.split('/');
+        const bucketIndex = urlParts.findIndex(part => part === 'profile-pics');
+        
+        if (bucketIndex === -1) {
+          console.log('❌ [ImageCache] Invalid URL format - no bucket found');
+          return false;
+        }
+        
+        actualFilePath = urlParts.slice(bucketIndex + 1).join('/');
       }
       
-      const filePath = urlParts.slice(bucketIndex + 1).join('/');
-      console.log('📁 [ImageCache] File path in bucket:', filePath);
+      console.log('📁 [ImageCache] File path in bucket:', actualFilePath);
       
       // Usar Supabase Storage API para verificar se existe
       const { data, error } = await supabase.storage
@@ -315,7 +321,7 @@ export const imageCacheService = {
         return false;
       }
       
-      const fileName = filePath.split('/').pop();
+      const fileName = actualFilePath.split('/').pop();
       const fileExists = data?.some(file => file.name === fileName) ?? false;
       
       console.log('📋 [ImageCache] Files in bucket:', data?.map(f => f.name));
@@ -330,24 +336,31 @@ export const imageCacheService = {
   },
 
   // Obter signed URL para acesso privado
-  async getSignedUrl(originalUrl: string): Promise<string | null> {
+  async getSignedUrl(filePath: string): Promise<string | null> {
     try {
-      console.log('🔐 [ImageCache] Generating signed URL...');
+      console.log('🔐 [ImageCache] Generating signed URL for path:', filePath);
       
-      // Extrair path do arquivo da URL original
-      const urlParts = originalUrl.split('/');
-      const bucketIndex = urlParts.findIndex(part => part === 'profile-pics');
+      // Se filePath já é um path direto, usar ele; se for URL completa, extrair o path
+      let actualFilePath = filePath;
       
-      if (bucketIndex === -1) {
-        return null;
+      // Se parece ser uma URL completa, extrair o path
+      if (filePath.includes('supabase.co') || filePath.includes('profile-pics/')) {
+        const urlParts = filePath.split('/');
+        const bucketIndex = urlParts.findIndex(part => part === 'profile-pics');
+        
+        if (bucketIndex === -1) {
+          console.log('❌ [ImageCache] Invalid URL format - no bucket found');
+          return null;
+        }
+        
+        actualFilePath = urlParts.slice(bucketIndex + 1).join('/');
       }
       
-      const filePath = urlParts.slice(bucketIndex + 1).join('/');
-      console.log('📁 [ImageCache] File path for signed URL:', filePath);
+      console.log('📁 [ImageCache] File path for signed URL:', actualFilePath);
       
       const { data, error } = await supabase.storage
         .from('profile-pics')
-        .createSignedUrl(filePath, 3600); // 1 hora de validade
+        .createSignedUrl(actualFilePath, 3600); // 1 hora de validade
       
       if (error) {
         console.error('Error creating signed URL:', error);

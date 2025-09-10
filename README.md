@@ -66,26 +66,21 @@ Join our community of developers creating universal apps.
 - [X] modal de sucesso do forms
 - [X] trocar imagens (auth, forms)
 - [X] Scroll gesture on the forms to pass between steps
-- [ ] Splash screen
-- [ ] Empty state
-- [ ] Possibilitar a adição de movimentos customizados
-- [ ] Copiar do ultimo log
-
-
-
 - [X] Deletar/Editar sessão
-- [ ] Recuperação de senha (tela foi implementada porém precisa resolver o problema do deeplink (o gmail está bagunçando ele))
 - [X] subir imagem do profile na nuvem
 - [X] melhorar componente de selecionar imagem
-- [ ] Login do facebook funcionando com supabase
-- [ ] Melhorar card de sessão (cada ascent type pode ser um badge // Adicionar o how it feel // Adicionar imagem // Adicionar o difficulty?)
+- [X] tela de perfil (trocar grading / nome / foto, logout)
+- [ ] Splash screen
+- [ ] Empty state
+- [ ] Copiar do ultimo log
+- [ ] Deixar os movimentos pra depois de salvar a sessao
+- [ ] Recuperação de senha (tela foi implementada porém precisa resolver o problema do deeplink (o gmail está bagunçando ele))
+- [ ] trocar senha
 
 
-- [ ] tela de perfil (trocar grading / nome / foto / senha, logout)
-
-- [ ] auto layout
+- [X] auto layout
 - [ ] erro de conexão
-- [ ] loading
+- [X] loading
 - [ ] limpar banco de dados
 - [ ] testes unitarios
 - [ ] arquitetura e boas praticas
@@ -95,10 +90,14 @@ Join our community of developers creating universal apps.
 
 ### Bugs
 - [X] status bar branca
-- [ ] slider vai e volta
+- [X] slider vai e volta
 - [ ] data da session é salva errada
 
 ### Pivot
 - [ ] Download spread sheet
 - [ ] adicionar opção de salvar antes ??
+- [ ] Login do facebook funcionando com supabase
+- [ ] Melhorar card de sessão (cada ascent type pode ser um badge // Adicionar o how it feel // Adicionar imagem // Adicionar o difficulty?)
+- [ ] Possibilitar a adição de movimentos customizados
+
 

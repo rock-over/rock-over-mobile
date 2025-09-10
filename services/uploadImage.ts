@@ -2,6 +2,30 @@ import { Buffer } from 'buffer';
 import * as FileSystem from 'expo-file-system';
 import { supabase } from '../lib/supabase';
 
+// Helper function to get correct MIME type from file extension
+function getMimeTypeFromExtension(fileExt: string): string {
+  const extension = fileExt.toLowerCase();
+  
+  switch (extension) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'gif':
+      return 'image/gif';
+    case 'webp':
+      return 'image/webp';
+    case 'bmp':
+      return 'image/bmp';
+    case 'tiff':
+    case 'tif':
+      return 'image/tiff';
+    default:
+      return 'image/jpeg'; // Default fallback
+  }
+}
+
 export async function uploadImageAsync(
   localUri: string,
   userId: string,
@@ -26,7 +50,7 @@ export async function uploadImageAsync(
   const arrayBuffer = Uint8Array.from(Buffer.from(base64, 'base64'));
 
   const { error } = await supabase.storage.from(bucket).upload(filePath, arrayBuffer, {
-    contentType: `image/${fileExt}`,
+    contentType: getMimeTypeFromExtension(fileExt),
     upsert: true, // Allow overwriting existing files
   });
 
@@ -63,7 +87,7 @@ export async function uploadProfilePictureAsync(
   const arrayBuffer = Uint8Array.from(Buffer.from(base64, 'base64'));
 
   const { error } = await supabase.storage.from(bucket).upload(filePath, arrayBuffer, {
-    contentType: `image/${fileExt}`,
+    contentType: getMimeTypeFromExtension(fileExt),
     upsert: true, // Allow overwriting existing profile pictures
   });
 

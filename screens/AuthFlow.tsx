@@ -163,7 +163,6 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                     }
                 }
                 
-                console.log('✅ [AuthFlow] Custom photo uploaded successfully:', publicUrl);
             } else {
                 // It's an illustration, create/update profile with illustration
                 const isFacebookUser = tempUser.email?.includes('@facebook.') || 

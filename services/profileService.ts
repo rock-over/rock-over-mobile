@@ -121,20 +121,15 @@ export const profileService = {
     }
 
     try {
-      // Upload da imagem para o bucket profile-pics
+      // Upload da imagem para o bucket profile-pics (privado)
       const imagePath = await uploadProfilePictureAsync(localUri, user.id);
       
-      // Gerar URL pública da imagem
-      const { data: { publicUrl } } = supabase.storage
-        .from('profile-pics')
-        .getPublicUrl(imagePath);
-      
-      // Atualizar o perfil com a nova URL da imagem
+      // Atualizar o perfil com o path da imagem (não URL pública)
       const updatedProfile = await this.updateProfile({
-        profile_picture_url: publicUrl
+        profile_picture_url: imagePath
       });
 
-      return publicUrl;
+      return imagePath;
     } catch (error) {
       console.error('Error uploading profile picture:', error);
       throw error;
@@ -146,21 +141,16 @@ export const profileService = {
     try {
       console.log('[profileService] 📤 Uploading Facebook user profile picture...');
       
-      // Upload da imagem para o bucket profile-pics
+      // Upload da imagem para o bucket profile-pics (privado)
       const imagePath = await uploadProfilePictureAsync(localUri, userId);
       
-      // Gerar URL pública da imagem
-      const { data: { publicUrl } } = supabase.storage
-        .from('profile-pics')
-        .getPublicUrl(imagePath);
+      console.log('[profileService] 🔒 Stored private image path:', imagePath);
       
-      console.log('[profileService] 🌐 Generated public URL:', publicUrl);
-      
-      // Atualizar o perfil diretamente na tabela profiles usando o userId
+      // Atualizar o perfil diretamente na tabela profiles com o path (não URL pública)
       const { error } = await supabase
         .from('profiles')
         .update({
-          profile_picture_url: publicUrl,
+          profile_picture_url: imagePath,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
@@ -171,7 +161,7 @@ export const profileService = {
       }
 
       console.log('[profileService] ✅ Facebook user profile picture updated successfully');
-      return publicUrl;
+      return imagePath;
       
     } catch (error) {
       console.error('[profileService] ❌ Error uploading Facebook profile picture:', error);
@@ -246,12 +236,22 @@ export const profileService = {
     }
   },
 
-  // Obter URL pública da imagem de perfil
-  getProfilePictureUrl(imagePath: string): string {
-    const { data: { publicUrl } } = supabase.storage
-      .from('profile-pics')
-      .getPublicUrl(imagePath);
-    
-    return publicUrl;
+  // Obter signed URL da imagem de perfil (privada)
+  async getProfilePictureSignedUrl(imagePath: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase.storage
+        .from('profile-pics')
+        .createSignedUrl(imagePath, 3600); // 1 hora de validade
+      
+      if (error) {
+        console.error('[profileService] Error creating signed URL:', error);
+        return null;
+      }
+      
+      return data.signedUrl;
+    } catch (error) {
+      console.error('[profileService] Error creating signed URL:', error);
+      return null;
+    }
   }
 };
