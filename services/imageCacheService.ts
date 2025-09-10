@@ -162,10 +162,16 @@ export const imageCacheService = {
       
 
       
-      // 3. Se tem URL no Supabase, tentar cachear e usar
+      // 3. Se tem URL no Supabase, processar diferentes tipos
       if (profile?.profile_picture_url) {
         
-        // Primeiro, verificar se o arquivo existe no storage
+        // 3a. Verificar se é uma ilustração predefinida (illustration_1, illustration_2, etc.)
+        if (profile.profile_picture_url.startsWith('illustration_')) {
+          console.log('🎨 [ImageCache] Found predefined illustration:', profile.profile_picture_url);
+          return this.getIllustrationByName(profile.profile_picture_url);
+        }
+        
+        // 3b. É um path/URL de imagem customizada - verificar se existe no storage
         const fileExists = await this.checkFileExistsInStorage(userId, profile.profile_picture_url);
         
         if (!fileExists) {
@@ -225,6 +231,33 @@ export const imageCacheService = {
     const defaultIllustration = illustrations[0];
     
     return { source: defaultIllustration, isCached: true };
+  },
+
+  // Obter ilustração específica por nome (illustration_1, illustration_2, etc.)
+  getIllustrationByName(illustrationName: string): { source: any; isCached: boolean } {
+    console.log('🎨 [ImageCache] Getting illustration by name:', illustrationName);
+    
+    const illustrations = {
+      'illustration_1': require('../assets/images/profile-illustrations/profile_illustration_1.png'),
+      'illustration_2': require('../assets/images/profile-illustrations/profile_illustration_2.png'),
+      'illustration_3': require('../assets/images/profile-illustrations/profile_illustration_3.png'),
+      'illustration_4': require('../assets/images/profile-illustrations/profile_illustration_4.png'),
+      'illustration_5': require('../assets/images/profile-illustrations/profile_illustration_5.png'),
+      'illustration_6': require('../assets/images/profile-illustrations/profile_illustration_6.png'),
+      'illustration_7': require('../assets/images/profile-illustrations/profile_illustration_7.png'),
+      'illustration_8': require('../assets/images/profile-illustrations/profile_illustration_8.png'),
+      'illustration_9': require('../assets/images/profile-illustrations/profile_illustration_9.png'),
+    };
+    
+    const selectedIllustration = illustrations[illustrationName as keyof typeof illustrations];
+    
+    if (selectedIllustration) {
+      console.log('✅ [ImageCache] Found illustration:', illustrationName);
+      return { source: selectedIllustration, isCached: true };
+    } else {
+      console.log('❌ [ImageCache] Illustration not found, using fallback:', illustrationName);
+      return this.getFallbackImage();
+    }
   },
 
   // Limpar cache de um usuário específico

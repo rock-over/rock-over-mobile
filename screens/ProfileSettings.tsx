@@ -157,7 +157,8 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
                 await profileService.upsertProfile({
                     email: userInfo.email || '',
                     name: userInfo.name || '',
-                    grading_system: userInfo.gradingSystem || 'yds'
+                    grading_system: userInfo.gradingSystem || 'yds',
+                    profile_picture_url: selectedPhoto // Salvar a ilustração escolhida
                 });
                 
                 // Also update user metadata for consistency

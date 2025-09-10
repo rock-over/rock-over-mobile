@@ -175,7 +175,8 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                     await profileService.upsertProfile({
                         email: tempUser.email || '',
                         name: tempUser.name || '',
-                        grading_system: profileData.gradingSystem
+                        grading_system: profileData.gradingSystem,
+                        profile_picture_url: profileData.photoUri // Salvar a ilustração escolhida
                     });
                 } else {
                     // Facebook users - update profiles table directly
@@ -185,6 +186,7 @@ export default function AuthFlow({ onAuthSuccess, initialScreen = 'welcome', res
                             .from('profiles')
                             .update({
                                 grading_system: profileData.gradingSystem,
+                                profile_picture_url: profileData.photoUri, // Salvar a ilustração escolhida
                                 updated_at: new Date().toISOString()
                             })
                             .eq('id', tempUser.id);
