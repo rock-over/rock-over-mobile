@@ -24,6 +24,18 @@ const gradeToNumeric = (grade: string | null): number => {
   return isNaN(numericGrade) ? 0 : numericGrade;
 };
 
+// Helper function to safely parse dates avoiding timezone issues
+const safeParseDateString = (dateString: string): Date => {
+  // Se é uma string no formato YYYY-MM-DD, parse manualmente para evitar timezone issues
+  if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [year, month, day] = dateString.split('-');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  } else {
+    // Para outros formatos, usa o comportamento normal
+    return new Date(dateString);
+  }
+};
+
 
 
 
@@ -47,13 +59,13 @@ const processCompletionByGrade = (sessions: ClimbingSession[], period: '7d' | '3
       break;
     case 'all':
       if (sessions.length > 0) {
-        startDate = new Date(Math.min(...sessions.map(s => new Date(s.when).getTime())));
+        startDate = new Date(Math.min(...sessions.map(s => safeParseDateString(s.when).getTime())));
       }
       break;
   }
 
   const filteredSessions = period === 'all' ? sessions : sessions.filter(session => {
-    const sessionDate = new Date(session.when);
+    const sessionDate = safeParseDateString(session.when);
     return sessionDate >= startDate && sessionDate <= now;
   });
 
@@ -119,13 +131,13 @@ const processMovementData = (sessions: ClimbingSession[], period: '7d' | '30d' |
       break;
     case 'all':
       if (sessions.length > 0) {
-        startDate = new Date(Math.min(...sessions.map(s => new Date(s.when).getTime())));
+        startDate = new Date(Math.min(...sessions.map(s => safeParseDateString(s.when).getTime())));
       }
       break;
   }
 
   const filteredSessions = period === 'all' ? sessions : sessions.filter(session => {
-    const sessionDate = new Date(session.when);
+    const sessionDate = safeParseDateString(session.when);
     return sessionDate >= startDate && sessionDate <= now;
   });
 
@@ -229,13 +241,13 @@ const processRoutesByGrade = (sessions: ClimbingSession[], period: '7d' | '30d' 
       break;
     case 'all':
       if (sessions.length > 0) {
-        startDate = new Date(Math.min(...sessions.map(s => new Date(s.when).getTime())));
+        startDate = new Date(Math.min(...sessions.map(s => safeParseDateString(s.when).getTime())));
       }
       break;
   }
 
   const filteredSessions = period === 'all' ? sessions : sessions.filter(session => {
-    const sessionDate = new Date(session.when);
+    const sessionDate = safeParseDateString(session.when);
     return sessionDate >= startDate && sessionDate <= now;
   });
 
@@ -278,13 +290,13 @@ const processAttemptCompletedPercentage = (sessions: ClimbingSession[], period: 
       break;
     case 'all':
       if (sessions.length > 0) {
-        startDate = new Date(Math.min(...sessions.map(s => new Date(s.when).getTime())));
+        startDate = new Date(Math.min(...sessions.map(s => safeParseDateString(s.when).getTime())));
       }
       break;
   }
 
   const filteredSessions = period === 'all' ? sessions : sessions.filter(session => {
-    const sessionDate = new Date(session.when);
+    const sessionDate = safeParseDateString(session.when);
     return sessionDate >= startDate && sessionDate <= now;
   });
 
@@ -294,7 +306,7 @@ const processAttemptCompletedPercentage = (sessions: ClimbingSession[], period: 
   const sessionsByPeriod = filteredSessions.reduce((acc, session) => {
     if (!session.completion) return acc;
     
-    const sessionDate = new Date(session.when);
+    const sessionDate = safeParseDateString(session.when);
     let periodKey: string;
     let periodLabel: string;
     
@@ -482,7 +494,7 @@ const calculateWeeklyStreak = (sessions: ClimbingSession[]): number => {
     weekEnd.setHours(23, 59, 59, 999);
     
     return sessions.some(session => {
-      const sessionDate = new Date(session.when);
+      const sessionDate = safeParseDateString(session.when);
       return sessionDate >= weekStart && sessionDate <= weekEnd;
     });
   };
@@ -565,7 +577,7 @@ const processSessionsTimeline = (sessions: ClimbingSession[], period: '7d' | '30
       break;
     case 'all':
       if (sessions.length > 0) {
-        startDate = new Date(Math.min(...sessions.map(s => new Date(s.when).getTime())));
+        startDate = new Date(Math.min(...sessions.map(s => safeParseDateString(s.when).getTime())));
         groupBy = 'month';
         dateFormat = 'MMM YY';
       }
@@ -590,7 +602,7 @@ const processSessionsTimeline = (sessions: ClimbingSession[], period: '7d' | '30
     
     // Count sessions per day
     filteredSessions.forEach(session => {
-      const sessionDate = new Date(session.when);
+      const sessionDate = safeParseDateString(session.when);
       const key = sessionDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
       if (groupedSessions[key] !== undefined) {
         groupedSessions[key]++;
@@ -611,7 +623,7 @@ const processSessionsTimeline = (sessions: ClimbingSession[], period: '7d' | '30
     
     // Count sessions per month
     filteredSessions.forEach(session => {
-      const sessionDate = new Date(session.when);
+      const sessionDate = safeParseDateString(session.when);
       const key = period === 'all'
         ? sessionDate.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
         : (period === '1y' ? sessionDate.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
@@ -679,7 +691,7 @@ const processSessionsTimeline = (sessions: ClimbingSession[], period: '7d' | '30
 // Calculate selected month metrics
 const calculateSelectedMonthMetrics = (sessions: ClimbingSession[], selectedMonth: number, selectedYear: number) => {
   const selectedMonthSessions = sessions.filter(session => {
-    const sessionDate = new Date(session.when);
+    const sessionDate = safeParseDateString(session.when);
     return sessionDate.getMonth() === selectedMonth && sessionDate.getFullYear() === selectedYear;
   });
 
@@ -713,7 +725,7 @@ const generateMarkedDates = (sessions: ClimbingSession[], selectedMonth: number,
   // Process each session
   sessions.forEach(session => {
     // Convert session.when to YYYY-MM-DD format, avoiding timezone issues
-    const sessionDate = new Date(session.when);
+    const sessionDate = safeParseDateString(session.when);
     const sessionYear = sessionDate.getFullYear();
     const sessionMonth = sessionDate.getMonth() + 1;
     

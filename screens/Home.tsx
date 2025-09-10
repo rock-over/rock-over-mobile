@@ -37,9 +37,21 @@ const getSessionColor = (session: ClimbingSession) => {
   }
 };
 
+// Helper function to safely parse dates avoiding timezone issues
+const safeParseDateString = (dateString: string): Date => {
+  // Se é uma string no formato YYYY-MM-DD, parse manualmente para evitar timezone issues
+  if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [year, month, day] = dateString.split('-');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  } else {
+    // Para outros formatos, usa o comportamento normal
+    return new Date(dateString);
+  }
+};
+
 const formatDate = (dateString: string) => {
   try {
-    const date = new Date(dateString);
+    const date = safeParseDateString(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   } catch (e) {
     return dateString;
@@ -321,8 +333,8 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   const getSortedSessions = () => {
     // Por padrão, ordenar por data (mais recente primeiro)
     return [...sessions].sort((a, b) => {
-      const dateA = new Date(a.when).getTime();
-      const dateB = new Date(b.when).getTime();
+      const dateA = safeParseDateString(a.when).getTime();
+      const dateB = safeParseDateString(b.when).getTime();
       return dateB - dateA; // Mais recente primeiro
     });
   };
@@ -360,7 +372,7 @@ const calculateWeeklyStreak = (sessions: ClimbingSession[]): number => {
     weekEnd.setHours(23, 59, 59, 999);
     
     return sessions.some(session => {
-      const sessionDate = new Date(session.when);
+      const sessionDate = safeParseDateString(session.when);
       return sessionDate >= weekStart && sessionDate <= weekEnd;
     });
   };
@@ -451,7 +463,7 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
   
   // Sessions this month
   const thisMonthSessions = sessions.filter(session => {
-    const sessionDate = new Date(session.when);
+    const sessionDate = safeParseDateString(session.when);
     return sessionDate.getMonth() === currentMonth && sessionDate.getFullYear() === currentYear;
   });
 

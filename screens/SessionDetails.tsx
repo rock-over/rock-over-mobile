@@ -575,7 +575,17 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   // Função para formatar data e hora
   const formatDateTime = (dateString: string) => {
     try {
-      const date = new Date(dateString);
+      let date: Date;
+      
+      // Se é uma string no formato YYYY-MM-DD, parse manualmente para evitar timezone issues
+      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateString.split('-');
+        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        // Para outros formatos (com hora), usa o comportamento normal
+        date = new Date(dateString);
+      }
+      
       const day = date.getDate().toString().padStart(2, '0');
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
       const year = date.getFullYear();

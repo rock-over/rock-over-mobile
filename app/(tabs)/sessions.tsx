@@ -25,8 +25,16 @@ const getSessionColor = (session: ClimbingSession) => {
 
 const formatDate = (dateString: string) => {
   try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    // Se é uma string no formato YYYY-MM-DD, parse manualmente para evitar timezone issues
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateString.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } else {
+      // Para outros formatos, usa o comportamento normal
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
   } catch (e) {
     return dateString;
   }
