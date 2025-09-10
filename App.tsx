@@ -1,13 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppState } from 'react-native';
 import { AppEventsLogger } from 'react-native-fbsdk-next';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { supabase, signOut, verifyPasswordResetToken } from './lib/supabase';
+import { signOut, supabase, verifyPasswordResetToken } from './lib/supabase';
 
 // Importar as telas
 import AuthFlow from './screens/AuthFlow';
@@ -16,17 +16,58 @@ import HomeWithTabs from './screens/HomeWithTabs';
 
 const Stack = createStackNavigator();
 
+// Constantes para AsyncStorage
+const USER_SESSION_KEY = '@user_session';
+const USER_INFO_KEY = '@user_info';
+
+// Funções de persistência
+const saveUserSession = async (userInfo: any) => {
+  try {
+    await AsyncStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+    console.log('[Auth] 💾 User session saved to AsyncStorage');
+  } catch (error) {
+    console.error('[Auth] ❌ Error saving user session:', error);
+  }
+};
+
+const loadUserSession = async () => {
+  try {
+    const savedUserInfo = await AsyncStorage.getItem(USER_INFO_KEY);
+    if (savedUserInfo) {
+      const parsedUserInfo = JSON.parse(savedUserInfo);
+      console.log('[Auth] 📱 User session loaded from AsyncStorage');
+      return parsedUserInfo;
+    }
+    return null;
+  } catch (error) {
+    console.error('[Auth] ❌ Error loading user session:', error);
+    return null;
+  }
+};
+
+const clearUserSession = async () => {
+  try {
+    await AsyncStorage.removeItem(USER_INFO_KEY);
+    await AsyncStorage.removeItem(USER_SESSION_KEY);
+    console.log('[Auth] 🧹 User session cleared from AsyncStorage');
+  } catch (error) {
+    console.error('[Auth] ❌ Error clearing user session:', error);
+  }
+};
+
 // Criar o contexto de autenticação
 const AuthContext = createContext<{
   session: Session | null;
   isLoading: boolean;
   userInfo: any;
   setUserInfo: (user: any) => void;
+  clearSavedUserData: () => Promise<void>;
 }>({
   session: null,
   isLoading: true,
   userInfo: null,
   setUserInfo: () => {},
+  clearSavedUserData: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -37,31 +78,47 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [userInfo, setUserInfo] = useState<any>(null);
 
   useEffect(() => {
-    // Facebook Analytics (se disponível)
-    try {
-      AppEventsLogger.logEvent('AppOpen');
-    } catch (error) {
-      console.log('[FacebookEvents] ⚠️ Facebook SDK not available in this build');
-    }
+    const initializeAuth = async () => {
+      // Facebook Analytics (se disponível)
+      try {
+        AppEventsLogger.logEvent('AppOpen');
+      } catch (error) {
+        console.log('[FacebookEvents] ⚠️ Facebook SDK not available in this build');
+      }
 
-    // Monitorar mudanças de estado da sessão
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[App] 🔄 Initial session check:', session ? 'session found' : 'no session');
-      setSession(session);
-      setIsLoading(false);
-    });
+      // 1. Primeiro, tentar carregar dados salvos localmente
+      console.log('[Auth] 🔄 Loading saved user session...');
+      const savedUserInfo = await loadUserSession();
+      
+      if (savedUserInfo) {
+        console.log('[Auth] ✅ Found saved user session, restoring login state');
+        setUserInfo(savedUserInfo);
+      } else {
+        console.log('[Auth] 📭 No saved user session found');
+      }
+
+      // 2. Verificar se há sessão ativa no Supabase (para usuários não-Facebook)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log('[Auth] 🔄 Initial session check:', session ? 'session found' : 'no session');
+        setSession(session);
+        setIsLoading(false);
+      });
+    };
+
+    initializeAuth();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[App] 🔄 onAuthStateChange triggered:', event, session ? 'session exists' : 'no session');
+      console.log('[Auth] 🔄 onAuthStateChange triggered:', event, session ? 'session exists' : 'no session');
       
       if (event === 'SIGNED_OUT' || !session) {
-        console.log('[App] 🚫 No session, clearing userInfo');
+        console.log('[Auth] 🚫 No session, clearing userInfo and saved data');
         setSession(null);
         setUserInfo(null);
+        await clearUserSession();
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        console.log('[App] ✅ Session active, updating state');
+        console.log('[Auth] ✅ Session active, updating state');
         setSession(session);
       }
       
@@ -77,8 +134,12 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log('[App] 📊 UserInfo details:', userInfo);
   }, [session, userInfo]);
 
+  const clearSavedUserData = async () => {
+    await clearUserSession();
+  };
+
   return (
-    <AuthContext.Provider value={{ session, isLoading, userInfo, setUserInfo }}>
+    <AuthContext.Provider value={{ session, isLoading, userInfo, setUserInfo, clearSavedUserData }}>
       {children}
     </AuthContext.Provider>
   );
@@ -147,14 +208,16 @@ function AppContent() {
         console.log('[App] ✅ Logout successful');
       }
       
-      // Sempre limpar o estado local, independente de erros
+      // Sempre limpar o estado local e AsyncStorage, independente de erros
       setUserInfo(null);
-      console.log('[App] 🧹 Local state cleared');
+      await clearUserSession();
+      console.log('[App] 🧹 Local state and AsyncStorage cleared');
       
     } catch (error: any) {
       console.error('[App] ❌ Logout exception:', error);
-      // Ainda assim, limpar o estado local
+      // Ainda assim, limpar o estado local e AsyncStorage
       setUserInfo(null);
+      await clearUserSession();
     }
   };
 
@@ -175,8 +238,10 @@ function AppContent() {
       console.log('[App] 👤 Regular user (Email/Google) detected');
     }
     
+    // Salvar usuário no estado local e AsyncStorage
     setUserInfo(user);
-    console.log('[App] ✅ User info set in context');
+    await saveUserSession(user);
+    console.log('[App] ✅ User info set in context and saved to AsyncStorage');
   };
 
   // Se tem userInfo, mostrar app logado
