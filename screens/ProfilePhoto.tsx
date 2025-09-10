@@ -129,9 +129,10 @@ export default function ProfilePhoto({ onContinue, onSkip }: ProfilePhotoProps) 
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.headerContent}>
-                    <View style={styles.logoContainer}>
-                        <Text style={styles.logoText}>RV</Text>
-                    </View>
+                    <Image
+                        source={require('../assets/images/rock-over-white-letter.png')}
+                        style={{ width: 170, height: 56, resizeMode: 'contain', alignSelf: 'center' }}
+                    />
                 </View>
             </View>
 
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
         backgroundColor: THEME_COLORS.bluePrimary,
     },
     header: {
-        paddingTop: 50,
+        paddingTop: Platform.OS === 'ios' ? 60 : 45,
         paddingHorizontal: 20,
         paddingBottom: 20,
         alignItems: 'center',
