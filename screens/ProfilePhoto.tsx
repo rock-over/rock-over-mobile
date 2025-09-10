@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
     Alert,
     Image,
+    Platform,
     ScrollView,
     StatusBar,
     StyleSheet,

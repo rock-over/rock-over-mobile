@@ -357,14 +357,6 @@ PODS:
     - FBAEMKit (= 18.0.1)
     - FBSDKCoreKit_Basics (= 18.0.1)
   - FBSDKCoreKit_Basics (18.0.1)
-  - FBSDKGamingServicesKit (18.0.1):
-    - FBSDKCoreKit (= 18.0.1)
-    - FBSDKCoreKit_Basics (= 18.0.1)
-    - FBSDKShareKit (= 18.0.1)
-  - FBSDKLoginKit (18.0.1):
-    - FBSDKCoreKit (= 18.0.1)
-  - FBSDKShareKit (18.0.1):
-    - FBSDKCoreKit (= 18.0.1)
   - fmt (11.0.2)
   - glog (0.3.5)
   - GoogleSignIn (7.1.0):
@@ -1719,21 +1711,6 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
-  - react-native-fbsdk-next (13.4.1):
-    - React-Core
-    - react-native-fbsdk-next/Core (= 13.4.1)
-    - react-native-fbsdk-next/Login (= 13.4.1)
-    - react-native-fbsdk-next/Share (= 13.4.1)
-  - react-native-fbsdk-next/Core (13.4.1):
-    - FBSDKCoreKit (~> 18.0)
-    - React-Core
-  - react-native-fbsdk-next/Login (13.4.1):
-    - FBSDKLoginKit (~> 18.0)
-    - React-Core
-  - react-native-fbsdk-next/Share (13.4.1):
-    - FBSDKGamingServicesKit (~> 18.0)
-    - FBSDKShareKit (~> 18.0)
-    - React-Core
   - react-native-get-random-values (1.11.0):
     - React-Core
   - react-native-safe-area-context (5.4.0):
@@ -2611,7 +2588,6 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
-  - react-native-fbsdk-next (from `../node_modules/react-native-fbsdk-next`)
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "react-native-slider (from `../node_modules/@react-native-community/slider`)"
@@ -2662,9 +2638,6 @@ SPEC REPOS:
     - FBAEMKit
     - FBSDKCoreKit
     - FBSDKCoreKit_Basics
-    - FBSDKGamingServicesKit
-    - FBSDKLoginKit
-    - FBSDKShareKit
     - GoogleSignIn
     - GTMAppAuth
     - GTMSessionFetcher
@@ -2813,8 +2786,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
-  react-native-fbsdk-next:
-    :path: "../node_modules/react-native-fbsdk-next"
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
   react-native-safe-area-context:
@@ -2940,9 +2911,6 @@ SPEC CHECKSUMS:
   FBLazyVector: d2a9cd223302b6c9aa4aa34c1a775e9db609eb52
   FBSDKCoreKit: 7f96852f2539bdb88ba8d47e5ab4ae70a6f8d691
   FBSDKCoreKit_Basics: 22d4c1a509ded4e45116f3bb167a14907550f62e
-  FBSDKGamingServicesKit: acde62310212678446f81b0a14da88231b918feb
-  FBSDKLoginKit: f48c06446995cd209332831f692cea28b26e51da
-  FBSDKShareKit: d3fef7f6690e173369134beb5f43983d7338e933
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   GoogleSignIn: d4281ab6cf21542b1cfaff85c191f230b399d2db
@@ -2983,7 +2951,6 @@ SPEC CHECKSUMS:
   React-logger: 85fa3509931497c72ccd2547fcc91e7299d8591e
   React-Mapbuffer: 96a2f2a176268581733be182fa6eebab1c0193be
   React-microtasksnativemodule: bda561d2648e1e52bd9e5a87f8889836bdbde2e2
-  react-native-fbsdk-next: 52f81e60eb3e8e0e06cf9728b4572d3509ca9d01
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
   react-native-safe-area-context: 562163222d999b79a51577eda2ea8ad2c32b4d06
   react-native-slider: 78ccabe016aef7418b1a846b31115b4165c4dde6
