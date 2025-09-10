@@ -74,7 +74,6 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
   const [showGripModal, setShowGripModal] = useState(false);
   const [showFootworkModal, setShowFootworkModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [datePickerMode, setDatePickerMode] = useState<'date' | 'time'>('date');
   const [tempMovementTags, setTempMovementTags] = useState<string[]>([]);
   const [tempGripTags, setTempGripTags] = useState<string[]>([]);
   const [tempFootworkTags, setTempFootworkTags] = useState<string[]>([]);
@@ -572,26 +571,26 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
 
 
 
-  // Função para formatar data e hora
-  const formatDateTime = (dateString: string) => {
+  // Helper function to safely parse dates avoiding timezone issues
+  const safeParseDateString = (dateString: string): Date => {
+    // Se é uma string no formato YYYY-MM-DD, parse manualmente para evitar timezone issues
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateString.split('-');
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } else {
+      // Para outros formatos, usa o comportamento normal
+      return new Date(dateString);
+    }
+  };
+
+  // Função para formatar apenas data (sem hora)
+  const formatDateOnly = (dateString: string) => {
     try {
-      let date: Date;
-      
-      // Se é uma string no formato YYYY-MM-DD, parse manualmente para evitar timezone issues
-      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const [year, month, day] = dateString.split('-');
-        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      } else {
-        // Para outros formatos (com hora), usa o comportamento normal
-        date = new Date(dateString);
-      }
-      
+      const date = safeParseDateString(dateString);
       const day = date.getDate().toString().padStart(2, '0');
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
       const year = date.getFullYear();
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      return `${day}/${month}/${year}, ${hours}:${minutes}`;
+      return `${day}/${month}/${year}`;
     } catch {
       return dateString;
     }
@@ -1033,9 +1032,9 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
     );
   };
 
-  // Renderizar seletor de data e hora (visualização ou edição)
-  const renderDateTimePicker = (title: string, dateString: string, field?: string) => {
-    const currentDate = dateString ? new Date(dateString) : new Date();
+  // Renderizar seletor de data (visualização ou edição) - apenas data, sem hora
+  const renderDatePicker = (title: string, dateString: string, field?: string) => {
+    const currentDate = dateString ? safeParseDateString(dateString) : new Date();
     const isEmpty = !dateString;
     
     // Verificar se este campo tem erro de validação
@@ -1047,38 +1046,16 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       }
       
       if (selectedDate && field) {
-        if (datePickerMode === 'date') {
-          // Se selecionou data, agora mostrar seletor de hora
-          setDatePickerMode('time');
-          if (Platform.OS === 'ios') {
-            setShowDatePicker(true);
-          } else {
-            // Android: mostrar imediatamente o picker de hora
-            setTimeout(() => {
-              setShowDatePicker(true);
-            }, 100);
-          }
-          // Manter a data selecionada mas com a hora atual se não havia data anterior
-          const newDateTime = new Date(selectedDate);
-          if (!isEmpty) {
-            const currentDateTime = new Date(dateString);
-            newDateTime.setHours(currentDateTime.getHours(), currentDateTime.getMinutes());
-          }
-          updateField(field, newDateTime.toISOString());
-        } else {
-          // Se selecionou hora, finalizar
-          const existingDateTime = field && editedSession[field as keyof ClimbingSession] ? 
-            new Date(editedSession[field as keyof ClimbingSession] as string) : new Date();
-          const newDateTime = new Date(existingDateTime);
-          newDateTime.setHours(selectedDate.getHours(), selectedDate.getMinutes());
-          updateField(field, newDateTime.toISOString());
-          setDatePickerMode('date');
-        }
+        // Salvar apenas a data no formato YYYY-MM-DD
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
+        updateField(field, dateString);
       }
     };
 
-    const showDateTimePicker = (mode: 'date' | 'time') => {
-      setDatePickerMode(mode);
+    const openDatePicker = () => {
       setShowDatePicker(true);
     };
 
@@ -1094,7 +1071,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
               style={styles.dateIcon}
             />
             <Text style={styles.dateTimeDisplayText}>
-              {dateString ? formatDateTime(dateString) : 'No date selected'}
+              {dateString ? formatDateOnly(dateString) : 'No date selected'}
             </Text>
           </View>
         </View>
@@ -1107,7 +1084,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         <View style={styles.dateTimePickerContainer}>
           <TouchableOpacity
             style={[styles.dateTimeButton, hasValidationError && styles.dateTimeButtonError]}
-            onPress={() => showDateTimePicker('date')}
+            onPress={openDatePicker}
           >
             <FontAwesome6 
               name="calendar-days" 
@@ -1116,7 +1093,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
               style={styles.dateIcon}
             />
             <Text style={[styles.dateTimeButtonText, hasValidationError && styles.dateTimeButtonTextError]}>
-              {isEmpty ? 'Select date and time' : formatDateTime(editedSession[field as keyof ClimbingSession] as string)}
+              {isEmpty ? 'Select date' : formatDateOnly(editedSession[field as keyof ClimbingSession] as string)}
             </Text>
             <FontAwesome6 
               name="chevron-down" 
@@ -1133,7 +1110,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         {showDatePicker && (
           <DateTimePicker
             value={currentDate}
-            mode={datePickerMode}
+            mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={handleDateChange}
             minimumDate={new Date(2020, 0, 1)}
@@ -2114,7 +2091,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
         </Text>
 
         {/* Step 1: Basic Information */}
-        {renderDateTimePicker('', currentSession.when, 'when')}
+        {renderDatePicker('', currentSession.when, 'when')}
         
         {renderVisualSelector('Location', currentSession.place || '', locationOptions, 'place')}
         

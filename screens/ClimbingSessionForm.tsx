@@ -45,7 +45,6 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   const [showGripModal, setShowGripModal] = useState(false);
   const [showFootworkModal, setShowFootworkModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [datePickerMode, setDatePickerMode] = useState<'date' | 'time'>('date');
   const [tempMovementTags, setTempMovementTags] = useState<string[]>([]);
   const [tempGripTags, setTempGripTags] = useState<string[]>([]);
   const [tempFootworkTags, setTempFootworkTags] = useState<string[]>([]);
@@ -96,7 +95,13 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     place: '',
     location: '', // NEW – selected gym or outdoor place
     location_data: null as any, // Rich location data from Google Places API
-    when: new Date().toISOString(), // Data e hora atual (obrigatória)
+    when: (() => {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    })(), // Data atual no formato YYYY-MM-DD (obrigatória)
     activity: '',
     colour: THEME_COLORS.bluePrimary, // Cor inicial azul
     routeNumber: '',
@@ -260,52 +265,47 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     );
   };
 
-  // Versões compactas para passos 1 e 2
-  const renderDateTimePickerCompact = (title: string, field: string, showErrorFlag?: boolean) => {
+  // Helper function to safely parse dates avoiding timezone issues
+  const safeParseDateString = (dateString: string): Date => {
+    // Se é uma string no formato YYYY-MM-DD, parse manualmente para evitar timezone issues
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateString.split('-');
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } else {
+      // Para outros formatos, usa o comportamento normal
+      return new Date(dateString);
+    }
+  };
+
+  // Versão simplificada para apenas data (sem hora)
+  const renderDatePickerCompact = (title: string, field: string, showErrorFlag?: boolean) => {
     const fieldValue = formData[field as keyof typeof formData] as string;
-    const currentDate = fieldValue ? new Date(fieldValue) : new Date();
+    const currentDate = fieldValue ? safeParseDateString(fieldValue) : new Date();
     const isEmpty = !fieldValue || fieldValue === '';
     const showError = showErrorFlag && isEmpty;
     
-    const formatDateTime = (date: Date) => {
+    const formatDateOnly = (date: Date) => {
       const day = date.getDate().toString().padStart(2, '0');
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
       const year = date.getFullYear();
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      return `${day}/${month}/${year}, ${hours}:${minutes}`;
+      return `${day}/${month}/${year}`;
     };
 
     const handleDateChange = (event: any, selectedDate?: Date) => {
       if (selectedDate) {
-        if (datePickerMode === 'date') {
-          // Após selecionar a data, automaticamente abrir seleção de hora
-          if (Platform.OS === 'android') {
-            setShowDatePicker(false);
-            // Pequeno delay para melhor UX no Android
-            setTimeout(() => {
-              setDatePickerMode('time');
-              setShowDatePicker(true);
-            }, 100);
-          } else {
-            // No iOS, mudar diretamente para modo time
-            setDatePickerMode('time');
-          }
-        } else {
-          // Após selecionar a hora, fechar o picker
-          if (Platform.OS === 'android') {
-            setShowDatePicker(false);
-          }
-        }
-        
-        updateField(field, selectedDate.toISOString());
-      } else if (Platform.OS === 'android') {
+        // Salvar apenas a data no formato YYYY-MM-DD
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
+        updateField(field, dateString);
+      }
+      if (Platform.OS === 'android') {
         setShowDatePicker(false);
       }
     };
 
-    const showDateTimePicker = () => {
-      setDatePickerMode('date');
+    const openDatePicker = () => {
       setShowDatePicker(true);
     };
 
@@ -314,7 +314,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
         <View style={styles.dateTimePickerContainer}>
           <TouchableOpacity
             style={[styles.dateTimeButton, showError && styles.dateTimeButtonError]}
-            onPress={showDateTimePicker}
+            onPress={openDatePicker}
           >
             <FontAwesome6 
               name="calendar-days" 
@@ -323,7 +323,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               style={styles.dateIcon}
             />
             <Text style={[styles.dateTimeButtonText, showError && styles.dateTimeButtonTextError]}>
-              {isEmpty ? 'Select date and time' : formatDateTime(currentDate)}
+              {isEmpty ? 'Select date' : formatDateOnly(currentDate)}
             </Text>
             <FontAwesome6 
               name="chevron-down" 
@@ -340,7 +340,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
         {showDatePicker && (
           <DateTimePicker
             value={currentDate}
-            mode={datePickerMode}
+            mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={handleDateChange}
             minimumDate={new Date(2020, 0, 1)}
@@ -708,7 +708,13 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       place: '',
       location: '', // NEW reset
       location_data: null, // NEW reset rich data
-      when: new Date().toISOString(),
+      when: (() => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      })(),
       activity: '',
       colour: THEME_COLORS.bluePrimary,
       routeNumber: '',
@@ -1090,45 +1096,38 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     </View>
   );
 
-  // Função para converter timestamp para formato amigável
-  const formatDateForDisplay = (timestamp: string): string => {
-    if (!timestamp) return '';
+  // Função para converter date string para formato amigável (apenas data)
+  const formatDateForDisplay = (dateString: string): string => {
+    if (!dateString) return '';
     try {
-      const date = new Date(timestamp);
+      const date = safeParseDateString(dateString);
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       
       const day = date.getDate().toString().padStart(2, '0');
       const month = months[date.getMonth()];
       const year = date.getFullYear();
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
       
-      return `${day} ${month} ${year}, ${hours}:${minutes}`;
+      return `${day} ${month} ${year}`;
     } catch {
-      return timestamp; // Fallback caso não seja um timestamp válido
+      return dateString; // Fallback caso não seja uma data válida
     }
   };
 
-  // Função para converter formato amigável para timestamp
+  // Função para converter formato amigável para date string
   const parseDisplayDate = (displayDate: string): string => {
     if (!displayDate) return '';
     try {
-      // Se já é um timestamp, retorna como está
-      if (displayDate.includes('T') || displayDate.match(/^\d{4}-\d{2}-\d{2}/)) {
+      // Se já é uma date string no formato YYYY-MM-DD, retorna como está
+      if (displayDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         return displayDate;
       }
 
-      // Parse do formato "DD MMM YYYY, HH:MM"
+      // Parse do formato "DD MMM YYYY" (sem hora)
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       
-      const parts = displayDate.split(', ');
-      if (parts.length !== 2) return displayDate;
-      
-      const [datePart, timePart] = parts;
-      const dateComponents = datePart.split(' ');
-      const [hours, minutes] = timePart.split(':');
+      const dateComponents = displayDate.split(' ');
       
       if (dateComponents.length !== 3) return displayDate;
       
@@ -1137,8 +1136,10 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
       
       if (monthIndex === -1) return displayDate;
       
-      const date = new Date(parseInt(year), monthIndex, parseInt(day), parseInt(hours), parseInt(minutes));
-      return date.toISOString();
+      // Retornar no formato YYYY-MM-DD
+      const monthStr = String(monthIndex + 1).padStart(2, '0');
+      const dayStr = String(parseInt(day)).padStart(2, '0');
+      return `${year}-${monthStr}-${dayStr}`;
     } catch {
       return displayDate; // Fallback
     }
@@ -1797,7 +1798,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               <Text style={styles.modalSubtitle}>
                 Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
               </Text>
-              {renderDateTimePickerCompact('', 'when', showErrorsStep1)}
+              {renderDatePickerCompact('', 'when', showErrorsStep1)}
               {renderLocationSelector()}
               {formData.location !== '' && (
                 <View style={styles.locationDisplayRow}>
