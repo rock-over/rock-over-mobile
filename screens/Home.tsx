@@ -715,7 +715,9 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
                         <FontAwesome6 name="calendar-days" size={18} color="#1976D2" />
                       </View>
                       <View style={styles.statContent}>
-                        <Text style={styles.modernStatNumber}>{stats.monthlyCount}</Text>
+                        <Text style={[styles.modernStatNumber, {
+                          fontSize: `${stats.monthlyCount}`.length > 2 ? 18 : 22
+                        }]}>{stats.monthlyCount}</Text>
                         <Text style={styles.modernStatLabel}>This Month</Text>
                       </View>
                     </View>
@@ -725,7 +727,9 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
                         <FontAwesome6 name="bullseye" size={18} color="#7B1FA2" />
                       </View>
                       <View style={styles.statContent}>
-                        <Text style={styles.modernStatNumber}>{stats.successRate}%</Text>
+                        <Text style={[styles.modernStatNumber, {
+                          fontSize: `${stats.successRate}%`.length > 3 ? 18 : 22
+                        }]}>{stats.successRate}%</Text>
                         <Text style={styles.modernStatLabel}>Success Rate</Text>
                       </View>
                     </View>
@@ -735,7 +739,9 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
                         <FontAwesome6 name="trophy" size={18} color="#388E3C" />
                       </View>
                       <View style={styles.statContent}>
-                        <Text style={styles.modernStatNumber}>{stats.highestGrade}</Text>
+                        <Text style={[styles.modernStatNumber, {
+                          fontSize: `${stats.highestGrade}`.length > 4 ? 18 : 22
+                        }]}>{stats.highestGrade}</Text>
                         <Text style={styles.modernStatLabel}>Best Grade</Text>
                       </View>
                     </View>
@@ -745,7 +751,9 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
                         <FontAwesome6 name="star" size={18} color="#F57C00" solid />
                       </View>
                       <View style={styles.statContent}>
-                        <Text style={styles.modernStatNumber}>{stats.avgRating}</Text>
+                        <Text style={[styles.modernStatNumber, {
+                          fontSize: `${stats.avgRating}`.length > 3 ? 18 : 22
+                        }]}>{stats.avgRating}</Text>
                         <Text style={styles.modernStatLabel}>Avg Rating</Text>
                       </View>
                     </View>
