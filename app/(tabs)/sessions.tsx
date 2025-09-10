@@ -99,18 +99,18 @@ export default function SessionsScreen() {
     getUserInfo();
   }, []);
 
-  useEffect(() => {
-    if (userInfo?.email) {
-      loadSessions();
-    }
-  }, [userInfo?.email]);
 
   useFocusEffect(
     React.useCallback(() => {
       // Garantir que a StatusBar seja sempre configurada corretamente quando a tela for focada
       StatusBar.setBarStyle('dark-content');
       StatusBar.setBackgroundColor('#F8F9FA');
-    }, [])
+      
+      // Carregar dados sempre que a tela for focada
+      if (userInfo?.email) {
+        loadSessions();
+      }
+    }, [userInfo?.email])
   );
 
   useEffect(() => {

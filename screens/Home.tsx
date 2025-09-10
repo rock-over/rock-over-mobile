@@ -92,11 +92,6 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
   const [showRewardsModal, setShowRewardsModal] = useState(false);
 
 
-  useEffect(() => {
-    if (userInfo?.email) {
-      loadSessions();
-    }
-  }, [userInfo?.email]);
 
   // Carregamento da imagem de perfil com cache
   useEffect(() => {
@@ -185,7 +180,12 @@ export default function Home({ onLogout, userInfo }: HomeProps) {
       // Garantir que a StatusBar seja sempre configurada corretamente quando a tela for focada
       StatusBar.setBarStyle('dark-content');
       StatusBar.setBackgroundColor('#F8F9FA');
-    }, [])
+      
+      // Carregar dados sempre que a tela for focada
+      if (userInfo?.email) {
+        loadSessions();
+      }
+    }, [userInfo?.email])
   );
 
   useEffect(() => {
