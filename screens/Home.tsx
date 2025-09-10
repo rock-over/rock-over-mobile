@@ -676,6 +676,20 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.dashboardContent}
         >
+          {/* Empty State for no sessions */}
+          {sessions.length === 0 && (
+            <View style={styles.emptyStateDashboard}>
+              <Image 
+                source={require('../assets/images/empty-state-home.png')}
+                style={styles.emptyStateImage}
+              />
+              <Text style={styles.emptyTitle}>Ready to start climbing?</Text>
+              <Text style={styles.emptyDesc}>
+                Tap the + button to log your first climb to see your progress and achievements!
+              </Text>
+            </View>
+          )}
+
           {/* Progress Stats Section */}
           <View style={styles.statsSection}>
             <Text style={styles.sectionTitle}>Your Progress</Text>
@@ -725,7 +739,7 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
                     </View>
                   </>
                 );
-              })()}
+              })()} 
             </View>
           </View>
 
@@ -816,7 +830,7 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
                     </View>
                   </>
                 );
-              })()}
+              })()} 
             </View>
           </View>
 
@@ -838,17 +852,6 @@ const getClimbingStats = (sessions: ClimbingSession[]) => {
               </View>
             </TouchableOpacity>
           </View>
-
-          {/* Empty State for no sessions */}
-          {sessions.length === 0 && (
-            <View style={styles.emptyStateDashboard}>
-              <FontAwesome6 name="mountain" size={64} color="#E0E0E0" />
-              <Text style={styles.emptyTitle}>Ready to Start Climbing?</Text>
-              <Text style={styles.emptyDesc}>
-                Log your first session to see your progress and achievements here!
-              </Text>
-            </View>
-          )}
         </ScrollView>
       )}
 
@@ -1360,6 +1363,12 @@ const styles = StyleSheet.create({
     color: THEME_COLORS.text.secondary,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  emptyStateImage: {
+    width: 200,
+    height: 200,
+    resizeMode: 'contain',
+    backgroundColor: 'transparent',
   },
   profileImageLoading: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

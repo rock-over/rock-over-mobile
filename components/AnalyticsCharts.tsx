@@ -5,10 +5,10 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import {
-  BarChart,
-  LineChart,
-  PieChart,
-  StackedBarChart,
+    BarChart,
+    LineChart,
+    PieChart,
+    StackedBarChart,
 } from 'react-native-chart-kit';
 import { THEME_COLORS } from '../constants/Theme';
 import { supabase } from '../lib/supabase';
@@ -828,8 +828,12 @@ export default function AnalyticsCharts() {
           <Text style={styles.headerSubtitle}>Track your climbing progress and insights</Text>
         </View>
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>No Data Available</Text>
-          <Text style={styles.emptyText}>Start logging your climbing sessions to see your analytics!</Text>
+          <Image 
+            source={require('../assets/images/empty-state-dash.png')}
+            style={styles.emptyStateImage}
+          />
+          <Text style={styles.emptyTitle}>No data available</Text>
+          <Text style={styles.emptyText}>Start logging your climbing sessions to analyze your progress on a dashboard!</Text>
         </View>
       </ScrollView>
     );
@@ -1591,21 +1595,28 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 50,
-    paddingHorizontal: 20,
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyStateImage: {
+    width: 200,
+    height: 200,
+    resizeMode: 'contain',
+    backgroundColor: 'transparent',
   },
   emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2c3e50',
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME_COLORS.text.primary,
+    marginTop: 16,
+    marginBottom: 8,
     textAlign: 'center',
-    marginBottom: 10,
   },
   emptyText: {
     fontSize: 16,
-    color: '#7f8c8d',
+    color: THEME_COLORS.text.secondary,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
   },
   header: {
     paddingHorizontal: 0,

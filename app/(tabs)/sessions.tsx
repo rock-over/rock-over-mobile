@@ -2,7 +2,7 @@ import { FontAwesome, FontAwesome5, FontAwesome6, Ionicons } from '@expo/vector-
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, FlatList, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, FlatList, Image, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SessionCard from '../../components/SessionCard';
 import { THEME_COLORS } from '../../constants/Theme';
@@ -565,7 +565,10 @@ export default function SessionsScreen() {
                 </View>
               ) : (
                 <View style={styles.emptyState}>
-                  <FontAwesome6 name="mountain" size={48} color="#ccc" />
+                  <Image 
+                    source={require('../../assets/images/empty-state-sessions.png')}
+                    style={styles.emptyStateImage}
+                  />
                   <Text style={styles.emptyText}>
                     No climbing sessions yet
                   </Text>
@@ -675,7 +678,10 @@ export default function SessionsScreen() {
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <FontAwesome6 name="mountain" size={48} color="#ccc" />
+                <Image 
+                  source={require('../../assets/images/empty-state-sessions.png')}
+                  style={styles.emptyStateImage}
+                />
                 <Text style={styles.emptyText}>
                   No climbing sessions yet
                 </Text>
@@ -885,19 +891,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyStateImage: {
+    width: 200,
+    height: 200,
+    resizeMode: 'contain',
+    backgroundColor: 'transparent',
   },
   emptyText: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME_COLORS.text.primary,
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: 16,
+    color: THEME_COLORS.text.secondary,
     textAlign: 'center',
-    paddingHorizontal: 40,
+    lineHeight: 22,
   },
   floatingButton: {
     position: 'absolute',
