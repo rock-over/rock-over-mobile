@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
         backgroundColor: THEME_COLORS.bluePrimary,
     },
     header: {
-        paddingTop: 45,
+        paddingTop: Platform.OS === 'ios' ? 60 : 45,
         paddingHorizontal: 20,
         paddingBottom: 20,
         position: 'relative',
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     backButton: {
         position: 'absolute',
         left: 20,
-        top: 55,
+        top: Platform.OS === 'ios' ? 70 : 55,
         width: 40,
         height: 40,
         borderRadius: 20,
