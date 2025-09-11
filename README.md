@@ -71,7 +71,7 @@ Join our community of developers creating universal apps.
 - [X] melhorar componente de selecionar imagem
 - [X] tela de perfil (trocar grading / nome / foto, logout)
 - [ ] Splash screen
-- [ ] Empty state
+- [X] Empty state
 - [ ] Copiar do ultimo log
 - [ ] Deixar os movimentos pra depois de salvar a sessao
 - [ ] Recuperação de senha (tela foi implementada porém precisa resolver o problema do deeplink (o gmail está bagunçando ele))
@@ -91,7 +91,7 @@ Join our community of developers creating universal apps.
 ### Bugs
 - [X] status bar branca
 - [X] slider vai e volta
-- [ ] data da session é salva errada
+- [X] data da session é salva errada
 
 ### Pivot
 - [ ] Download spread sheet

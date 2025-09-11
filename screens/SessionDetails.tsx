@@ -2082,7 +2082,7 @@ export default function SessionDetails({ session, onClose, onSessionDeleted }: S
       <ScrollView 
         ref={scrollViewRef}
         style={styles.content} 
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 40 : 24 }}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.modalTitle}>Session Details ✨</Text>
@@ -3091,7 +3091,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionButtonSpacer: {
-    height: 80, // Reduzido para a barra mais compacta
+    height: Platform.OS === 'ios' ? 100 : 80, // Maior espaço no iOS para evitar corte do botão
   },
   fixedBottomBar: {
     position: 'absolute',
@@ -3100,7 +3100,8 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#fff',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: Platform.OS === 'ios' ? 20 : 12, // Maior padding vertical no iOS
+    paddingBottom: Platform.OS === 'ios' ? 30 : 12, // Padding inferior específico para iOS
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     elevation: 8,
