@@ -26,6 +26,7 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MultiImagePicker from '../components/MultiImagePicker';
 import { THEME_COLORS } from '../constants/Theme';
+import { SessionCacheService } from '../services/sessionCacheService';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 // NEW: Google Maps API key (expects env var from Expo config)
@@ -53,6 +54,11 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
   const [showErrorsStep1, setShowErrorsStep1] = useState(false);
   const [showErrorsStep2, setShowErrorsStep2] = useState(false);
 
+  // Cache functionality states
+  const [usePreviousSession, setUsePreviousSession] = useState(false);
+  const [hasValidCache, setHasValidCache] = useState(false);
+  const [isLoadingCache, setIsLoadingCache] = useState(true);
+
   // Snackbar for error messages
   const [snackMessage, setSnackMessage] = useState<string>('');
   const [showSnack, setShowSnack] = useState(false);
@@ -68,6 +74,27 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     setShowErrorsStep1(false);
     setShowErrorsStep2(false);
   }, []);
+
+  // Check if cache has valid data on mount
+  useEffect(() => {
+    const checkCache = async () => {
+      setIsLoadingCache(true);
+      const cacheExists = await SessionCacheService.hasValidCache();
+      setHasValidCache(cacheExists);
+      setIsLoadingCache(false);
+    };
+    
+    checkCache();
+  }, []);
+
+  // Handle toggle of "use previous session" switch
+  useEffect(() => {
+    if (usePreviousSession && hasValidCache) {
+      loadCachedData();
+    } else if (!usePreviousSession) {
+      clearStep1Fields();
+    }
+  }, [usePreviousSession, hasValidCache]);
 
   const isStepValid = (step: number): boolean => {
     if (step === 1) {
@@ -144,6 +171,49 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
 
   const updateArrayField = (field: string, value: string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Load cached data and apply to form
+  const loadCachedData = async () => {
+    try {
+      const cachedData = await SessionCacheService.loadStep1Data();
+      if (cachedData) {
+        // Set flag to prevent location clearing when place changes
+        isLoadingFromCache.current = true;
+        
+        setFormData(prev => ({
+          ...prev,
+          place: cachedData.place,
+          location: cachedData.location,
+          location_data: cachedData.location_data,
+          activity: cachedData.activity,
+        }));
+        
+        // Reset flag after a short delay to allow state update
+        setTimeout(() => {
+          isLoadingFromCache.current = false;
+        }, 100);
+        
+        console.log('Cached data loaded:', cachedData);
+      }
+    } catch (error) {
+      console.error('Error loading cached data:', error);
+      isLoadingFromCache.current = false;
+    }
+  };
+
+  // Clear form fields for step 1 
+  const clearStep1Fields = () => {
+    // Ensure flag is reset when manually clearing fields
+    isLoadingFromCache.current = false;
+    
+    setFormData(prev => ({
+      ...prev,
+      place: '',
+      location: '',
+      location_data: null,
+      activity: '',
+    }));
   };
 
   /* ------- Multiple Images Handling ------- */
@@ -686,6 +756,14 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
         // ... outros campos importantes
       });
 
+      // Save step 1 data to cache for next session
+      await SessionCacheService.saveStep1Data({
+        place: cleanData.place || '',
+        location: cleanData.location || '',
+        location_data: cleanData.location_data,
+        activity: cleanData.activity || '',
+      });
+
       if (onSave) {
         await onSave(cleanData);
       }
@@ -741,34 +819,60 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     if (!isLast) {
       return (
         <View style={styles.stepActionsContainer}>
-          {step > 1 && (
-            <TouchableOpacity
-              style={styles.circleNavButton}
-              onPress={handlePrevious}
-            >
-              <FontAwesome6 name="arrow-up" size={18} color="#fff" />
-            </TouchableOpacity>
-          )}
-          {step > 1 && <View style={{ width: 12 }} />}
-          {(() => {
-            const enabled = isStepValid(step);
-            return (
+          {/* Left side: Previous session switch (only on step 1) */}
+          {step === 1 && hasValidCache && !isLoadingCache ? (
+            <View style={styles.bottomSwitchContainer}>
               <TouchableOpacity
-                style={[styles.circleNavButton, !enabled && styles.circleNavButtonDisabled]}
-                onPress={() => {
-                  if (enabled) {
-                    handleNext();
-                  } else {
-                    if (step === 1) setShowErrorsStep1(true);
-                    if (step === 2) setShowErrorsStep2(true);
-                    triggerSnack('Please fill in all required fields before continuing.');
-                  }
-                }}
+                style={[
+                  styles.bottomSwitchButton,
+                  usePreviousSession && styles.bottomSwitchButtonActive
+                ]}
+                onPress={() => setUsePreviousSession(!usePreviousSession)}
               >
-                <FontAwesome6 name="arrow-down" size={18} color={enabled ? '#fff' : '#999'} />
+                <View
+                  style={[
+                    styles.bottomSwitchThumb,
+                    usePreviousSession && styles.bottomSwitchThumbActive
+                  ]}
+                />
               </TouchableOpacity>
-            );
-          })()}
+              <Text style={styles.bottomSwitchLabel}>Copy previous session info</Text>
+            </View>
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
+          
+          {/* Right side: Navigation buttons */}
+          <View style={styles.navigationButtonsContainer}>
+            {step > 1 && (
+              <TouchableOpacity
+                style={styles.circleNavButton}
+                onPress={handlePrevious}
+              >
+                <FontAwesome6 name="arrow-up" size={18} color="#fff" />
+              </TouchableOpacity>
+            )}
+            {step > 1 && <View style={{ width: 12 }} />}
+            {(() => {
+              const enabled = isStepValid(step);
+              return (
+                <TouchableOpacity
+                  style={[styles.circleNavButton, !enabled && styles.circleNavButtonDisabled]}
+                  onPress={() => {
+                    if (enabled) {
+                      handleNext();
+                    } else {
+                      if (step === 1) setShowErrorsStep1(true);
+                      if (step === 2) setShowErrorsStep2(true);
+                      triggerSnack('Please fill in all required fields before continuing.');
+                    }
+                  }}
+                >
+                  <FontAwesome6 name="arrow-down" size={18} color={enabled ? '#fff' : '#999'} />
+                </TouchableOpacity>
+              );
+            })()}
+          </View>
         </View>
       );
     } else {
@@ -1798,6 +1902,7 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
               <Text style={styles.modalSubtitle}>
                 Track your progress and discover patterns in your climbing to reach new heights faster! 🚀
               </Text>
+              
               {renderDatePickerCompact('', 'when', showErrorsStep1)}
               {renderLocationSelector()}
               {formData.location !== '' && (
@@ -2059,9 +2164,14 @@ export default function ClimbingSessionForm({ navigation, route }: ClimbingSessi
     }
   }, [currentStep, formAreaHeight]);
 
+  // Track if we're currently loading from cache to avoid clearing location
+  const isLoadingFromCache = useRef(false);
+
   useEffect(() => {
-    // Always reset selected location when the user toggles Indoor / Outdoor
-    setFormData(prev => ({ ...prev, location: '', location_data: null }));
+    // Only reset location when user manually toggles Indoor/Outdoor, not when loading from cache
+    if (!isLoadingFromCache.current) {
+      setFormData(prev => ({ ...prev, location: '', location_data: null }));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.place]);
 
@@ -3125,14 +3235,19 @@ const styles = StyleSheet.create({
   },
   stepActionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 16,
     paddingBottom: 24,
+    paddingHorizontal: 16,
     marginBottom: 8,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
+  },
+  navigationButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   finalStepButtonsContainer: {
     flexDirection: 'row',
@@ -3270,4 +3385,41 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
- });  
+  // Bottom switch styles (compact)
+  bottomSwitchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  bottomSwitchLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666',
+    marginLeft: 8,
+  },
+  bottomSwitchButton: {
+    width: 42,
+    height: 24,
+    backgroundColor: '#ccc',
+    borderRadius: 12,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  bottomSwitchButtonActive: {
+    backgroundColor: THEME_COLORS.bluePrimary,
+  },
+  bottomSwitchThumb: {
+    width: 20,
+    height: 20,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  bottomSwitchThumbActive: {
+    transform: [{ translateX: 18 }],
+  },
+});
