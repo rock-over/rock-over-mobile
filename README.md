@@ -72,7 +72,7 @@ Join our community of developers creating universal apps.
 - [X] tela de perfil (trocar grading / nome / foto, logout)
 - [ ] Splash screen
 - [X] Empty state
-- [ ] Copiar do ultimo log
+- [X] Copiar do ultimo log
 - [ ] Deixar os movimentos pra depois de salvar a sessao
 - [ ] Recuperação de senha (tela foi implementada porém precisa resolver o problema do deeplink (o gmail está bagunçando ele))
 - [ ] trocar senha

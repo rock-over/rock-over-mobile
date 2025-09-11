@@ -1,9 +1,9 @@
 import { FontAwesome, FontAwesome5, FontAwesome6, Ionicons } from '@expo/vector-icons';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, AppState, FlatList, Image, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../../App';
 import SessionCard from '../../components/SessionCard';
 import { THEME_COLORS } from '../../constants/Theme';
 import SessionDetails from '../../screens/SessionDetails';
@@ -84,29 +84,20 @@ export default function SessionsScreen() {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
   const [isViewTransitioning, setIsViewTransitioning] = useState(false);
-  const [userInfo, setUserInfo] = useState<any>(null);
+  
+  // Use auth context instead of GoogleSignin
+  const { userInfo } = useAuth();
 
+  // Load sessions when userInfo becomes available
   useEffect(() => {
-    // Get user info from navigation params or global state
-    const getUserInfo = async () => {
-      try {
-        const user = await GoogleSignin.getCurrentUser();
-        if (user) {
-          setUserInfo({
-            id: user.user.id,
-            name: user.user.name,
-            email: user.user.email,
-            photo: user.user.photo,
-          });
-        }
-      } catch (error) {
-        console.log('Error getting user info:', error);
-      }
-    };
-
-    getUserInfo();
-  }, []);
-
+    console.log('[Sessions] 🔄 UserInfo changed:', !!userInfo, userInfo?.email);
+    if (userInfo?.email) {
+      console.log('[Sessions] 🚀 Loading sessions for:', userInfo.email);
+      loadSessions();
+    } else {
+      console.log('[Sessions] ❌ No userInfo.email available yet');
+    }
+  }, [userInfo?.email]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -138,16 +129,25 @@ export default function SessionsScreen() {
   }, []);
 
   const loadSessions = async () => {
-    if (!userInfo?.email) return;
+    console.log('[Sessions] 📋 loadSessions called with userInfo:', !!userInfo, userInfo?.email);
+    
+    if (!userInfo?.email) {
+      console.log('[Sessions] ❌ loadSessions: No email available');
+      setLoading(false);
+      return;
+    }
     
     try {
+      console.log('[Sessions] ⏳ Starting to load sessions...');
       setLoading(true);
       const userSessions = await climbingSessionService.getUserSessions(userInfo.email);
+      console.log('[Sessions] ✅ Sessions loaded successfully:', userSessions.length, 'sessions');
       setSessions(userSessions);
     } catch (error) {
-      console.error('Erro ao carregar sessões:', error);
+      console.error('[Sessions] ❌ Error loading sessions:', error);
       Alert.alert('Erro', 'Não foi possível carregar suas sessões');
     } finally {
+      console.log('[Sessions] 🏁 Loading finished, setting loading to false');
       setLoading(false);
     }
   };

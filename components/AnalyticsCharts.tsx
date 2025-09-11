@@ -5,10 +5,10 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import {
-    BarChart,
-    LineChart,
-    PieChart,
-    StackedBarChart,
+  BarChart,
+  LineChart,
+  PieChart,
+  StackedBarChart,
 } from 'react-native-chart-kit';
 import { THEME_COLORS } from '../constants/Theme';
 import { supabase } from '../lib/supabase';
@@ -1318,7 +1318,7 @@ export default function AnalyticsCharts() {
                 data={attemptCompletedData}
                 width={chartWidth}
                 height={220}
-                yLabelsOffset={25}
+                yLabelsOffset={20}
                 hideLegend={true}
                 chartConfig={{
                   backgroundGradientFrom: '#ffffff',
@@ -1384,7 +1384,7 @@ export default function AnalyticsCharts() {
         
         {/* Success Metrics */}
         <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Success Metrics</Text>
+          <Text style={styles.chartTitle}>Success Rate by Grade</Text>
           <Text style={styles.chartSubtitle}>Sessions attempted vs completed by grade</Text>
           {completionByGrade.hasData ? (
             <View>
@@ -1392,7 +1392,7 @@ export default function AnalyticsCharts() {
                 data={completionByGrade}
                 width={chartWidth}
                 height={220}
-                yLabelsOffset={25}
+                yLabelsOffset={20}
                 hideLegend={true}
                 chartConfig={{
                   backgroundGradientFrom: '#ffffff',
